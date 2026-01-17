@@ -2,8 +2,8 @@
 #define JSON_PARSER_H
 
 #include <string>
-#include <vector>
 #include <map>
+#include <vector>
 
 class JsonParser {
 public:

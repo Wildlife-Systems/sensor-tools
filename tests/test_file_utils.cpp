@@ -1,7 +1,6 @@
 #include "../include/file_utils.h"
 #include <cassert>
 #include <iostream>
-#include <fstream>
 
 void test_is_csv_file() {
     assert(FileUtils::isCsvFile("data.csv") == true);
