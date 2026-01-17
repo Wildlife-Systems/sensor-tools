@@ -1,7 +1,7 @@
 # Sensor Tools
 
-[![CI](https://github.com/edwbartels/sensors-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/edwbartels/sensors-tools/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/edwbartels/sensors-tools/graph/badge.svg)](https://codecov.io/gh/edwbartels/sensors-tools)
+[![CI](https://github.com/Wildlife-Systems/sensor-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/Wildlife-Systems/sensor-tools/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Wildlife-Systems/sensor-tools/graph/badge.svg)](https://codecov.io/gh/Wildlife-Systems/sensor-tools)
 
 A command-line tool for processing and analysing sensor data files.
 
