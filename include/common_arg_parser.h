@@ -82,6 +82,11 @@ public:
                 if (i + 1 < argc) {
                     ++i;
                 }
+            } else if (arg == "-c" || arg == "--column") {
+                // Skip this flag and its argument - handled by StatsAnalyser
+                if (i + 1 < argc) {
+                    ++i;
+                }
             } else if (arg == "--use-prototype" || arg == "--remove-errors") {
                 // Skip these flags - handled by SensorDataConverter
             } else if (arg == "-d" || arg == "--depth") {
