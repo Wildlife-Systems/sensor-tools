@@ -55,12 +55,7 @@ private:
         std::string result;
         
         // Execute sc-prototype command
-        FILE* pipe = nullptr;
-#ifdef _WIN32
-        pipe = _popen("sc-prototype", "r");
-#else
-        pipe = popen("sc-prototype", "r");
-#endif
+        FILE* pipe = popen("sc-prototype", "r");
         
         if (!pipe) {
             std::cerr << "Error: Failed to run sc-prototype command" << std::endl;
@@ -73,11 +68,7 @@ private:
         }
         
         // Close pipe
-#ifdef _WIN32
-        _pclose(pipe);
-#else
         pclose(pipe);
-#endif
         
         if (result.empty()) {
             std::cerr << "Error: sc-prototype returned no output" << std::endl;

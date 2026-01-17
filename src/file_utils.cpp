@@ -2,12 +2,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <iostream>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
 #include <dirent.h>
-#endif
 
 bool FileUtils::isDirectory(const std::string& path) {
     struct stat info;
@@ -58,38 +53,6 @@ void FileUtils::collectFilesFromDirectory(const std::string& dirPath,
         std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
     }
     
-#ifdef _WIN32
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
-    
-    if (hFind == INVALID_HANDLE_VALUE) {
-        std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
-        return;
-    }
-    
-    do {
-        std::string filename = findData.cFileName;
-        if (filename != "." && filename != "..") {
-            std::string fullPath = dirPath + "\\" + filename;
-            if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (recursive) {
-                    collectFilesFromDirectory(fullPath, files, recursive, extensionFilter, maxDepth, currentDepth + 1, verbosity);
-                }
-            } else {
-                if (matchesExtension(filename, extensionFilter)) {
-                    if (verbosity >= 2) {
-                        std::cout << "  Found file: " << fullPath << std::endl;
-                    }
-                    files.push_back(fullPath);
-                } else if (verbosity >= 2 && !extensionFilter.empty()) {
-                    std::cout << "  Skipping (extension): " << fullPath << std::endl;
-                }
-            }
-        }
-    } while (FindNextFileA(hFind, &findData) != 0);
-    
-    FindClose(hFind);
-#else
     DIR* dir = opendir(dirPath.c_str());
     if (!dir) {
         std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
@@ -118,5 +81,4 @@ void FileUtils::collectFilesFromDirectory(const std::string& dirPath,
         }
     }
     closedir(dir);
-#endif
 }

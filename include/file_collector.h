@@ -4,13 +4,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "file_utils.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#else
 #include <dirent.h>
-#endif
+#include "file_utils.h"
 
 // Centralized file collector that handles directory traversal and extension filtering
 class FileCollector {
@@ -46,38 +41,6 @@ private:
             std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
         }
         
-#ifdef _WIN32
-        WIN32_FIND_DATAA findData;
-        HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
-        
-        if (hFind == INVALID_HANDLE_VALUE) {
-            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
-            return;
-        }
-        
-        do {
-            std::string filename = findData.cFileName;
-            if (filename != "." && filename != "..") {
-                std::string fullPath = dirPath + "\\" + filename;
-                if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                    if (recursive) {
-                        collectFromDirectory(fullPath, currentDepth + 1);
-                    }
-                } else {
-                    if (matchesExtension(filename)) {
-                        if (verbosity >= 2) {
-                            std::cout << "  Found file: " << fullPath << std::endl;
-                        }
-                        files.push_back(fullPath);
-                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
-                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
-                    }
-                }
-            }
-        } while (FindNextFileA(hFind, &findData) != 0);
-        
-        FindClose(hFind);
-#else
         DIR* dir = opendir(dirPath.c_str());
         if (!dir) {
             std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
@@ -106,7 +69,6 @@ private:
             }
         }
         closedir(dir);
-#endif
     }
     
 public:
