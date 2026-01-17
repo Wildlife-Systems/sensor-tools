@@ -8,6 +8,26 @@
 
 // Date/Time utility functions
 namespace DateUtils {
+    // Validate date/time component ranges
+    inline bool isValidDateTime(int year, int month, int day, int hour = 0, int min = 0, int sec = 0) {
+        if (year < 1970 || year > 2100) return false;
+        if (month < 1 || month > 12) return false;
+        if (day < 1 || day > 31) return false;
+        if (hour < 0 || hour > 23) return false;
+        if (min < 0 || min > 59) return false;
+        if (sec < 0 || sec > 59) return false;
+        
+        // More precise day validation based on month
+        int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        // Leap year check
+        if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+            daysInMonth[1] = 29;
+        }
+        if (day > daysInMonth[month - 1]) return false;
+        
+        return true;
+    }
+
     // Parse date string to Unix timestamp
     // Supports: Unix timestamp, ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS), DD/MM/YYYY
     inline long long parseDate(const std::string& dateStr) {
@@ -17,6 +37,7 @@ namespace DateUtils {
         if (dateStr.find('/') != std::string::npos) {
             int day, month, year;
             if (sscanf(dateStr.c_str(), "%d/%d/%d", &day, &month, &year) == 3) {
+                if (!isValidDateTime(year, month, day)) return 0;
                 struct tm timeinfo = {};
                 timeinfo.tm_year = year - 1900;
                 timeinfo.tm_mon = month - 1;
@@ -38,6 +59,8 @@ namespace DateUtils {
                 if (tPos != std::string::npos) {
                     sscanf(dateStr.c_str() + tPos + 1, "%d:%d:%d", &hour, &min, &sec);
                 }
+                
+                if (!isValidDateTime(year, month, day, hour, min, sec)) return 0;
                 
                 struct tm timeinfo = {};
                 timeinfo.tm_year = year - 1900;
@@ -80,6 +103,7 @@ namespace DateUtils {
         if (dateStr.find('/') != std::string::npos) {
             int day, month, year;
             if (sscanf(dateStr.c_str(), "%d/%d/%d", &day, &month, &year) == 3) {
+                if (!isValidDateTime(year, month, day)) return 0;
                 struct tm timeinfo = {};
                 timeinfo.tm_year = year - 1900;
                 timeinfo.tm_mon = month - 1;
@@ -101,6 +125,8 @@ namespace DateUtils {
                     sscanf(dateStr.c_str() + tPos + 1, "%d:%d:%d", &hour, &min, &sec);
                 }
                 // else: no time specified, use end of day (23:59:59)
+                
+                if (!isValidDateTime(year, month, day, hour, min, sec)) return 0;
                 
                 struct tm timeinfo = {};
                 timeinfo.tm_year = year - 1900;

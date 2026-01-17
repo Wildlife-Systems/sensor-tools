@@ -175,6 +175,95 @@ void test_parse_end_of_day_unix_timestamp() {
     std::cout << "[PASS] test_parse_end_of_day_unix_timestamp" << std::endl;
 }
 
+// Date validation tests
+void test_validate_valid_datetime() {
+    assert(DateUtils::isValidDateTime(2026, 1, 15, 10, 30, 0) == true);
+    assert(DateUtils::isValidDateTime(2024, 2, 29, 0, 0, 0) == true);  // Leap year
+    assert(DateUtils::isValidDateTime(2000, 2, 29, 0, 0, 0) == true);  // Leap year (divisible by 400)
+    assert(DateUtils::isValidDateTime(1970, 1, 1, 0, 0, 0) == true);   // Unix epoch
+    std::cout << "[PASS] test_validate_valid_datetime" << std::endl;
+}
+
+void test_validate_invalid_year() {
+    assert(DateUtils::isValidDateTime(1969, 1, 15, 0, 0, 0) == false);  // Before 1970
+    assert(DateUtils::isValidDateTime(2101, 1, 15, 0, 0, 0) == false);  // After 2100
+    std::cout << "[PASS] test_validate_invalid_year" << std::endl;
+}
+
+void test_validate_invalid_month() {
+    assert(DateUtils::isValidDateTime(2026, 0, 15, 0, 0, 0) == false);  // Month 0
+    assert(DateUtils::isValidDateTime(2026, 13, 15, 0, 0, 0) == false); // Month 13
+    std::cout << "[PASS] test_validate_invalid_month" << std::endl;
+}
+
+void test_validate_invalid_day() {
+    assert(DateUtils::isValidDateTime(2026, 1, 0, 0, 0, 0) == false);   // Day 0
+    assert(DateUtils::isValidDateTime(2026, 1, 32, 0, 0, 0) == false);  // Day 32 in January
+    assert(DateUtils::isValidDateTime(2026, 2, 30, 0, 0, 0) == false);  // Feb 30
+    assert(DateUtils::isValidDateTime(2026, 2, 29, 0, 0, 0) == false);  // Feb 29 in non-leap year
+    assert(DateUtils::isValidDateTime(2026, 4, 31, 0, 0, 0) == false);  // April 31
+    assert(DateUtils::isValidDateTime(1900, 2, 29, 0, 0, 0) == false);  // Feb 29 in century year (not divisible by 400)
+    std::cout << "[PASS] test_validate_invalid_day" << std::endl;
+}
+
+void test_validate_invalid_time() {
+    assert(DateUtils::isValidDateTime(2026, 1, 15, 24, 0, 0) == false);  // Hour 24
+    assert(DateUtils::isValidDateTime(2026, 1, 15, -1, 0, 0) == false);  // Hour -1
+    assert(DateUtils::isValidDateTime(2026, 1, 15, 10, 60, 0) == false); // Minute 60
+    assert(DateUtils::isValidDateTime(2026, 1, 15, 10, 30, 60) == false); // Second 60
+    std::cout << "[PASS] test_validate_invalid_time" << std::endl;
+}
+
+void test_parse_invalid_date_returns_zero() {
+    // Invalid formats that should return 0
+    assert(DateUtils::parseDate("not-a-date") == 0);
+    assert(DateUtils::parseDate("invalid") == 0);
+    assert(DateUtils::parseDate("abc123") == 0);
+    assert(DateUtils::parseDate("Jan-15-2026") == 0);
+    assert(DateUtils::parseDate("yesterday") == 0);
+    std::cout << "[PASS] test_parse_invalid_date_returns_zero" << std::endl;
+}
+
+void test_parse_invalid_day_value() {
+    // Day 32 is invalid
+    assert(DateUtils::parseDate("2026-01-32") == 0);
+    // Day 0 is invalid
+    assert(DateUtils::parseDate("2026-01-00") == 0);
+    // Feb 30 is invalid
+    assert(DateUtils::parseDate("2026-02-30") == 0);
+    // Feb 29 in non-leap year is invalid
+    assert(DateUtils::parseDate("2026-02-29") == 0);
+    std::cout << "[PASS] test_parse_invalid_day_value" << std::endl;
+}
+
+void test_parse_invalid_month_value() {
+    // Month 0 is invalid
+    assert(DateUtils::parseDate("2026-00-15") == 0);
+    // Month 13 is invalid
+    assert(DateUtils::parseDate("2026-13-15") == 0);
+    std::cout << "[PASS] test_parse_invalid_month_value" << std::endl;
+}
+
+void test_parse_invalid_uk_format() {
+    // Day 32 in UK format
+    assert(DateUtils::parseDate("32/01/2026") == 0);
+    // Month 13 in UK format
+    assert(DateUtils::parseDate("15/13/2026") == 0);
+    // Invalid year-like day (2024 as day)
+    assert(DateUtils::parseDate("2024/01/01") == 0);
+    std::cout << "[PASS] test_parse_invalid_uk_format" << std::endl;
+}
+
+void test_parse_invalid_time_values() {
+    // Hour 25 is invalid
+    assert(DateUtils::parseDate("2026-01-15T25:00:00") == 0);
+    // Minute 60 is invalid
+    assert(DateUtils::parseDate("2026-01-15T10:60:00") == 0);
+    // Second 60 is invalid
+    assert(DateUtils::parseDate("2026-01-15T10:30:60") == 0);
+    std::cout << "[PASS] test_parse_invalid_time_values" << std::endl;
+}
+
 int main() {
     std::cout << "Running Date Utils Tests..." << std::endl;
     
@@ -203,6 +292,20 @@ int main() {
     test_parse_end_of_day_with_time();
     test_parse_end_of_day_uk_date();
     test_parse_end_of_day_unix_timestamp();
+    
+    // Date/time validation tests
+    test_validate_valid_datetime();
+    test_validate_invalid_year();
+    test_validate_invalid_month();
+    test_validate_invalid_day();
+    test_validate_invalid_time();
+    
+    // Invalid date parsing tests
+    test_parse_invalid_date_returns_zero();
+    test_parse_invalid_day_value();
+    test_parse_invalid_month_value();
+    test_parse_invalid_uk_format();
+    test_parse_invalid_time_values();
     
     std::cout << "All Date Utils tests passed!" << std::endl;
     return 0;

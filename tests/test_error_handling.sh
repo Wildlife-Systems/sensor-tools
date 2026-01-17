@@ -60,7 +60,37 @@ check_error "stats: Invalid --min-date format" \
 
 # Test: Invalid --max-date format (stats)
 check_error "stats: Invalid --max-date format" \
-    "echo '{}' | ./sensor-data stats --max-date 2024/01/01" \
+    "echo '{}' | ./sensor-data stats --max-date not-a-date" \
+    "invalid date format"
+
+# Test: Invalid date - day out of range (32)
+check_error "convert: Invalid date - day 32" \
+    "echo '{}' | ./sensor-data convert --min-date 2024-01-32" \
+    "invalid date format"
+
+# Test: Invalid date - month out of range (13)
+check_error "convert: Invalid date - month 13" \
+    "echo '{}' | ./sensor-data convert --min-date 2024-13-15" \
+    "invalid date format"
+
+# Test: Invalid date - Feb 30
+check_error "convert: Invalid date - Feb 30" \
+    "echo '{}' | ./sensor-data convert --min-date 2024-02-30" \
+    "invalid date format"
+
+# Test: Invalid date - Feb 29 in non-leap year
+check_error "convert: Invalid date - Feb 29 in non-leap year" \
+    "echo '{}' | ./sensor-data convert --min-date 2026-02-29" \
+    "invalid date format"
+
+# Test: Invalid date - invalid time (hour 25)
+check_error "convert: Invalid date - hour 25" \
+    "echo '{}' | ./sensor-data convert --min-date 2024-01-15T25:00:00" \
+    "invalid date format"
+
+# Test: Invalid UK format - day too large (2024/01/01 parses as day=2024)
+check_error "convert: Invalid UK format - day too large" \
+    "echo '{}' | ./sensor-data convert --min-date 2024/01/01" \
     "invalid date format"
 
 # Test: Invalid --min-date format (list-errors)
