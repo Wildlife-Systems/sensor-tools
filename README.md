@@ -95,6 +95,15 @@ sensor-data convert -v -r -e .out /path/to/logs/ output.csv
 # Very verbose output showing detailed file operations
 sensor-data convert -V -r -e .out /path/to/logs/ output.csv
 
+# Filter to only rows where type is "temperature"
+sensor-data convert --only-value type:temperature -r -e .out /path/to/logs/ output.csv
+
+# Multiple value filters (AND logic)
+sensor-data convert --only-value type:temperature --only-value unit:C /path/to/logs/ output.csv
+
+# Combined filters
+sensor-data convert --not-empty value --only-value type:temperature -e .out /logs output.csv
+
 # Mixed input
 sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 ```
@@ -107,6 +116,7 @@ sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 - `-d, --depth <n>` - Maximum recursion depth (0 = current directory only, default = unlimited)
 - `--use-prototype` - Use `sc-prototype` command to define columns (skips column discovery pass and filters to only prototype columns)
 - `--not-empty <column>` - Skip rows where the specified column is missing or empty (can be used multiple times)
+- `--only-value <column:value>` - Only include rows where the specified column has an exact value match (can be used multiple times for AND logic)
 
 **Using `--use-prototype`:**
 

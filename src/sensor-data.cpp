@@ -357,6 +357,29 @@ private:
                     continue;
                 }
                 
+                // Check value filters
+                for (const auto& filter : onlyValueFilters) {
+                    auto it = reading.find(filter.first);
+                    if (it == reading.end() || it->second != filter.second) {
+                        skipRow = true;
+                        if (verbosity >= 2) {
+                            if (it == reading.end()) {
+                                skipReason = "missing column '" + filter.first + "'";
+                            } else {
+                                skipReason = "column '" + filter.first + "' has value '" + it->second + "' (expected '" + filter.second + "')";
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                if (skipRow) {
+                    if (verbosity >= 2) {
+                        std::cout << "  Skipping row: " << skipReason << std::endl;
+                    }
+                    continue;
+                }
+                
                 // Write row
                 for (size_t i = 0; i < headers.size(); ++i) {
                     if (i > 0) outfile << ",";
@@ -455,6 +478,22 @@ public:
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     exit(1);
                 }
+            } else if (arg == "--only-value") {
+                if (i + 1 < argc - 1) {
+                    ++i;
+                    std::string filter = argv[i];
+                    size_t colonPos = filter.find(':');
+                    if (colonPos == std::string::npos || colonPos == 0 || colonPos == filter.length() - 1) {
+                        std::cerr << "Error: --only-value requires format 'column:value'" << std::endl;
+                        exit(1);
+                    }
+                    std::string column = filter.substr(0, colonPos);
+                    std::string value = filter.substr(colonPos + 1);
+                    onlyValueFilters[column] = value;
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
             } else if (arg[0] == '-') {
                 std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
                 printConvertUsage(argv[0]);
@@ -498,6 +537,16 @@ public:
                 for (const auto& col : notEmptyColumns) {
                     if (!first) std::cout << ", ";
                     std::cout << col;
+                    first = false;
+                }
+                std::cout << std::endl;
+            }
+            if (!onlyValueFilters.empty()) {
+                std::cout << "Value filters: ";
+                bool first = true;
+                for (const auto& filter : onlyValueFilters) {
+                    if (!first) std::cout << ", ";
+                    std::cout << filter.first << "=" << filter.second;
                     first = false;
                 }
                 std::cout << std::endl;
@@ -589,6 +638,7 @@ public:
         std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
         std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
         std::cerr << "  --not-empty <column>      Skip rows where column is empty (can be used multiple times)" << std::endl;
+        std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out output.csv" << std::endl;
@@ -598,6 +648,10 @@ public:
         std::cerr << "  " << progName << " convert -r -d 2 -e .out /path/to/logs output.csv" << std::endl;
         std::cerr << "  " << progName << " convert --use-prototype -r -e .out /path/to/logs output.csv" << std::endl;
         std::cerr << "  " << progName << " convert --not-empty unit --not-empty value -e .out /logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out /logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C /logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out /logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C /logs output.csv" << std::endl;
     }
 };
 
