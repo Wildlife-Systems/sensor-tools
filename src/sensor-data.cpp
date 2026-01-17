@@ -116,6 +116,8 @@ private:
     std::set<std::string> allKeys;
     std::vector<std::map<std::string, std::string>> allReadings;
     bool hasInputFiles;
+    bool recursive;
+    std::string extensionFilter;
     
     bool isDirectory(const std::string& path) {
         struct stat info;
@@ -123,6 +125,18 @@ private:
             return false;
         }
         return (info.st_mode & S_IFDIR) != 0;
+    }
+    
+    bool matchesExtension(const std::string& filename) {
+        if (extensionFilter.empty()) {
+            return true;
+        }
+        size_t dotPos = filename.find_last_of('.');
+        if (dotPos == std::string::npos) {
+            return false;
+        }
+        std::string ext = filename.substr(dotPos);
+        return ext == extensionFilter;
     }
     
     void collectFilesFromDirectory(const std::string& dirPath) {
@@ -140,9 +154,13 @@ private:
             if (filename != "." && filename != "..") {
                 std::string fullPath = dirPath + "\\" + filename;
                 if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                    collectFilesFromDirectory(fullPath);
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath);
+                    }
                 } else {
-                    inputFiles.push_back(fullPath);
+                    if (matchesExtension(filename)) {
+                        inputFiles.push_back(fullPath);
+                    }
                 }
             }
         } while (FindNextFileA(hFind, &findData) != 0);
@@ -161,9 +179,13 @@ private:
             if (filename != "." && filename != "..") {
                 std::string fullPath = dirPath + "/" + filename;
                 if (isDirectory(fullPath)) {
-                    collectFilesFromDirectory(fullPath);
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath);
+                    }
                 } else {
-                    inputFiles.push_back(fullPath);
+                    if (matchesExtension(filename)) {
+                        inputFiles.push_back(fullPath);
+                    }
                 }
             }
         }
@@ -249,7 +271,7 @@ private:
     }
     
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter("") {
         // argc should be at least 3 for "convert": program convert input output
         if (argc < 3) {
             printConvertUsage(argv[0]);
@@ -259,14 +281,35 @@ public:
         // Last argument is output file
         outputFile = argv[argc - 1];
         
-        // Arguments from index 1 to argc-2 are input files or directories
-        // (index 0 is program name, we skip the "convert" command which was already processed)
+        // Parse flags and arguments from index 1 to argc-2
         for (int i = 1; i < argc - 1; ++i) {
-            std::string path = argv[i];
-            if (isDirectory(path)) {
-                collectFilesFromDirectory(path);
+            std::string arg = argv[i];
+            
+            if (arg == "-r" || arg == "--recursive") {
+                recursive = true;
+            } else if (arg == "-e" || arg == "--extension") {
+                if (i + 1 < argc - 1) {
+                    ++i;
+                    extensionFilter = argv[i];
+                    // Ensure extension starts with a dot
+                    if (!extensionFilter.empty() && extensionFilter[0] != '.') {
+                        extensionFilter = "." + extensionFilter;
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg[0] == '-') {
+                std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
+                printConvertUsage(argv[0]);
+                exit(1);
             } else {
-                inputFiles.push_back(path);
+                // It's a file or directory path
+                if (isDirectory(arg)) {
+                    collectFilesFromDirectory(arg);
+                } else {
+                    inputFiles.push_back(arg);
+                }
             }
         }
         
@@ -293,16 +336,21 @@ public:
     }
     
     static void printConvertUsage(const char* progName) {
-        std::cerr << "Usage: " << progName << " convert <input_file(s)_or_directory(ies)> <output.csv>" << std::endl;
+        std::cerr << "Usage: " << progName << " convert [options] <input_file(s)_or_directory(ies)> <output.csv>" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Convert JSON sensor data files to CSV format." << std::endl;
         std::cerr << "Each line in input files should contain JSON with sensor readings." << std::endl;
         std::cerr << "Each sensor reading will become a row in the output CSV." << std::endl;
         std::cerr << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
+        std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out output.csv" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out sensor2.out output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert /path/to/sensor/dir output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert -e .out /path/to/sensor/dir output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert -r -e .out /path/to/sensor/dir output.csv" << std::endl;
     }
 };
 
