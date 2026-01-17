@@ -103,7 +103,13 @@ jobs:
     
     - name: Generate coverage report
       run: |
-        gcov -o . src/*.cpp tests/*.cpp || true
+        echo "=== .gcno files (compile-time) ==="
+        ls -la *.gcno || true
+        echo "=== .gcda files (run-time) ==="
+        ls -la *.gcda || true
+        echo "=== Running gcov ==="
+        gcov *.gcno || true
+        echo "=== Generated .gcov files ==="
         ls -la *.gcov || true
     
     - name: Upload coverage to Codecov
