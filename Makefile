@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -Wall -O2 -std=c++11
+CXXFLAGS = -Wall -O2 -std=c++11 -pthread
+LDFLAGS = -pthread
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
@@ -9,7 +10,7 @@ TARGET = sensor-data
 all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCES)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LDFLAGS)
 
 install: $(TARGET)
 	install -d $(DESTDIR)$(BINDIR)

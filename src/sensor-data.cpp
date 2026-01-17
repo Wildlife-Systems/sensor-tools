@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <cstring>
 #include <sys/stat.h>
+#include <thread>
+#include <mutex>
+#include <future>
+#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -58,6 +62,8 @@ public:
                 // String value
                 size_t valueEnd = line.find('"', valueStart + 1);
                 if (valueEnd == std::string::npos) break;
+                // Reserve space to reduce allocations
+                value.reserve(valueEnd - valueStart - 1);
                 value = line.substr(valueStart + 1, valueEnd - valueStart - 1);
                 pos = valueEnd + 1;
             } else if (line[valueStart] == '[') {
@@ -68,9 +74,8 @@ public:
                 // If we have accumulated data and hit an array, might be multiple readings
                 if (!current.empty() && key == "readings") {
                     // Parse array of readings
-                    std::string arrayContent = line.substr(valueStart + 1, bracketEnd - valueStart - 1);
-                    // For now, store the whole array
-                    value = arrayContent;
+                    value.reserve(bracketEnd - valueStart - 1);
+                    value = line.substr(valueStart + 1, bracketEnd - valueStart - 1);
                 }
                 pos = bracketEnd + 1;
             } else {
@@ -78,7 +83,7 @@ public:
                 size_t valueEnd = line.find_first_of(",}]", valueStart);
                 if (valueEnd == std::string::npos) valueEnd = line.length();
                 value = line.substr(valueStart, valueEnd - valueStart);
-                // Trim whitespace
+                // Trim whitespace - optimize by finding actual end first
                 size_t end = value.find_last_not_of(" \t\n\r");
                 if (end != std::string::npos) value = value.substr(0, end + 1);
                 pos = valueEnd;
@@ -114,11 +119,12 @@ private:
     std::vector<std::string> inputFiles;
     std::string outputFile;
     std::set<std::string> allKeys;
-    std::vector<std::map<std::string, std::string>> allReadings;
+    std::mutex keysMutex;  // For thread-safe key collection
     bool hasInputFiles;
     bool recursive;
     std::string extensionFilter;
     int maxDepth;
+    int numThreads;
     
     bool isDirectory(const std::string& path) {
         struct stat info;
@@ -199,7 +205,39 @@ private:
 #endif
     }
     
-    void processFile(const std::string& filename) {
+    // First pass: collect all column names from a file (thread-safe)
+    void collectKeysFromFile(const std::string& filename) {
+        std::ifstream infile(filename);
+        if (!infile) {
+            std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+            return;
+        }
+        
+        std::set<std::string> localKeys;  // Thread-local key collection
+        std::string line;
+        while (std::getline(infile, line)) {
+            if (line.empty()) continue;
+            
+            auto readings = JsonParser::parseJsonLine(line);
+            for (const auto& reading : readings) {
+                for (const auto& pair : reading) {
+                    localKeys.insert(pair.first);
+                }
+            }
+        }
+        
+        // Merge into global keys with mutex
+        {
+            std::lock_guard<std::mutex> lock(keysMutex);
+            allKeys.insert(localKeys.begin(), localKeys.end());
+        }
+        
+        infile.close();
+    }
+    
+    // Second pass: write rows from a file directly to CSV (not thread-safe, called sequentially)
+    void writeRowsFromFile(const std::string& filename, std::ofstream& outfile, 
+                           const std::vector<std::string>& headers) {
         std::ifstream infile(filename);
         if (!infile) {
             std::cerr << "Warning: Cannot open file: " << filename << std::endl;
@@ -207,77 +245,45 @@ private:
         }
         
         std::string line;
-        int lineNum = 0;
         while (std::getline(infile, line)) {
-            lineNum++;
             if (line.empty()) continue;
             
             auto readings = JsonParser::parseJsonLine(line);
             for (const auto& reading : readings) {
-                if (!reading.empty()) {
-                    // Collect all keys
-                    for (const auto& pair : reading) {
-                        allKeys.insert(pair.first);
+                if (reading.empty()) continue;
+                
+                // Write row
+                for (size_t i = 0; i < headers.size(); ++i) {
+                    if (i > 0) outfile << ",";
+                    
+                    auto it = reading.find(headers[i]);
+                    if (it != reading.end()) {
+                        std::string value = it->second;
+                        // Escape quotes and wrap in quotes if contains comma or quote
+                        if (value.find(',') != std::string::npos || 
+                            value.find('"') != std::string::npos ||
+                            value.find('\n') != std::string::npos) {
+                            // Escape quotes
+                            size_t pos = 0;
+                            while ((pos = value.find('"', pos)) != std::string::npos) {
+                                value.replace(pos, 1, "\"\"");
+                                pos += 2;
+                            }
+                            outfile << "\"" << value << "\"";
+                        } else {
+                            outfile << value;
+                        }
                     }
-                    allReadings.push_back(reading);
                 }
+                outfile << "\n";
             }
         }
         
         infile.close();
     }
     
-    void writeCSV() {
-        std::ofstream outfile(outputFile);
-        if (!outfile) {
-            std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
-            return;
-        }
-        
-        // Convert set to vector for consistent ordering
-        std::vector<std::string> headers(allKeys.begin(), allKeys.end());
-        std::sort(headers.begin(), headers.end());
-        
-        // Write header
-        for (size_t i = 0; i < headers.size(); ++i) {
-            if (i > 0) outfile << ",";
-            outfile << headers[i];
-        }
-        outfile << "\n";
-        
-        // Write data
-        for (const auto& reading : allReadings) {
-            for (size_t i = 0; i < headers.size(); ++i) {
-                if (i > 0) outfile << ",";
-                
-                auto it = reading.find(headers[i]);
-                if (it != reading.end()) {
-                    std::string value = it->second;
-                    // Escape quotes and wrap in quotes if contains comma or quote
-                    if (value.find(',') != std::string::npos || 
-                        value.find('"') != std::string::npos ||
-                        value.find('\n') != std::string::npos) {
-                        // Escape quotes
-                        size_t pos = 0;
-                        while ((pos = value.find('"', pos)) != std::string::npos) {
-                            value.replace(pos, 1, "\"\"");
-                            pos += 2;
-                        }
-                        outfile << "\"" << value << "\"";
-                    } else {
-                        outfile << value;
-                    }
-                }
-            }
-            outfile << "\n";
-        }
-        
-        outfile.close();
-        std::cout << "Wrote " << allReadings.size() << " sensor readings to " << outputFile << std::endl;
-    }
-    
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4) {
         // argc should be at least 3 for "convert": program convert input output
         if (argc < 3) {
             printConvertUsage(argv[0]);
@@ -286,6 +292,9 @@ public:
         
         // Last argument is output file
         outputFile = argv[argc - 1];
+        
+        // Reserve some capacity for input files
+        inputFiles.reserve(100);
         
         // Parse flags and arguments from index 1 to argc-2
         for (int i = 1; i < argc - 1; ++i) {
@@ -345,17 +354,71 @@ public:
     }
     
     void convert() {
-        std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
-        
-        for (const auto& file : inputFiles) {
-            std::cout << "  Reading: " << file << std::endl;
-            processFile(file);
+        if (inputFiles.empty()) {
+            std::cerr << "Error: No input files to process" << std::endl;
+            return;
         }
         
-        std::cout << "Found " << allReadings.size() << " sensor readings with " 
-                  << allKeys.size() << " unique fields" << std::endl;
+        std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
         
-        writeCSV();
+        // PASS 1: Collect all column names in parallel
+        std::cout << "Pass 1: Discovering columns..." << std::endl;
+        
+        size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
+        std::vector<std::future<void>> futures;
+        futures.reserve(numThreads);
+        
+        for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
+            size_t end = std::min(i + filesPerThread, inputFiles.size());
+            
+            futures.push_back(std::async(std::launch::async, [this, i, end]() {
+                for (size_t j = i; j < end; ++j) {
+                    collectKeysFromFile(inputFiles[j]);
+                }
+            }));
+        }
+        
+        // Wait for all threads to complete
+        for (auto& f : futures) {
+            f.wait();
+        }
+        
+        std::cout << "Found " << allKeys.size() << " unique fields" << std::endl;
+        
+        // Convert set to vector for consistent ordering
+        std::vector<std::string> headers(allKeys.begin(), allKeys.end());
+        std::sort(headers.begin(), headers.end());
+        
+        // PASS 2: Stream data to CSV
+        std::cout << "Pass 2: Writing CSV..." << std::endl;
+        
+        std::ofstream outfile(outputFile);
+        if (!outfile) {
+            std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
+            return;
+        }
+        
+        // Write header
+        for (size_t i = 0; i < headers.size(); ++i) {
+            if (i > 0) outfile << ",";
+            outfile << headers[i];
+        }
+        outfile << "\n";
+        
+        // Write rows from each file sequentially (streaming)
+        size_t totalRows = 0;
+        for (const auto& file : inputFiles) {
+            size_t beforePos = outfile.tellp();
+            writeRowsFromFile(file, outfile, headers);
+            size_t afterPos = outfile.tellp();
+            // Estimate rows written (rough approximation)
+            if (afterPos > beforePos) {
+                totalRows += (afterPos - beforePos) / (headers.size() * 10);  // rough estimate
+            }
+        }
+        
+        outfile.close();
+        std::cout << "Wrote CSV to " << outputFile << std::endl;
     }
     
     static void printConvertUsage(const char* progName) {
