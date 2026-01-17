@@ -16,6 +16,7 @@ sensor-data
 # Test executables
 test_*
 !test_*.cpp
+!test_*.sh
 
 # CMake
 CMakeCache.txt
