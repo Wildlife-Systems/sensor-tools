@@ -68,6 +68,7 @@ sensor-data convert -r -e .out /path/to/logs/ output.csv
 - `--min-date <date>` - Include only readings on or after this date
 - `--max-date <date>` - Include only readings on or before this date
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
+- `--remove-whitespace` - Remove extra whitespace from output (compact format)
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
 - `-v` - Verbose output

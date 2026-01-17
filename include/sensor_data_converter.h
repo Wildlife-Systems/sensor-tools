@@ -38,6 +38,7 @@ private:
     std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
+    bool removeWhitespace;  // Remove extra whitespace from output (compact format)
     std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
     std::string outputFormat;  // Output format: "json" or "csv" (default: json for stdout, csv for file)
     long long minDate;  // Minimum timestamp (Unix epoch)
@@ -46,7 +47,7 @@ private:
     // Check if any filtering is active (affects whether we can pass-through JSON lines)
     bool hasActiveFilters() const {
         return !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
-               removeErrors || minDate > 0 || maxDate > 0;
+               removeErrors || removeWhitespace || minDate > 0 || maxDate > 0;
     }
     
     // Execute sc-prototype command and parse columns from JSON output
@@ -227,6 +228,7 @@ private:
         }
         
         std::string line;
+        const char* sp = removeWhitespace ? "" : " ";
         
         // Check if this is a CSV file
         if (FileUtils::isCsvFile(filename)) {
@@ -257,9 +259,9 @@ private:
                 // Write JSON array with single object (one line per reading for CSV)
                 if (!firstOutput) outfile << "\n";
                 firstOutput = false;
-                outfile << "[ ";
+                outfile << "[" << sp;
                 writeJsonObject(reading, outfile);
-                outfile << " ]";
+                outfile << sp << "]";
             }
         } else {
             // JSON format - preserve line-by-line structure
@@ -286,12 +288,12 @@ private:
                     if (!filtered.empty()) {
                         if (!firstOutput) outfile << "\n";
                         firstOutput = false;
-                        outfile << "[ ";
+                        outfile << "[" << sp;
                         for (size_t i = 0; i < filtered.size(); ++i) {
-                            if (i > 0) outfile << ", ";
+                            if (i > 0) outfile << "," << sp;
                             writeJsonObject(filtered[i], outfile);
                         }
-                        outfile << " ]";
+                        outfile << sp << "]";
                     }
                 }
             }
@@ -356,6 +358,7 @@ private:
     void processStdinDataJson(const std::vector<std::string>& lines, 
                               std::ostream& outfile) {
         bool firstOutput = true;
+        const char* sp = removeWhitespace ? "" : " ";
         
         if (inputFormat == "csv") {
             // CSV format
@@ -386,9 +389,9 @@ private:
                 // Write JSON array with single object (one line per reading for CSV)
                 if (!firstOutput) outfile << "\n";
                 firstOutput = false;
-                outfile << "[ ";
+                outfile << "[" << sp;
                 writeJsonObject(reading, outfile);
-                outfile << " ]";
+                outfile << sp << "]";
             }
         } else {
             // JSON format - preserve line-by-line structure
@@ -415,12 +418,12 @@ private:
                     if (!filtered.empty()) {
                         if (!firstOutput) outfile << "\n";
                         firstOutput = false;
-                        outfile << "[ ";
+                        outfile << "[" << sp;
                         for (size_t i = 0; i < filtered.size(); ++i) {
-                            if (i > 0) outfile << ", ";
+                            if (i > 0) outfile << "," << sp;
                             writeJsonObject(filtered[i], outfile);
                         }
-                        outfile << " ]";
+                        outfile << sp << "]";
                     }
                 }
             }
@@ -565,12 +568,13 @@ private:
     // Write a single reading as JSON object
     void writeJsonObject(const std::map<std::string, std::string>& reading,
                          std::ostream& outfile) {
-        outfile << "{ ";
+        const char* sp = removeWhitespace ? "" : " ";
+        outfile << "{" << sp;
         bool first = true;
         for (const auto& pair : reading) {
-            if (!first) outfile << ", ";
+            if (!first) outfile << "," << sp;
             first = false;
-            outfile << "\"" << escapeJsonString(pair.first) << "\": ";
+            outfile << "\"" << escapeJsonString(pair.first) << "\":" << sp;
             
             // Check if value is a number, boolean, or null
             const std::string& val = pair.second;
@@ -584,7 +588,7 @@ private:
                 outfile << "\"" << escapeJsonString(val) << "\"";
             }
         }
-        outfile << " }";
+        outfile << sp << "}";
     }
     
     // Write a single row (dispatches to CSV or JSON based on outputFormat)
@@ -600,7 +604,7 @@ private:
     }
 
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), removeWhitespace(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
         // Check for help flag first
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -627,6 +631,8 @@ public:
                 usePrototype = true;
             } else if (arg == "--remove-errors") {
                 removeErrors = true;
+            } else if (arg == "--remove-whitespace") {
+                removeWhitespace = true;
             } else if (arg == "-o" || arg == "--output") {
                 if (i + 1 < argc) {
                     ++i;
@@ -723,6 +729,7 @@ public:
                 std::string line;
                 bool firstOutput = true;
                 bool hasInput = false;
+                const char* sp = removeWhitespace ? "" : " ";
                 while (std::getline(std::cin, line)) {
                     if (line.empty()) continue;
                     hasInput = true;
@@ -747,12 +754,12 @@ public:
                         if (!filtered.empty()) {
                             if (!firstOutput) *outStream << "\n";
                             firstOutput = false;
-                            *outStream << "[ ";
+                            *outStream << "[" << sp;
                             for (size_t i = 0; i < filtered.size(); ++i) {
-                                if (i > 0) *outStream << ", ";
+                                if (i > 0) *outStream << "," << sp;
                                 writeJsonObject(filtered[i], *outStream);
                             }
-                            *outStream << " ]";
+                            *outStream << sp << "]";
                         }
                     }
                     
@@ -1025,6 +1032,7 @@ public:
         std::cerr << "  --not-empty <column>      Skip rows where column is empty (can be used multiple times)" << std::endl;
         std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
         std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
+        std::cerr << "  --remove-whitespace       Remove extra whitespace from output (compact format)" << std::endl;
         std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
         std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
         std::cerr << std::endl;

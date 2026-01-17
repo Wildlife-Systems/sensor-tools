@@ -81,6 +81,35 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 1a: --remove-whitespace for compact JSON output
+echo ""
+echo "Test 1a: --remove-whitespace for compact JSON output"
+result=$(echo '{ "sensor": "ds18b20", "value": 22.5 }' | ./sensor-data convert --remove-whitespace)
+expected='[{"sensor":"ds18b20","value":22.5}]'
+if [ "$result" = "$expected" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: $expected"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 1b: --remove-whitespace with multiple objects
+echo ""
+echo "Test 1b: --remove-whitespace with multiple objects"
+result=$(echo '[ { "sensor": "ds18b20", "value": 22.5 }, { "sensor": "dht22", "value": 45 } ]' | ./sensor-data convert --remove-whitespace)
+# Check that it has no spaces after colons or commas within objects
+if echo "$result" | grep -q '"sensor":"ds18b20"' && ! echo "$result" | grep -q ': '; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected compact JSON without spaces"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Test 2: JSON to CSV conversion
 echo ""
 echo "Test 2: JSON to CSV conversion"
