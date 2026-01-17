@@ -86,6 +86,9 @@ sensor-data convert -r -d 2 -e .out /path/to/sensor/logs/ output.csv
 # Use sc-prototype for column definitions (skips discovery pass)
 sensor-data convert --use-prototype -r -e .out /path/to/sensor/logs/ output.csv
 
+# Skip rows where specific columns are empty
+sensor-data convert --not-empty unit --not-empty value -e .out /path/to/logs/ output.csv
+
 # Mixed input
 sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 ```
@@ -95,6 +98,7 @@ sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out` or `out`)
 - `-d, --depth <n>` - Maximum recursion depth (0 = current directory only, default = unlimited)
 - `--use-prototype` - Use `sc-prototype` command to define columns (skips column discovery pass and filters to only prototype columns)
+- `--not-empty <column>` - Skip rows where the specified column is empty or missing (can be specified multiple times for multiple columns)
 
 **Using `--use-prototype`:**
 
