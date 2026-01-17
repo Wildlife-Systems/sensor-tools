@@ -47,27 +47,51 @@ jobs:
     
     - name: Build main application
       run: |
-        g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp -o sensor-data
+        g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp csv_parser.o json_parser.o error_detector.o file_utils.o -o sensor-data
     
     - name: Integration Test - List Errors
       run: |
-        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "85"}' > test.out
-        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "type": "ds18b20", "value": "22.5"}' >> test.out
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "sensor": "ds18b20", "value": "85"}' > test.out
+        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "sensor": "ds18b20", "value": "22.5"}' >> test.out
         ./sensor-data list-errors test.out | grep -q "sensor001"
         rm test.out
     
     - name: Integration Test - Convert
       run: |
-        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "22.5"}' > test.out
-        ./sensor-data convert test.out output.csv
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "sensor": "ds18b20", "value": "22.5"}' > test.out
+        ./sensor-data convert -o output.csv test.out
         grep -q "sensor001" output.csv
         rm test.out output.csv
     
     - name: Integration Test - Remove Errors
       run: |
-        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "85"}' > test.out
-        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "type": "ds18b20", "value": "22.5"}' >> test.out
-        ./sensor-data convert --remove-errors test.out output.csv
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "sensor": "ds18b20", "value": "85"}' > test.out
+        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "sensor": "ds18b20", "value": "22.5"}' >> test.out
+        ./sensor-data convert --remove-errors -o output.csv test.out
         grep -q "sensor002" output.csv
         ! grep -q ",85" output.csv
         rm test.out output.csv
+    
+    - name: Integration Test - stdin to stdout (JSON)
+      run: |
+        echo '{"sensor":"ds18b20","value":"22.5","unit":"C"}' | ./sensor-data convert | grep -q "sensor"
+    
+    - name: Integration Test - stdin to file (JSON)
+      run: |
+        echo '{"sensor":"ds18b20","value":"22.5","unit":"C"}' | ./sensor-data convert -o output.csv
+        grep -q "ds18b20" output.csv
+        rm output.csv
+    
+    - name: Integration Test - stdin with CSV format
+      run: |
+        echo -e "sensor,value,unit\nds18b20,22.5,C" | ./sensor-data convert -f csv | grep -q "ds18b20"
+    
+    - name: Integration Test - stdin with --remove-errors
+      run: |
+        echo '{"sensor":"ds18b20","value":"85","unit":"C"}' | ./sensor-data convert --remove-errors | wc -l | grep -q "1"
+    
+    - name: Integration Test - stdin redirect
+      run: |
+        echo '{"sensor":"bme280","value":"1013","unit":"hPa"}' > test_stdin.out
+        ./sensor-data convert < test_stdin.out | grep -q "bme280"
+        rm test_stdin.out

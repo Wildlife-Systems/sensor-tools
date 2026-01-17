@@ -42,6 +42,7 @@ private:
     std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
+    std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
     
     bool matchesExtension(const std::string& filename) {
         if (extensionFilter.empty()) {
@@ -236,7 +237,7 @@ private:
     }
     
     // Second pass: write rows from a file directly to CSV (not thread-safe, called sequentially)
-    void writeRowsFromFile(const std::string& filename, std::ofstream& outfile, 
+    void writeRowsFromFile(const std::string& filename, std::ostream& outfile, 
                            const std::vector<std::string>& headers) {
         if (verbosity >= 1) {
             std::cout << "Processing file: " << filename << std::endl;
@@ -449,22 +450,145 @@ private:
         infile.close();
     }
     
+    // Process stdin data that was cached in memory
+    void processStdinData(const std::vector<std::string>& lines, 
+                          const std::vector<std::string>& headers, 
+                          std::ostream& outfile) {
+        if (inputFormat == "csv") {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            bool isFirstLine = true;
+            
+            for (const auto& line : lines) {
+                if (line.empty()) continue;
+                
+                if (isFirstLine) {
+                    csvHeaders = CsvParser::parseCsvLine(line);
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                auto fields = CsvParser::parseCsvLine(line);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                // Apply filtering
+                if (!shouldIncludeReading(reading)) continue;
+                
+                // Write row
+                writeRow(reading, headers, outfile);
+            }
+        } else {
+            // JSON format
+            for (const auto& line : lines) {
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    // Apply filtering
+                    if (!shouldIncludeReading(reading)) continue;
+                    
+                    // Write row
+                    writeRow(reading, headers, outfile);
+                }
+            }
+        }
+    }
+    
+    // Check if a reading should be included based on filters
+    bool shouldIncludeReading(const std::map<std::string, std::string>& reading) {
+        // Check if any required columns are empty
+        for (const auto& reqCol : notEmptyColumns) {
+            auto it = reading.find(reqCol);
+            if (it == reading.end() || it->second.empty()) {
+                if (verbosity >= 2) {
+                    std::cerr << "  Skipping row: " 
+                             << (it == reading.end() ? "missing column '" : "empty column '") 
+                             << reqCol << "'" << std::endl;
+                }
+                return false;
+            }
+        }
+        
+        // Check value filters
+        for (const auto& filter : onlyValueFilters) {
+            auto it = reading.find(filter.first);
+            if (it == reading.end() || it->second != filter.second) {
+                if (verbosity >= 2) {
+                    if (it == reading.end()) {
+                        std::cerr << "  Skipping row: missing column '" << filter.first << "'" << std::endl;
+                    } else {
+                        std::cerr << "  Skipping row: column '" << filter.first << "' has value '" 
+                                 << it->second << "' (expected '" << filter.second << "')" << std::endl;
+                    }
+                }
+                return false;
+            }
+        }
+        
+        // Check for error readings
+        if (removeErrors && ErrorDetector::isErrorReading(reading)) {
+            if (verbosity >= 2) {
+                std::cerr << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
+            }
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Write a single row to output
+    void writeRow(const std::map<std::string, std::string>& reading,
+                  const std::vector<std::string>& headers,
+                  std::ostream& outfile) {
+        for (size_t i = 0; i < headers.size(); ++i) {
+            if (i > 0) outfile << ",";
+            
+            auto it = reading.find(headers[i]);
+            if (it != reading.end()) {
+                std::string value = it->second;
+                // Escape quotes and wrap in quotes if contains comma or quote
+                if (value.find(',') != std::string::npos || 
+                    value.find('"') != std::string::npos ||
+                    value.find('\n') != std::string::npos) {
+                    // Escape quotes
+                    size_t pos = 0;
+                    while ((pos = value.find('"', pos)) != std::string::npos) {
+                        value.replace(pos, 1, "\"\"");
+                        pos += 2;
+                    }
+                    outfile << "\"" << value << "\"";
+                } else {
+                    outfile << value;
+                }
+            }
+        }
+        outfile << "\n";
+    }
+
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false) {
-        // argc should be at least 3 for "convert": program convert input output
-        if (argc < 3) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), inputFormat("json") {
+        // argc should be at least 1 for "convert": program (may read from stdin)
+        if (argc < 1) {
             printConvertUsage(argv[0]);
             exit(1);
         }
         
-        // Last argument is output file
-        outputFile = argv[argc - 1];
+        // Output file is empty by default (will use stdout)
+        outputFile = "";
         
         // Reserve some capacity for input files
         inputFiles.reserve(100);
         
-        // Parse flags and arguments from index 1 to argc-2
-        for (int i = 1; i < argc - 1; ++i) {
+        // Parse flags and arguments
+        for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             
             if (arg == "-r" || arg == "--recursive") {
@@ -477,8 +601,30 @@ public:
                 usePrototype = true;
             } else if (arg == "--remove-errors") {
                 removeErrors = true;
+            } else if (arg == "-o" || arg == "--output") {
+                if (i + 1 < argc) {
+                    ++i;
+                    outputFile = argv[i];
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-f" || arg == "--format") {
+                if (i + 1 < argc) {
+                    ++i;
+                    inputFormat = argv[i];
+                    // Convert to lowercase
+                    std::transform(inputFormat.begin(), inputFormat.end(), inputFormat.begin(), ::tolower);
+                    if (inputFormat != "json" && inputFormat != "csv") {
+                        std::cerr << "Error: format must be 'json' or 'csv'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
             } else if (arg == "-e" || arg == "--extension") {
-                if (i + 1 < argc - 1) {
+                if (i + 1 < argc) {
                     ++i;
                     extensionFilter = argv[i];
                     // Ensure extension starts with a dot
@@ -490,7 +636,7 @@ public:
                     exit(1);
                 }
             } else if (arg == "-d" || arg == "--depth") {
-                if (i + 1 < argc - 1) {
+                if (i + 1 < argc) {
                     ++i;
                     try {
                         maxDepth = std::stoi(argv[i]);
@@ -507,7 +653,7 @@ public:
                     exit(1);
                 }
             } else if (arg == "--not-empty") {
-                if (i + 1 < argc - 1) {
+                if (i + 1 < argc) {
                     ++i;
                     notEmptyColumns.insert(argv[i]);
                 } else {
@@ -515,7 +661,7 @@ public:
                     exit(1);
                 }
             } else if (arg == "--only-value") {
-                if (i + 1 < argc - 1) {
+                if (i + 1 < argc) {
                     ++i;
                     std::string filter = argv[i];
                     size_t colonPos = filter.find(':');
@@ -544,20 +690,93 @@ public:
             }
         }
         
-        if (inputFiles.empty()) {
-            std::cerr << "Error: No input files found" << std::endl;
-            exit(1);
-        }
-        
-        hasInputFiles = true;
+        // If no input files, will read from stdin
+        hasInputFiles = !inputFiles.empty();
     }
     
     void convert() {
         if (inputFiles.empty()) {
-            std::cerr << "Error: No input files to process" << std::endl;
+            // Reading from stdin
+            if (verbosity >= 1) {
+                std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
+            }
+            
+            // Collect keys from stdin
+            std::vector<std::string> stdinLines;
+            std::string line;
+            std::set<std::string> stdinKeys;
+            
+            while (std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                stdinLines.push_back(line);
+                
+                if (inputFormat == "csv") {
+                    // First line is header for CSV
+                    if (stdinKeys.empty()) {
+                        auto fields = CsvParser::parseCsvLine(line);
+                        for (const auto& field : fields) {
+                            if (!field.empty()) {
+                                stdinKeys.insert(field);
+                            }
+                        }
+                    }
+                } else {
+                    // JSON format
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (const auto& reading : readings) {
+                        for (const auto& pair : reading) {
+                            stdinKeys.insert(pair.first);
+                        }
+                    }
+                }
+            }
+            
+            if (stdinLines.empty()) {
+                std::cerr << "Error: No input data" << std::endl;
+                return;
+            }
+            
+            allKeys = stdinKeys;
+            std::vector<std::string> headers(allKeys.begin(), allKeys.end());
+            std::sort(headers.begin(), headers.end());
+            
+            // Write to output
+            if (outputFile.empty()) {
+                // Write header to stdout
+                for (size_t i = 0; i < headers.size(); ++i) {
+                    if (i > 0) std::cout << ",";
+                    std::cout << headers[i];
+                }
+                std::cout << "\n";
+                
+                // Process stdin data
+                processStdinData(stdinLines, headers, std::cout);
+            } else {
+                std::ofstream outfile(outputFile);
+                if (!outfile) {
+                    std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
+                    return;
+                }
+                
+                // Write header
+                for (size_t i = 0; i < headers.size(); ++i) {
+                    if (i > 0) outfile << ",";
+                    outfile << headers[i];
+                }
+                outfile << "\n";
+                
+                // Process stdin data
+                processStdinData(stdinLines, headers, outfile);
+                
+                outfile.close();
+                if (verbosity >= 1) {
+                    std::cerr << "Wrote CSV to " << outputFile << std::endl;
+                }
+            }
             return;
         }
         
+        // Original file-based processing
         if (verbosity >= 1) {
             std::cout << "Starting conversion with verbosity level " << verbosity << std::endl;
             std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
@@ -628,46 +847,72 @@ public:
         std::sort(headers.begin(), headers.end());
         
         // PASS 2: Stream data to CSV
-        std::cout << "Pass 2: Writing CSV..." << std::endl;
-        
-        std::ofstream outfile(outputFile);
-        if (!outfile) {
-            std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
-            return;
-        }
-        
-        // Write header
-        for (size_t i = 0; i < headers.size(); ++i) {
-            if (i > 0) outfile << ",";
-            outfile << headers[i];
-        }
-        outfile << "\n";
-        
-        // Write rows from each file sequentially (streaming)
-        size_t totalRows = 0;
-        for (const auto& file : inputFiles) {
-            size_t beforePos = outfile.tellp();
-            writeRowsFromFile(file, outfile, headers);
-            size_t afterPos = outfile.tellp();
-            // Estimate rows written (rough approximation)
-            if (afterPos > beforePos) {
-                totalRows += (afterPos - beforePos) / (headers.size() * 10);  // rough estimate
+        if (outputFile.empty()) {
+            if (verbosity >= 1) {
+                std::cerr << "Pass 2: Writing CSV to stdout..." << std::endl;
+            }
+            
+            // Write header to stdout
+            for (size_t i = 0; i < headers.size(); ++i) {
+                if (i > 0) std::cout << ",";
+                std::cout << headers[i];
+            }
+            std::cout << "\n";
+            
+            // Write rows to stdout
+            for (const auto& file : inputFiles) {
+                writeRowsFromFile(file, std::cout, headers);
+            }
+        } else {
+            if (verbosity >= 1) {
+                std::cout << "Pass 2: Writing CSV to file..." << std::endl;
+            }
+            
+            std::ofstream outfile(outputFile);
+            if (!outfile) {
+                std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
+                return;
+            }
+            
+            // Write header
+            for (size_t i = 0; i < headers.size(); ++i) {
+                if (i > 0) outfile << ",";
+                outfile << headers[i];
+            }
+            outfile << "\n";
+            
+            // Write rows from each file sequentially (streaming)
+            size_t totalRows = 0;
+            for (const auto& file : inputFiles) {
+                size_t beforePos = outfile.tellp();
+                writeRowsFromFile(file, outfile, headers);
+                size_t afterPos = outfile.tellp();
+                // Estimate rows written (rough approximation)
+                if (afterPos > beforePos) {
+                    totalRows += (afterPos - beforePos) / (headers.size() * 10);  // rough estimate
+                }
+            }
+            
+            outfile.close();
+            if (verbosity >= 1) {
+                std::cout << "Wrote CSV to " << outputFile << std::endl;
             }
         }
-        
-        outfile.close();
-        std::cout << "Wrote CSV to " << outputFile << std::endl;
     }
     
     static void printConvertUsage(const char* progName) {
-        std::cerr << "Usage: " << progName << " convert [options] <input_file(s)_or_directory(ies)> <output.csv>" << std::endl;
+        std::cerr << "Usage: " << progName << " convert [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Convert JSON or CSV sensor data files to CSV format." << std::endl;
         std::cerr << "For JSON: Each line in input files should contain JSON with sensor readings." << std::endl;
         std::cerr << "For CSV: Files with .csv extension are automatically detected and processed." << std::endl;
         std::cerr << "Each sensor reading will become a row in the output CSV." << std::endl;
+        std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+        std::cerr << "Output is written to stdout unless -o/--output is specified." << std::endl;
         std::cerr << std::endl;
         std::cerr << "Options:" << std::endl;
+        std::cerr << "  -o, --output <file>       Output file (default: stdout)" << std::endl;
+        std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
         std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
         std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
         std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -679,20 +924,23 @@ public:
         std::cerr << "  --remove-errors           Remove error readings (DS18B20 temperature=85)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
-        std::cerr << "  " << progName << " convert sensor1.out output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert sensor1.csv sensor2.csv output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert sensor1.out sensor2.out output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --remove-errors sensor1.out output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -e .out /path/to/sensor/dir output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -r -e .csv /path/to/sensor/dir output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -r -e .out /path/to/sensor/dir output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -r -d 2 -e .out /path/to/logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --use-prototype -r -e .out /path/to/logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --not-empty unit --not-empty value -e .out /logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out /logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C /logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out /logs output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C /logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " convert < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " convert -f csv < sensor1.csv" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " convert" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " convert -o output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert -o output.csv sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " convert -o output.csv sensor1.csv sensor2.csv" << std::endl;
+        std::cerr << "  " << progName << " convert -o output.csv sensor1.out sensor2.out" << std::endl;
+        std::cerr << "  " << progName << " convert --remove-errors -o output.csv sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " convert -e .out -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " convert -r -e .csv -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " convert -r -e .out -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " convert -r -d 2 -e .out -o output.csv /path/to/logs" << std::endl;
+        std::cerr << "  " << progName << " convert --use-prototype -r -e .out -o output.csv /path/to/logs" << std::endl;
+        std::cerr << "  " << progName << " convert --not-empty unit --not-empty value -e .out -o output.csv /logs" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out -o output.csv /logs" << std::endl;
+        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
     }
 };
 

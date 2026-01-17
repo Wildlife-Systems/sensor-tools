@@ -50,7 +50,7 @@ echo ""
 echo "================================"
 echo "Building Main Application"
 echo "================================"
-g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp -o sensor-data
+g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp csv_parser.o json_parser.o error_detector.o file_utils.o -o sensor-data
 
 echo ""
 echo "================================"
@@ -67,18 +67,24 @@ echo "Testing list-errors command..."
 
 echo ""
 echo "Testing convert command..."
-./sensor-data convert test.out output.csv
+./sensor-data convert -o output.csv test.out
 grep -q "sensor001" output.csv && echo "[PASS] convert created CSV"
 grep -q "sensor002" output.csv && echo "[PASS] convert included valid reading"
 
 echo ""
 echo "Testing convert with --remove-errors..."
-./sensor-data convert --remove-errors test.out output-clean.csv
+./sensor-data convert --remove-errors -o output-clean.csv test.out
 grep -q "sensor002" output-clean.csv && echo "[PASS] convert kept valid reading"
 ! grep -q "85" output-clean.csv && echo "[PASS] convert removed error reading"
 
 # Cleanup
 rm -f test.out output.csv output-clean.csv
+
+echo ""
+echo "================================"
+echo "Running stdin/stdout Tests"
+echo "================================"
+bash tests/test_stdin_stdout.sh
 
 echo ""
 echo "================================"
