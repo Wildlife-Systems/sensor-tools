@@ -12,6 +12,8 @@
 #include <mutex>
 #include <future>
 #include <memory>
+#include <cstdio>
+#include <array>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -125,6 +127,7 @@ private:
     std::string extensionFilter;
     int maxDepth;
     int numThreads;
+    bool usePrototype;
     
     bool isDirectory(const std::string& path) {
         struct stat info;
@@ -144,6 +147,50 @@ private:
         }
         std::string ext = filename.substr(dotPos);
         return ext == extensionFilter;
+    }
+    
+    // Execute sc-prototype command and parse columns from JSON output
+    bool getPrototypeColumns() {
+        std::array<char, 128> buffer;
+        std::string result;
+        
+        // Execute sc-prototype command
+#ifdef _WIN32
+        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen("sc-prototype", "r"), _pclose);
+#else
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("sc-prototype", "r"), pclose);
+#endif
+        
+        if (!pipe) {
+            std::cerr << "Error: Failed to run sc-prototype command" << std::endl;
+            return false;
+        }
+        
+        // Read output
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        
+        if (result.empty()) {
+            std::cerr << "Error: sc-prototype returned no output" << std::endl;
+            return false;
+        }
+        
+        // Parse JSON to extract keys
+        // The output is a single JSON object with all fields set to null
+        auto readings = JsonParser::parseJsonLine(result);
+        if (readings.empty() || readings[0].empty()) {
+            std::cerr << "Error: Failed to parse sc-prototype output" << std::endl;
+            return false;
+        }
+        
+        // Extract all keys from the prototype
+        for (const auto& pair : readings[0]) {
+            allKeys.insert(pair.first);
+        }
+        
+        std::cout << "Loaded " << allKeys.size() << " columns from sc-prototype" << std::endl;
+        return true;
     }
     
     void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
@@ -283,7 +330,7 @@ private:
     }
     
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false) {
         // argc should be at least 3 for "convert": program convert input output
         if (argc < 3) {
             printConvertUsage(argv[0]);
@@ -302,6 +349,8 @@ public:
             
             if (arg == "-r" || arg == "--recursive") {
                 recursive = true;
+            } else if (arg == "--use-prototype") {
+                usePrototype = true;
             } else if (arg == "-e" || arg == "--extension") {
                 if (i + 1 < argc - 1) {
                     ++i;
@@ -361,29 +410,37 @@ public:
         
         std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
         
-        // PASS 1: Collect all column names in parallel
-        std::cout << "Pass 1: Discovering columns..." << std::endl;
-        
-        size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
-        std::vector<std::future<void>> futures;
-        futures.reserve(numThreads);
-        
-        for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
-            size_t end = std::min(i + filesPerThread, inputFiles.size());
+        // PASS 1: Collect all column names (skip if using prototype)
+        if (usePrototype) {
+            std::cout << "Using sc-prototype for column definitions..." << std::endl;
+            if (!getPrototypeColumns()) {
+                std::cerr << "Error: Failed to get prototype columns" << std::endl;
+                return;
+            }
+        } else {
+            std::cout << "Pass 1: Discovering columns..." << std::endl;
             
-            futures.push_back(std::async(std::launch::async, [this, i, end]() {
-                for (size_t j = i; j < end; ++j) {
-                    collectKeysFromFile(inputFiles[j]);
-                }
-            }));
+            size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
+            std::vector<std::future<void>> futures;
+            futures.reserve(numThreads);
+            
+            for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
+                size_t end = std::min(i + filesPerThread, inputFiles.size());
+                
+                futures.push_back(std::async(std::launch::async, [this, i, end]() {
+                    for (size_t j = i; j < end; ++j) {
+                        collectKeysFromFile(inputFiles[j]);
+                    }
+                }));
+            }
+            
+            // Wait for all threads to complete
+            for (auto& f : futures) {
+                f.wait();
+            }
+            
+            std::cout << "Found " << allKeys.size() << " unique fields" << std::endl;
         }
-        
-        // Wait for all threads to complete
-        for (auto& f : futures) {
-            f.wait();
-        }
-        
-        std::cout << "Found " << allKeys.size() << " unique fields" << std::endl;
         
         // Convert set to vector for consistent ordering
         std::vector<std::string> headers(allKeys.begin(), allKeys.end());
@@ -432,6 +489,7 @@ public:
         std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
         std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
         std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
+        std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out output.csv" << std::endl;
@@ -439,6 +497,7 @@ public:
         std::cerr << "  " << progName << " convert -e .out /path/to/sensor/dir output.csv" << std::endl;
         std::cerr << "  " << progName << " convert -r -e .out /path/to/sensor/dir output.csv" << std::endl;
         std::cerr << "  " << progName << " convert -r -d 2 -e .out /path/to/logs output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert --use-prototype -r -e .out /path/to/logs output.csv" << std::endl;
     }
 };
 

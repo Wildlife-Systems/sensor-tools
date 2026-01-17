@@ -83,6 +83,9 @@ sensor-data convert -r -d 2 /path/to/sensor/logs/ output.csv
 # Combined: recursive with depth limit and extension filter
 sensor-data convert -r -d 2 -e .out /path/to/sensor/logs/ output.csv
 
+# Use sc-prototype for column definitions (skips discovery pass)
+sensor-data convert --use-prototype -r -e .out /path/to/sensor/logs/ output.csv
+
 # Mixed input
 sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 ```
@@ -91,33 +94,20 @@ sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out` or `out`)
 - `-d, --depth <n>` - Maximum recursion depth (0 = current directory only, default = unlimited)
+- `--use-prototype` - Use `sc-prototype` command to define columns (skips column discovery pass and filters to only prototype columns)
+
+**Using `--use-prototype`:**
+
+When this flag is used, `sensor-data` executes the `sc-prototype` command to get column definitions instead of discovering them from input files. This:
+- Skips the first pass (column discovery), making processing faster
+- Only includes columns defined in the prototype
+- Ignores any extra columns found in the data files
+
+The `sc-prototype` command should output a single JSON line with all expected fields set to null values.
 
 The `sensor-data` tool reads JSON-formatted sensor data files (one JSON object per line)
 and converts them to CSV format. Each sensor reading becomes a row in the output CSV.
 
-## Development
-
-### Project Structure
-
-```
-sensor-tools/
-├── CMakeLists.txt          # CMake build configuration
-├── README.md               # This file
-├── include/
-│   └── sensor.h            # Public header files
-├── src/
-│   ├── main.cpp            # Command-line application
-│   └── sensor.cpp          # Library implementation
-└── debian/                 # Debian packaging files
-    ├── changelog           # Package changelog
-    ├── compat              # Debhelper compatibility level
-    ├── control             # Package metadata
-    ├── copyright           # Copyright and license info
-    ├── rules               # Build rules
-    ├── source/
-    │   └── format          # Source package format
-    └── *.install           # Installation file lists
-```
 
 ### Adding New Sensor Types
 
