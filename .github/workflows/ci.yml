@@ -131,11 +131,60 @@ jobs:
         grep -c "ds18b20" output.csv | grep -q "2"
         rm -rf testdir output.csv
     
+    - name: Integration Test - Depth 0 (root only)
+      run: |
+        mkdir -p testdir/subdir1
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
+        ./sensor-data convert -r -d 0 -e .out testdir/ -o output.csv
+        test $(grep -c "ds18b20" output.csv) -eq 1
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Depth 2 (three levels)
+      run: |
+        mkdir -p testdir/sub1/sub2/sub3
+        echo '{"sensor":"ds18b20","value":"1"}' > testdir/file.out
+        echo '{"sensor":"ds18b20","value":"2"}' > testdir/sub1/file.out
+        echo '{"sensor":"ds18b20","value":"3"}' > testdir/sub1/sub2/file.out
+        echo '{"sensor":"ds18b20","value":"4"}' > testdir/sub1/sub2/sub3/file.out
+        ./sensor-data convert -r -d 2 -e .out testdir/ -o output.csv
+        test $(grep -c "ds18b20" output.csv) -eq 3
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Unlimited depth (-d -1)
+      run: |
+        mkdir -p testdir/a/b/c/d
+        echo '{"sensor":"ds18b20","value":"1"}' > testdir/file.out
+        echo '{"sensor":"ds18b20","value":"2"}' > testdir/a/file.out
+        echo '{"sensor":"ds18b20","value":"3"}' > testdir/a/b/file.out
+        echo '{"sensor":"ds18b20","value":"4"}' > testdir/a/b/c/file.out
+        echo '{"sensor":"ds18b20","value":"5"}' > testdir/a/b/c/d/file.out
+        ./sensor-data convert -r -e .out testdir/ -o output.csv
+        test $(grep -c "ds18b20" output.csv) -eq 5
+        rm -rf testdir output.csv
+    
     - name: Integration Test - Directory with verbose output
       run: |
         mkdir -p testdir
         echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
-        ./sensor-data convert -v -e .out testdir/ -o output.csv 2>&1 | grep -q "Scanning\|Processing\|Found"
+        ./sensor-data convert -v -e .out testdir/ -o output.csv 2>&1 | grep -q "Scanning"
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Directory with very verbose output
+      run: |
+        mkdir -p testdir
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/file2.txt
+        ./sensor-data convert -V -e .out testdir/ -o output.csv 2>&1 | grep -q "Found file\|Skipping"
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Depth limit with very verbose (shows skip message)
+      run: |
+        mkdir -p testdir/subdir1/subdir2
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
+        echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
+        ./sensor-data convert -r -d 0 -V -e .out testdir/ -o output.csv 2>&1 | grep -q "Skipping directory (depth limit)"
         rm -rf testdir output.csv
     
     - name: Generate coverage report
