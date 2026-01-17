@@ -101,9 +101,14 @@ jobs:
         ./sensor-data convert < test_stdin.out | grep -q "bme280"
         rm test_stdin.out
     
+    - name: Generate coverage report
+      run: |
+        gcov -o . src/*.cpp tests/*.cpp
+    
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./*.gcov
         fail_ci_if_error: false
         verbose: true
