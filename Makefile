@@ -50,6 +50,7 @@ test-integration: $(TARGET)
 	@bash tests/test_summarise_errors.sh
 	@bash tests/test_stats.sh
 	@bash tests/test_csv_input.sh
+	@bash tests/test_error_handling.sh
 	@echo "All integration tests passed!"
 
 # Run all tests

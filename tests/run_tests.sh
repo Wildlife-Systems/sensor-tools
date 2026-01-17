@@ -112,5 +112,11 @@ bash tests/test_csv_input.sh
 
 echo ""
 echo "================================"
+echo "Running Error Handling Tests"
+echo "================================"
+bash tests/test_error_handling.sh
+
+echo ""
+echo "================================"
 echo "All tests passed!"
 echo "================================"
