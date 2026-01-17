@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential g++
+    
+    - name: Build library
+      run: |
+        g++ -c -std=c++11 -Iinclude src/csv_parser.cpp -o csv_parser.o
+        g++ -c -std=c++11 -Iinclude src/json_parser.cpp -o json_parser.o
+        g++ -c -std=c++11 -Iinclude src/error_detector.cpp -o error_detector.o
+        g++ -c -std=c++11 -Iinclude src/file_utils.cpp -o file_utils.o
+    
+    - name: Run CSV Parser Tests
+      run: |
+        g++ -std=c++11 -Iinclude tests/test_csv_parser.cpp csv_parser.o -o test_csv_parser
+        ./test_csv_parser
+    
+    - name: Run JSON Parser Tests
+      run: |
+        g++ -std=c++11 -Iinclude tests/test_json_parser.cpp json_parser.o -o test_json_parser
+        ./test_json_parser
+    
+    - name: Run Error Detector Tests
+      run: |
+        g++ -std=c++11 -Iinclude tests/test_error_detector.cpp error_detector.o -o test_error_detector
+        ./test_error_detector
+    
+    - name: Run File Utils Tests
+      run: |
+        g++ -std=c++11 -Iinclude tests/test_file_utils.cpp file_utils.o -o test_file_utils
+        ./test_file_utils
+    
+    - name: Build main application
+      run: |
+        g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp -o sensor-data
+    
+    - name: Integration Test - List Errors
+      run: |
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "85"}' > test.out
+        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "type": "ds18b20", "value": "22.5"}' >> test.out
+        ./sensor-data list-errors test.out | grep -q "sensor001"
+        rm test.out
+    
+    - name: Integration Test - Convert
+      run: |
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "22.5"}' > test.out
+        ./sensor-data convert test.out output.csv
+        grep -q "sensor001" output.csv
+        rm test.out output.csv
+    
+    - name: Integration Test - Remove Errors
+      run: |
+        echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "85"}' > test.out
+        echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "type": "ds18b20", "value": "22.5"}' >> test.out
+        ./sensor-data convert --remove-errors test.out output.csv
+        grep -q "sensor002" output.csv
+        ! grep -q ",85" output.csv
+        rm test.out output.csv

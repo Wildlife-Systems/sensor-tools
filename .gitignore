@@ -6,6 +6,16 @@ build/
 *.la
 *.lo
 *.out
+*.dll
+*.dylib
+
+# Compiled binaries
+sensor-data
+sensor-data.exe
+
+# Test executables
+test_*
+!test_*.cpp
 
 # CMake
 CMakeCache.txt
@@ -41,3 +51,9 @@ obj-*/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test output and temporary files
+*.csv
+test.out
+output.csv
+output-clean.csv

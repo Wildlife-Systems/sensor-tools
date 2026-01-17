@@ -1,0 +1,86 @@
+#!/bin/bash
+# Test runner script for local development
+
+set -e  # Exit on error
+
+echo "================================"
+echo "Building sensor-tools test suite"
+echo "================================"
+
+# Clean previous builds
+rm -f *.o test_* sensor-data
+
+# Build library objects
+echo "Building library..."
+g++ -c -std=c++11 -Iinclude src/csv_parser.cpp -o csv_parser.o
+g++ -c -std=c++11 -Iinclude src/json_parser.cpp -o json_parser.o
+g++ -c -std=c++11 -Iinclude src/error_detector.cpp -o error_detector.o
+g++ -c -std=c++11 -Iinclude src/file_utils.cpp -o file_utils.o
+
+echo ""
+echo "================================"
+echo "Running Unit Tests"
+echo "================================"
+
+# Run CSV Parser Tests
+echo ""
+echo "Testing CSV Parser..."
+g++ -std=c++11 -Iinclude tests/test_csv_parser.cpp csv_parser.o -o test_csv_parser
+./test_csv_parser
+
+# Run JSON Parser Tests
+echo ""
+echo "Testing JSON Parser..."
+g++ -std=c++11 -Iinclude tests/test_json_parser.cpp json_parser.o -o test_json_parser
+./test_json_parser
+
+# Run Error Detector Tests
+echo ""
+echo "Testing Error Detector..."
+g++ -std=c++11 -Iinclude tests/test_error_detector.cpp error_detector.o -o test_error_detector
+./test_error_detector
+
+# Run File Utils Tests
+echo ""
+echo "Testing File Utils..."
+g++ -std=c++11 -Iinclude tests/test_file_utils.cpp file_utils.o -o test_file_utils
+./test_file_utils
+
+echo ""
+echo "================================"
+echo "Building Main Application"
+echo "================================"
+g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp -o sensor-data
+
+echo ""
+echo "================================"
+echo "Running Integration Tests"
+echo "================================"
+
+# Create test data
+echo '{"timestamp": "2026-01-17T10:00:00", "sensor_id": "sensor001", "type": "ds18b20", "value": "85"}' > test.out
+echo '{"timestamp": "2026-01-17T10:01:00", "sensor_id": "sensor002", "type": "ds18b20", "value": "22.5"}' >> test.out
+
+echo ""
+echo "Testing list-errors command..."
+./sensor-data list-errors test.out | grep -q "sensor001" && echo "[PASS] list-errors found error"
+
+echo ""
+echo "Testing convert command..."
+./sensor-data convert test.out output.csv
+grep -q "sensor001" output.csv && echo "[PASS] convert created CSV"
+grep -q "sensor002" output.csv && echo "[PASS] convert included valid reading"
+
+echo ""
+echo "Testing convert with --remove-errors..."
+./sensor-data convert --remove-errors test.out output-clean.csv
+grep -q "sensor002" output-clean.csv && echo "[PASS] convert kept valid reading"
+! grep -q "85" output-clean.csv && echo "[PASS] convert removed error reading"
+
+# Cleanup
+rm -f test.out output.csv output-clean.csv
+
+echo ""
+echo "================================"
+echo "All tests passed!"
+echo "================================"

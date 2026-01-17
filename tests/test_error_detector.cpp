@@ -1,0 +1,64 @@
+#include "../include/error_detector.h"
+#include <cassert>
+#include <iostream>
+
+void test_ds18b20_error_detection() {
+    std::map<std::string, std::string> reading;
+    reading["type"] = "ds18b20";
+    reading["value"] = "85";
+    reading["sensor_id"] = "sensor001";
+    
+    assert(ErrorDetector::isErrorReading(reading) == true);
+    std::cout << "[PASS] test_ds18b20_error_detection" << std::endl;
+}
+
+void test_ds18b20_valid_reading() {
+    std::map<std::string, std::string> reading;
+    reading["type"] = "ds18b20";
+    reading["value"] = "22.5";
+    reading["sensor_id"] = "sensor001";
+    
+    assert(ErrorDetector::isErrorReading(reading) == false);
+    std::cout << "[PASS] test_ds18b20_valid_reading" << std::endl;
+}
+
+void test_ds18b20_case_insensitive() {
+    std::map<std::string, std::string> reading;
+    reading["type"] = "DS18B20";
+    reading["value"] = "85";
+    reading["sensor_id"] = "sensor001";
+    
+    assert(ErrorDetector::isErrorReading(reading) == true);
+    std::cout << "[PASS] test_ds18b20_case_insensitive" << std::endl;
+}
+
+void test_temperature_field() {
+    std::map<std::string, std::string> reading;
+    reading["type"] = "ds18b20";
+    reading["temperature"] = "85";
+    reading["sensor_id"] = "sensor001";
+    
+    assert(ErrorDetector::isErrorReading(reading) == true);
+    std::cout << "[PASS] test_temperature_field" << std::endl;
+}
+
+void test_non_ds18b20_sensor() {
+    std::map<std::string, std::string> reading;
+    reading["type"] = "dht22";
+    reading["value"] = "85";
+    reading["sensor_id"] = "sensor001";
+    
+    assert(ErrorDetector::isErrorReading(reading) == false);
+    std::cout << "[PASS] test_non_ds18b20_sensor" << std::endl;
+}
+
+int main() {
+    std::cout << "Running Error Detector Tests..." << std::endl;
+    test_ds18b20_error_detection();
+    test_ds18b20_valid_reading();
+    test_ds18b20_case_insensitive();
+    test_temperature_field();
+    test_non_ds18b20_sensor();
+    std::cout << "All Error Detector tests passed!" << std::endl;
+    return 0;
+}
