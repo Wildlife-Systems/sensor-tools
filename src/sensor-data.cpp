@@ -951,6 +951,7 @@ private:
     std::string extensionFilter;
     int maxDepth;
     int verbosity;
+    std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
     
     bool matchesExtension(const std::string& filename) {
         if (extensionFilter.empty()) {
@@ -1038,6 +1039,85 @@ private:
         }
         closedir(dir);
 #endif
+    }
+    
+    void listErrorsFromStdin() {
+        if (verbosity >= 1) {
+            std::cerr << "Checking stdin (format: " << inputFormat << ")..." << std::endl;
+        }
+        
+        std::string line;
+        int lineNum = 0;
+        
+        if (inputFormat == "csv") {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            if (std::getline(std::cin, line) && !line.empty()) {
+                lineNum++;
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(std::cin, line, needMore);
+            }
+            
+            while (std::getline(std::cin, line)) {
+                lineNum++;
+                if (line.empty()) continue;
+                
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(std::cin, line, needMore);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                if (ErrorDetector::isErrorReading(reading)) {
+                    std::cout << "stdin:" << lineNum;
+                    // Print relevant fields
+                    auto sensorIt = reading.find("sensor");
+                    auto valueIt = reading.find("value");
+                    auto tempIt = reading.find("temperature");
+                    auto idIt = reading.find("sensor_id");
+                    auto nameIt = reading.find("name");
+                    
+                    if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
+                    if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
+                    if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
+                    if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
+                    if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                    std::cout << std::endl;
+                }
+            }
+        } else {
+            // JSON format
+            while (std::getline(std::cin, line)) {
+                lineNum++;
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    if (ErrorDetector::isErrorReading(reading)) {
+                        std::cout << "stdin:" << lineNum;
+                        // Print relevant fields
+                        auto sensorIt = reading.find("sensor");
+                        auto valueIt = reading.find("value");
+                        auto tempIt = reading.find("temperature");
+                        auto idIt = reading.find("sensor_id");
+                        auto nameIt = reading.find("name");
+                        
+                        if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
+                        if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
+                        if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
+                        if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
+                        if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                        std::cout << std::endl;
+                    }
+                }
+            }
+        }
     }
     
     void listErrorsFromFile(const std::string& filename) {
@@ -1128,7 +1208,7 @@ private:
     }
     
 public:
-    ErrorLister(int argc, char* argv[]) : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0) {
+    ErrorLister(int argc, char* argv[]) : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), inputFormat("json") {
         // Parse flags and arguments
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -1139,6 +1219,20 @@ public:
                 verbosity = 1;
             } else if (arg == "-V") {
                 verbosity = 2;
+            } else if (arg == "-f" || arg == "--format") {
+                if (i + 1 < argc) {
+                    ++i;
+                    inputFormat = argv[i];
+                    // Convert to lowercase
+                    std::transform(inputFormat.begin(), inputFormat.end(), inputFormat.begin(), ::tolower);
+                    if (inputFormat != "json" && inputFormat != "csv") {
+                        std::cerr << "Error: format must be 'json' or 'csv'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
             } else if (arg == "-e" || arg == "--extension") {
                 if (i + 1 < argc) {
                     ++i;
@@ -1180,14 +1274,15 @@ public:
                 }
             }
         }
-        
-        if (inputFiles.empty()) {
-            std::cerr << "Error: No input files found" << std::endl;
-            exit(1);
-        }
     }
     
     void listErrors() {
+        if (inputFiles.empty()) {
+            // Reading from stdin
+            listErrorsFromStdin();
+            return;
+        }
+        
         if (verbosity >= 1) {
             std::cout << "Listing errors with verbosity level " << verbosity << std::endl;
             std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
@@ -1206,12 +1301,14 @@ public:
     }
     
     static void printListErrorsUsage(const char* progName) {
-        std::cerr << "Usage: " << progName << " list-errors [options] <input_file(s)_or_directory(ies)>" << std::endl;
+        std::cerr << "Usage: " << progName << " list-errors [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "List error readings in sensor data files." << std::endl;
         std::cerr << "Currently detects DS18B20 sensors with temperature/value of 85 (error condition)." << std::endl;
+        std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
         std::cerr << std::endl;
         std::cerr << "Options:" << std::endl;
+        std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
         std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
         std::cerr << "  -v                        Verbose output" << std::endl;
         std::cerr << "  -V                        Very verbose output" << std::endl;
@@ -1220,6 +1317,9 @@ public:
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " list-errors sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " list-errors < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " list-errors -f csv < sensor1.csv" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " list-errors" << std::endl;
         std::cerr << "  " << progName << " list-errors -r -e .out /path/to/logs/" << std::endl;
         std::cerr << "  " << progName << " list-errors sensor1.csv sensor2.out" << std::endl;
     }
