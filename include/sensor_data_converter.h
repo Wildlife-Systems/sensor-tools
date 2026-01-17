@@ -713,8 +713,10 @@ public:
                 
                 std::string line;
                 bool firstOutput = true;
+                bool hasInput = false;
                 while (std::getline(std::cin, line)) {
                     if (line.empty()) continue;
+                    hasInput = true;
                     
                     if (!hasActiveFilters()) {
                         // No filtering - pass through directly
@@ -748,6 +750,14 @@ public:
                     if (outputFile.empty()) {
                         outStream->flush();  // Flush for true streaming on stdout
                     }
+                }
+                
+                if (!hasInput) {
+                    std::cerr << "Error: No input data" << std::endl;
+                    if (!outputFile.empty()) {
+                        outFile.close();
+                    }
+                    return;
                 }
                 
                 *outStream << "\n";

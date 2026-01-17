@@ -93,27 +93,27 @@ run_test "CSV stdin with redirect and -f csv" \
 
 # Test 6: JSON stdin with --remove-errors flag
 run_test "JSON stdin with --remove-errors" \
-    "cat /tmp/test_stdin_json_error.txt | ./sensor-data convert --remove-errors | wc -l" \
+    "cat /tmp/test_stdin_json_error.txt | ./sensor-data convert -F csv --remove-errors | wc -l" \
     "3"
 
 # Test 7: JSON stdin to file with --remove-errors
 run_test "JSON stdin to file with --remove-errors" \
-    "cat /tmp/test_stdin_json_error.txt | ./sensor-data convert --remove-errors -o /tmp/test_error_output.csv && wc -l < /tmp/test_error_output.csv" \
+    "cat /tmp/test_stdin_json_error.txt | ./sensor-data convert -F csv --remove-errors -o /tmp/test_error_output.csv && wc -l < /tmp/test_error_output.csv" \
     "3"
 
 # Test 8: Verify CSV output has correct number of columns
 run_test "CSV output has correct columns" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert | head -1 | awk -F',' '{print NF}'" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv | head -1 | awk -F',' '{print NF}'" \
     "4"
 
 # Test 9: JSON stdin with --only-value filter
 run_test "JSON stdin with --only-value filter" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert --only-value sensor:ds18b20 | tail -n +2 | wc -l" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv --only-value sensor:ds18b20 | tail -n +2 | wc -l" \
     "2"
 
 # Test 10: JSON stdin with --not-empty filter
 run_test "JSON stdin with --not-empty filter" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert --not-empty value | tail -n +2 | wc -l" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv --not-empty value | tail -n +2 | wc -l" \
     "3"
 
 # Test 11: Empty stdin handling
@@ -123,7 +123,7 @@ run_test "Empty stdin handling" \
 
 # Test 12: Pipe chain with output file
 run_test "Pipe chain with output file" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -o /tmp/test_pipe.csv && cat /tmp/test_pipe.csv | wc -l" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv -o /tmp/test_pipe.csv && cat /tmp/test_pipe.csv | wc -l" \
     "4"
 
 # Cleanup
