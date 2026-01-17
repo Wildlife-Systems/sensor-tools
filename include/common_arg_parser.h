@@ -116,7 +116,7 @@ public:
             } else if (arg == "--max-date") {
                 if (i + 1 < argc) {
                     ++i;
-                    maxDate = DateUtils::parseDate(argv[i]);
+                    maxDate = DateUtils::parseDateEndOfDay(argv[i]);
                     if (maxDate == 0) {
                         std::cerr << "Error: invalid date format for --max-date" << std::endl;
                         return false;

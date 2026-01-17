@@ -123,7 +123,7 @@ fi
 # Test 7: Only value filter (--only-value)
 echo ""
 echo "Test 7: Only value filter (--only-value)"
-result=$(cat <<'EOF' | ./sensor-data convert --only-value value=22.5
+result=$(cat <<'EOF' | ./sensor-data convert --only-value value:22.5
 {"sensor":"ds18b20","value":"22.5"}
 {"sensor":"ds18b20","value":"23.0"}
 {"sensor":"ds18b20","value":"22.5"}

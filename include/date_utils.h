@@ -71,6 +71,69 @@ namespace DateUtils {
         return 0;
     }
     
+    // Parse date string to Unix timestamp, using end of day (23:59:59) for date-only inputs
+    // Used for --max-date to include the entire specified day
+    inline long long parseDateEndOfDay(const std::string& dateStr) {
+        if (dateStr.empty()) return 0;
+        
+        // Try DD/MM/YYYY format first - use end of day
+        if (dateStr.find('/') != std::string::npos) {
+            int day, month, year;
+            if (sscanf(dateStr.c_str(), "%d/%d/%d", &day, &month, &year) == 3) {
+                struct tm timeinfo = {};
+                timeinfo.tm_year = year - 1900;
+                timeinfo.tm_mon = month - 1;
+                timeinfo.tm_mday = day;
+                timeinfo.tm_hour = 23;
+                timeinfo.tm_min = 59;
+                timeinfo.tm_sec = 59;
+                return static_cast<long long>(mktime(&timeinfo));
+            }
+        }
+        
+        // Try ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+        if (dateStr.length() >= 10 && dateStr[4] == '-' && dateStr[7] == '-') {
+            int year, month, day, hour = 23, min = 59, sec = 59;
+            if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) >= 3) {
+                // Check if there's a time component - use specified time
+                size_t tPos = dateStr.find('T');
+                if (tPos != std::string::npos) {
+                    sscanf(dateStr.c_str() + tPos + 1, "%d:%d:%d", &hour, &min, &sec);
+                }
+                // else: no time specified, use end of day (23:59:59)
+                
+                struct tm timeinfo = {};
+                timeinfo.tm_year = year - 1900;
+                timeinfo.tm_mon = month - 1;
+                timeinfo.tm_mday = day;
+                timeinfo.tm_hour = hour;
+                timeinfo.tm_min = min;
+                timeinfo.tm_sec = sec;
+                return static_cast<long long>(mktime(&timeinfo));
+            }
+        }
+        
+        // For Unix timestamps, use as-is
+        bool isTimestamp = true;
+        size_t start = 0;
+        if (!dateStr.empty() && dateStr[0] == '-') {
+            start = 1;
+        }
+        for (size_t i = start; i < dateStr.length(); ++i) {
+            if (!std::isdigit(dateStr[i])) {
+                isTimestamp = false;
+                break;
+            }
+        }
+        if (isTimestamp && dateStr.length() > start) {
+            try {
+                return std::stoll(dateStr);
+            } catch (...) {}
+        }
+        
+        return 0;
+    }
+    
     // Parse timestamp from reading (handles both string and numeric timestamps)
     inline long long getTimestamp(const std::map<std::string, std::string>& reading) {
         auto it = reading.find("timestamp");
