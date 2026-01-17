@@ -66,29 +66,29 @@ cat > /tmp/test_stdin_json_error.txt << 'EOF'
 {"sensor":"ds18b20","value":"23.0","unit":"C","timestamp":"2024-01-01T00:00:02Z"}
 EOF
 
-# Test 1: JSON stdin to stdout
+# Test 1: JSON stdin to stdout (CSV output)
 run_test "JSON stdin to stdout" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv" \
     "sensor,timestamp,unit,value"
 
-# Test 2: JSON stdin with output file
+# Test 2: JSON stdin with output file (CSV output)
 run_test "JSON stdin to output file" \
-    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -o /tmp/test_output.csv && head -1 /tmp/test_output.csv" \
+    "cat /tmp/test_stdin_json.txt | ./sensor-data convert -F csv -o /tmp/test_output.csv && head -1 /tmp/test_output.csv" \
     "sensor,timestamp,unit,value"
 
-# Test 3: CSV stdin with format flag
+# Test 3: CSV stdin with format flag (CSV output)
 run_test "CSV stdin with -f csv" \
-    "cat /tmp/test_stdin_csv.txt | ./sensor-data convert -f csv" \
+    "cat /tmp/test_stdin_csv.txt | ./sensor-data convert -f csv -F csv" \
     "sensor,timestamp,unit,value"
 
-# Test 4: JSON stdin with redirect
+# Test 4: JSON stdin with redirect (JSON output - check for content)
 run_test "JSON stdin with redirect" \
     "./sensor-data convert < /tmp/test_stdin_json.txt" \
     "ds18b20"
 
-# Test 5: CSV stdin with redirect and format flag
+# Test 5: CSV stdin with redirect and format flag (CSV output)
 run_test "CSV stdin with redirect and -f csv" \
-    "./sensor-data convert -f csv < /tmp/test_stdin_csv.txt" \
+    "./sensor-data convert -f csv -F csv < /tmp/test_stdin_csv.txt" \
     "bme280"
 
 # Test 6: JSON stdin with --remove-errors flag
