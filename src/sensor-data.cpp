@@ -406,7 +406,7 @@ private:
                     }
                     
                     // Check for error readings
-                    if (removeErrors && ErrorDetector::ErrorDetector::isErrorReading(reading)) {
+                    if (removeErrors && ErrorDetector::isErrorReading(reading)) {
                         if (verbosity >= 2) {
                             std::cout << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
                         }
@@ -731,7 +731,7 @@ private:
         
 #ifdef _WIN32
         WIN32_FIND_DATAA findData;
-        HANDLE hFind = FindFirstFileA((dirPath + "\\\\*").c_str(), &findData);
+        HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
         
         if (hFind == INVALID_HANDLE_VALUE) {
             std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
@@ -741,7 +741,7 @@ private:
         do {
             std::string filename = findData.cFileName;
             if (filename != "." && filename != "..") {
-                std::string fullPath = dirPath + "\\\\" + filename;
+                std::string fullPath = dirPath + "\\" + filename;
                 if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                     if (recursive) {
                         collectFilesFromDirectory(fullPath, currentDepth + 1);
