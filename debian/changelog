@@ -1,0 +1,10 @@
+sensor-tools (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Added sensor management framework
+  * Added temperature sensor implementation
+  * Added command-line interface
+  * Added shared library support
+  * Added sensor-data tool for JSON to CSV conversion
+
+ -- Your Name <your.email@example.com>  Fri, 17 Jan 2026 00:00:00 +0000

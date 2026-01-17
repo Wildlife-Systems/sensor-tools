@@ -1,0 +1,43 @@
+# Build artifacts
+build/
+*.o
+*.so
+*.a
+*.la
+*.lo
+*.out
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# Debian packaging
+debian/*.log
+debian/*.substvars
+debian/files
+debian/tmp/
+debian/.debhelper/
+debian/sensor-tools/
+obj-*/
+
+# Generated packages
+*.deb
+*.ddeb
+*.changes
+*.buildinfo
+*.dsc
+*.tar.gz
+*.tar.xz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

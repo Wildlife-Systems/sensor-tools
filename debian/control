@@ -1,0 +1,22 @@
+Source: sensor-tools
+Section: utils
+Priority: optional
+Maintainer: Your Name <your.email@example.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.10),
+               g++ (>= 4:9.0)
+Standards-Version: 4.6.0
+Homepage: https://github.com/yourusername/sensor-tools
+Vcs-Git: https://github.com/yourusername/sensor-tools.git
+Vcs-Browser: https://github.com/yourusername/sensor-tools
+
+Package: sensor-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Tools for managing and reading sensor data
+ This package provides command-line tools for working with sensor data.
+ .
+ Features include:
+  * Command-line tools for sensor interaction
+  * JSON to CSV converter for sensor data files
+  * Support for processing multiple files and directories
