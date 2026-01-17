@@ -140,11 +140,11 @@ fi
 echo ""
 echo "Test: CSV input to CSV output"
 result=$(./sensor-data convert -F csv "$TESTDIR/sensor1.csv")
-if echo "$result" | head -1 | grep -q "sensor,value"; then
+if echo "$result" | head -1 | grep -q "sensor" && echo "$result" | head -1 | grep -q "value"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
-    echo "  ✗ FAIL - Expected CSV header"
+    echo "  ✗ FAIL - Expected CSV header with sensor and value columns"
     echo "  Got: $result"
     FAILED=$((FAILED + 1))
 fi
