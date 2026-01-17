@@ -3,7 +3,6 @@ Section: utils
 Priority: optional
 Maintainer: Your Name <your.email@example.com>
 Build-Depends: debhelper-compat (= 13),
-               cmake (>= 3.10),
                g++ (>= 4:9.0)
 Standards-Version: 4.6.0
 Homepage: https://github.com/yourusername/sensor-tools
