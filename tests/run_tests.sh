@@ -88,5 +88,17 @@ bash tests/test_stdin_stdout.sh
 
 echo ""
 echo "================================"
+echo "Running list-errors stdin Tests"
+echo "================================"
+bash tests/test_list_errors_stdin.sh
+
+echo ""
+echo "================================"
+echo "Running summarise-errors Tests"
+echo "================================"
+bash tests/test_summarise_errors.sh
+
+echo ""
+echo "================================"
 echo "All tests passed!"
 echo "================================"

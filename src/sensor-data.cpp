@@ -323,7 +323,8 @@ private:
                 // Check for error readings
                 if (removeErrors && ErrorDetector::isErrorReading(reading)) {
                     if (verbosity >= 2) {
-                        std::cout << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
+                        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                        std::cout << "  Skipping error reading: " << errorDesc << std::endl;
                     }
                     continue;
                 }
@@ -409,7 +410,8 @@ private:
                     // Check for error readings
                     if (removeErrors && ErrorDetector::isErrorReading(reading)) {
                         if (verbosity >= 2) {
-                            std::cout << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
+                            std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                            std::cout << "  Skipping error reading: " << errorDesc << std::endl;
                         }
                         continue;
                     }
@@ -536,7 +538,8 @@ private:
         // Check for error readings
         if (removeErrors && ErrorDetector::isErrorReading(reading)) {
             if (verbosity >= 2) {
-                std::cerr << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
+                std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                std::cerr << "  Skipping error reading: " << errorDesc << std::endl;
             }
             return false;
         }
@@ -921,7 +924,7 @@ public:
         std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
         std::cerr << "  --not-empty <column>      Skip rows where column is empty (can be used multiple times)" << std::endl;
         std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
-        std::cerr << "  --remove-errors           Remove error readings (DS18B20 temperature=85)" << std::endl;
+        std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out" << std::endl;
@@ -1086,6 +1089,9 @@ private:
                     if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                     if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
                     if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                    
+                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                    std::cout << " [" << errorDesc << "]";
                     std::cout << std::endl;
                 }
             }
@@ -1113,6 +1119,9 @@ private:
                         if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                         if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
                         if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                        
+                        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                        std::cout << " [" << errorDesc << "]";
                         std::cout << std::endl;
                     }
                 }
@@ -1171,6 +1180,9 @@ private:
                     if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                     if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
                     if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                    
+                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                    std::cout << " [" << errorDesc << "]";
                     std::cout << std::endl;
                 }
             }
@@ -1198,6 +1210,9 @@ private:
                         if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                         if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
                         if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+                        
+                        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                        std::cout << " [" << errorDesc << "]";
                         std::cout << std::endl;
                     }
                 }
@@ -1304,7 +1319,7 @@ public:
         std::cerr << "Usage: " << progName << " list-errors [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "List error readings in sensor data files." << std::endl;
-        std::cerr << "Currently detects DS18B20 sensors with temperature/value of 85 (error condition)." << std::endl;
+        std::cerr << "Currently detects DS18B20 sensors with temperature/value of 85 or -127 (error conditions)." << std::endl;
         std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
         std::cerr << std::endl;
         std::cerr << "Options:" << std::endl;
@@ -1325,12 +1340,351 @@ public:
     }
 };
 
+class ErrorSummarizer {
+private:
+    std::vector<std::string> inputFiles;
+    bool recursive;
+    std::string extensionFilter;
+    int maxDepth;
+    int verbosity;
+    std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
+    std::map<std::string, int> errorCounts;  // error description -> count
+    
+    bool matchesExtension(const std::string& filename) {
+        if (extensionFilter.empty()) {
+            return true;
+        }
+        size_t dotPos = filename.find_last_of('.');
+        if (dotPos == std::string::npos) {
+            return false;
+        }
+        std::string ext = filename.substr(dotPos);
+        return ext == extensionFilter;
+    }
+    
+    void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
+        // Check depth limit
+        if (maxDepth >= 0 && currentDepth > maxDepth) {
+            if (verbosity >= 2) {
+                std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
+            }
+            return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
+        }
+        
+#ifdef _WIN32
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
+        
+        if (hFind == INVALID_HANDLE_VALUE) {
+            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            return;
+        }
+        
+        do {
+            std::string filename = findData.cFileName;
+            if (filename != "." && filename != "..") {
+                std::string fullPath = dirPath + "\\" + filename;
+                if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
+                    }
+                } else {
+                    if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
+                        inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                    }
+                }
+            }
+        } while (FindNextFileA(hFind, &findData) != 0);
+        
+        FindClose(hFind);
+#else
+        DIR* dir = opendir(dirPath.c_str());
+        if (!dir) {
+            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            return;
+        }
+        
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            std::string filename = entry->d_name;
+            if (filename != "." && filename != "..") {
+                std::string fullPath = dirPath + "/" + filename;
+                if (FileUtils::isDirectory(fullPath)) {
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
+                    }
+                } else {
+                    if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
+                        inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                    }
+                }
+            }
+        }
+        closedir(dir);
+#endif
+    }
+    
+    void countErrorsFromStdin() {
+        if (verbosity >= 1) {
+            std::cerr << "Checking stdin (format: " << inputFormat << ")..." << std::endl;
+        }
+        
+        std::string line;
+        
+        if (inputFormat == "csv") {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            if (std::getline(std::cin, line) && !line.empty()) {
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(std::cin, line, needMore);
+            }
+            
+            while (std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(std::cin, line, needMore);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                if (ErrorDetector::isErrorReading(reading)) {
+                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                    errorCounts[errorDesc]++;
+                }
+            }
+        } else {
+            // JSON format
+            while (std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    if (ErrorDetector::isErrorReading(reading)) {
+                        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                        errorCounts[errorDesc]++;
+                    }
+                }
+            }
+        }
+    }
+    
+    void countErrorsFromFile(const std::string& filename) {
+        if (verbosity >= 1) {
+            std::cout << "Checking file: " << filename << std::endl;
+        }
+        std::ifstream infile(filename);
+        if (!infile) {
+            std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+            return;
+        }
+        
+        std::string line;
+        
+        // Check if this is a CSV file
+        if (FileUtils::isCsvFile(filename)) {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            if (std::getline(infile, line) && !line.empty()) {
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+            }
+            
+            while (std::getline(infile, line)) {
+                if (line.empty()) continue;
+                
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                if (ErrorDetector::isErrorReading(reading)) {
+                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                    errorCounts[errorDesc]++;
+                }
+            }
+        } else {
+            // JSON format
+            while (std::getline(infile, line)) {
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    if (ErrorDetector::isErrorReading(reading)) {
+                        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                        errorCounts[errorDesc]++;
+                    }
+                }
+            }
+        }
+        
+        infile.close();
+    }
+    
+public:
+    ErrorSummarizer(int argc, char* argv[]) : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), inputFormat("json") {
+        // Parse flags and arguments
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            
+            if (arg == "-r" || arg == "--recursive") {
+                recursive = true;
+            } else if (arg == "-v") {
+                verbosity = 1;
+            } else if (arg == "-V") {
+                verbosity = 2;
+            } else if (arg == "-f" || arg == "--format") {
+                if (i + 1 < argc) {
+                    ++i;
+                    inputFormat = argv[i];
+                    // Convert to lowercase
+                    std::transform(inputFormat.begin(), inputFormat.end(), inputFormat.begin(), ::tolower);
+                    if (inputFormat != "json" && inputFormat != "csv") {
+                        std::cerr << "Error: format must be 'json' or 'csv'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-e" || arg == "--extension") {
+                if (i + 1 < argc) {
+                    ++i;
+                    extensionFilter = argv[i];
+                    if (!extensionFilter.empty() && extensionFilter[0] != '.') {
+                        extensionFilter = "." + extensionFilter;
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-d" || arg == "--depth") {
+                if (i + 1 < argc) {
+                    ++i;
+                    try {
+                        maxDepth = std::stoi(argv[i]);
+                        if (maxDepth < 0) {
+                            std::cerr << "Error: depth must be non-negative" << std::endl;
+                            exit(1);
+                        }
+                    } catch (...) {
+                        std::cerr << "Error: invalid depth value '" << argv[i] << "'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg[0] == '-') {
+                std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
+                printSummariseErrorsUsage(argv[0]);
+                exit(1);
+            } else {
+                // It's a file or directory path
+                if (FileUtils::isDirectory(arg)) {
+                    collectFilesFromDirectory(arg);
+                } else {
+                    inputFiles.push_back(arg);
+                }
+            }
+        }
+    }
+    
+    void summariseErrors() {
+        if (inputFiles.empty()) {
+            // Reading from stdin
+            countErrorsFromStdin();
+        } else {
+            if (verbosity >= 1) {
+                std::cout << "Summarising errors with verbosity level " << verbosity << std::endl;
+                std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+                if (!extensionFilter.empty()) {
+                    std::cout << "Extension filter: " << extensionFilter << std::endl;
+                }
+                if (maxDepth >= 0) {
+                    std::cout << "Max depth: " << maxDepth << std::endl;
+                }
+                std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
+            }
+            
+            for (const auto& file : inputFiles) {
+                countErrorsFromFile(file);
+            }
+        }
+        
+        // Print summary
+        if (errorCounts.empty()) {
+            std::cout << "No errors found" << std::endl;
+        } else {
+            std::cout << "Error Summary:" << std::endl;
+            int totalErrors = 0;
+            for (const auto& pair : errorCounts) {
+                std::cout << "  " << pair.first << ": " << pair.second << " occurrence" << (pair.second > 1 ? "s" : "") << std::endl;
+                totalErrors += pair.second;
+            }
+            std::cout << "Total errors: " << totalErrors << std::endl;
+        }
+    }
+    
+    static void printSummariseErrorsUsage(const char* progName) {
+        std::cerr << "Usage: " << progName << " summarise-errors [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Summarise error readings in sensor data files with counts." << std::endl;
+        std::cerr << "Currently detects DS18B20 sensors with temperature/value of 85 or -127 (error conditions)." << std::endl;
+        std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
+        std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
+        std::cerr << "  -v                        Verbose output" << std::endl;
+        std::cerr << "  -V                        Very verbose output" << std::endl;
+        std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
+        std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Examples:" << std::endl;
+        std::cerr << "  " << progName << " summarise-errors sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " summarise-errors < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " summarise-errors -f csv < sensor1.csv" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " summarise-errors" << std::endl;
+        std::cerr << "  " << progName << " summarise-errors -r -e .out /path/to/logs/" << std::endl;
+        std::cerr << "  " << progName << " summarise-errors sensor1.csv sensor2.out" << std::endl;
+    }
+};
+
 void printUsage(const char* progName) {
     std::cerr << "Usage: " << progName << " <command> [options]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Commands:" << std::endl;
-    std::cerr << "  convert       Convert JSON or CSV sensor data files to CSV" << std::endl;
-    std::cerr << "  list-errors   List error readings in sensor data files" << std::endl;
+    std::cerr << "  convert           Convert JSON or CSV sensor data files to CSV" << std::endl;
+    std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
+    std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << std::endl;
     std::cerr << "For command-specific help, use:" << std::endl;
     std::cerr << "  " << progName << " <command> --help" << std::endl;
@@ -1375,6 +1729,25 @@ int main(int argc, char* argv[]) {
             
             ErrorLister lister(newArgc, newArgv);
             lister.listErrors();
+            
+            delete[] newArgv;
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if (command == "summarise-errors") {
+        try {
+            // Create new argv for error summarizer (skip "summarise-errors" command)
+            int newArgc = argc - 1;
+            char** newArgv = new char*[newArgc];
+            newArgv[0] = argv[0];  // program name
+            for (int i = 2; i < argc; ++i) {
+                newArgv[i - 1] = argv[i];
+            }
+            
+            ErrorSummarizer summarizer(newArgc, newArgv);
+            summarizer.summariseErrors();
             
             delete[] newArgv;
             return 0;
