@@ -1,5 +1,8 @@
 # Sensor Tools
 
+[![CI](https://github.com/edwbartels/sensors-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/edwbartels/sensors-tools/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/edwbartels/sensors-tools/graph/badge.svg)](https://codecov.io/gh/edwbartels/sensors-tools)
+
 A C++ library and command-line tool for managing and reading sensor data.
 
 ## Features

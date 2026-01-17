@@ -18,32 +18,37 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential g++
     
-    - name: Build library
+    - name: Build library with coverage
       run: |
-        g++ -c -std=c++11 -Iinclude src/csv_parser.cpp -o csv_parser.o
-        g++ -c -std=c++11 -Iinclude src/json_parser.cpp -o json_parser.o
-        g++ -c -std=c++11 -Iinclude src/error_detector.cpp -o error_detector.o
-        g++ -c -std=c++11 -Iinclude src/file_utils.cpp -o file_utils.o
+        g++ -c -std=c++11 --coverage -Iinclude src/csv_parser.cpp -o csv_parser.o
+        g++ -c -std=c++11 --coverage -Iinclude src/json_parser.cpp -o json_parser.o
+        g++ -c -std=c++11 --coverage -Iinclude src/error_detector.cpp -o error_detector.o
+        g++ -c -std=c++11 --coverage -Iinclude src/file_utils.cpp -o file_utils.o
     
     - name: Run CSV Parser Tests
       run: |
-        g++ -std=c++11 -Iinclude tests/test_csv_parser.cpp csv_parser.o -o test_csv_parser
+        g++ -std=c++11 --coverage -Iinclude tests/test_csv_parser.cpp csv_parser.o -o test_csv_parser
         ./test_csv_parser
     
     - name: Run JSON Parser Tests
       run: |
-        g++ -std=c++11 -Iinclude tests/test_json_parser.cpp json_parser.o -o test_json_parser
+        g++ -std=c++11 --coverage -Iinclude tests/test_json_parser.cpp json_parser.o -o test_json_parser
         ./test_json_parser
     
     - name: Run Error Detector Tests
       run: |
-        g++ -std=c++11 -Iinclude tests/test_error_detector.cpp error_detector.o -o test_error_detector
+        g++ -std=c++11 --coverage -Iinclude tests/test_error_detector.cpp error_detector.o -o test_error_detector
         ./test_error_detector
     
     - name: Run File Utils Tests
       run: |
-        g++ -std=c++11 -Iinclude tests/test_file_utils.cpp file_utils.o -o test_file_utils
+        g++ -std=c++11 --coverage -Iinclude tests/test_file_utils.cpp file_utils.o -o test_file_utils
         ./test_file_utils
+    
+    - name: Run Date Utils Tests
+      run: |
+        g++ -std=c++11 --coverage -Iinclude tests/test_date_utils.cpp -o test_date_utils
+        ./test_date_utils
     
     - name: Build main application
       run: |
@@ -95,3 +100,9 @@ jobs:
         echo '{"sensor":"bme280","value":"1013","unit":"hPa"}' > test_stdin.out
         ./sensor-data convert < test_stdin.out | grep -q "bme280"
         rm test_stdin.out
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: false
+        verbose: true

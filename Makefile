@@ -7,11 +7,11 @@ BINDIR = $(PREFIX)/bin
 # Source files
 SOURCES = src/sensor-data.cpp
 LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp
-TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp
+TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp
 
 # Object files
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
-TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils
+TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils
 
 TARGET = sensor-data
 
@@ -27,12 +27,26 @@ $(TARGET): $(LIB_OBJECTS) $(SOURCES)
 
 # Build and run tests
 test: $(LIB_OBJECTS)
-	@echo "Building and running tests..."
+	@echo "Building and running unit tests..."
 	@$(CXX) $(CXXFLAGS) tests/test_csv_parser.cpp src/csv_parser.o -o test_csv_parser && ./test_csv_parser
 	@$(CXX) $(CXXFLAGS) tests/test_json_parser.cpp src/json_parser.o -o test_json_parser && ./test_json_parser
 	@$(CXX) $(CXXFLAGS) tests/test_error_detector.cpp src/error_detector.o -o test_error_detector && ./test_error_detector
 	@$(CXX) $(CXXFLAGS) tests/test_file_utils.cpp src/file_utils.o -o test_file_utils && ./test_file_utils
-	@echo "All tests passed!"
+	@$(CXX) $(CXXFLAGS) tests/test_date_utils.cpp -o test_date_utils && ./test_date_utils
+	@echo "All unit tests passed!"
+
+# Run integration tests (requires bash)
+test-integration: $(TARGET)
+	@echo "Running integration tests..."
+	@bash tests/test_convert.sh
+	@bash tests/test_stdin_stdout.sh
+	@bash tests/test_list_errors_stdin.sh
+	@bash tests/test_summarise_errors.sh
+	@bash tests/test_stats.sh
+	@echo "All integration tests passed!"
+
+# Run all tests
+test-all: test test-integration
 
 install: $(TARGET)
 	install -d $(DESTDIR)$(BINDIR)
@@ -41,5 +55,5 @@ install: $(TARGET)
 clean:
 	rm -f $(TARGET) $(LIB_OBJECTS) $(TEST_EXECUTABLES) src/*.o
 
-.PHONY: all install clean test
+.PHONY: all install clean test test-integration test-all
 

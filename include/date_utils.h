@@ -13,21 +13,7 @@ namespace DateUtils {
     inline long long parseDate(const std::string& dateStr) {
         if (dateStr.empty()) return 0;
         
-        // Try as Unix timestamp (all digits)
-        bool isDigits = true;
-        for (char c : dateStr) {
-            if (!std::isdigit(c) && c != '-') {
-                isDigits = false;
-                break;
-            }
-        }
-        if (isDigits && dateStr.find('/') == std::string::npos && dateStr.find('T') == std::string::npos) {
-            try {
-                return std::stoll(dateStr);
-            } catch (...) {}
-        }
-        
-        // Try DD/MM/YYYY format
+        // Try DD/MM/YYYY format first
         if (dateStr.find('/') != std::string::npos) {
             int day, month, year;
             if (sscanf(dateStr.c_str(), "%d/%d/%d", &day, &month, &year) == 3) {
@@ -43,7 +29,8 @@ namespace DateUtils {
         }
         
         // Try ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
-        if (dateStr.find('-') != std::string::npos) {
+        // Check for pattern like XXXX-XX-XX (4 digits, dash, 2 digits, dash, 2 digits)
+        if (dateStr.length() >= 10 && dateStr[4] == '-' && dateStr[7] == '-') {
             int year, month, day, hour = 0, min = 0, sec = 0;
             if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) >= 3) {
                 // Check if there's a time component
@@ -61,6 +48,24 @@ namespace DateUtils {
                 timeinfo.tm_sec = sec;
                 return static_cast<long long>(mktime(&timeinfo));
             }
+        }
+        
+        // Try as Unix timestamp (all digits, optionally with leading minus)
+        bool isTimestamp = true;
+        size_t start = 0;
+        if (!dateStr.empty() && dateStr[0] == '-') {
+            start = 1;
+        }
+        for (size_t i = start; i < dateStr.length(); ++i) {
+            if (!std::isdigit(dateStr[i])) {
+                isTimestamp = false;
+                break;
+            }
+        }
+        if (isTimestamp && dateStr.length() > start) {
+            try {
+                return std::stoll(dateStr);
+            } catch (...) {}
         }
         
         return 0;
