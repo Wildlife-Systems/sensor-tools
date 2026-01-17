@@ -1002,7 +1002,14 @@ private:
     void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
         // Check depth limit
         if (maxDepth >= 0 && currentDepth > maxDepth) {
+            if (verbosity >= 2) {
+                std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
+            }
             return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
         }
         
 #ifdef _WIN32
@@ -1024,7 +1031,12 @@ private:
                     }
                 } else {
                     if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
                         inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
                     }
                 }
             }
@@ -1049,7 +1061,12 @@ private:
                     }
                 } else {
                     if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
                         inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
                     }
                 }
             }
@@ -1059,6 +1076,9 @@ private:
     }
     
     void listErrorsFromFile(const std::string& filename) {
+        if (verbosity >= 1) {
+            std::cout << "Checking file: " << filename << std::endl;
+        }
         std::ifstream infile(filename);
         if (!infile) {
             std::cerr << "Warning: Cannot open file: " << filename << std::endl;
@@ -1203,6 +1223,18 @@ public:
     }
     
     void listErrors() {
+        if (verbosity >= 1) {
+            std::cout << "Listing errors with verbosity level " << verbosity << std::endl;
+            std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+            if (!extensionFilter.empty()) {
+                std::cout << "Extension filter: " << extensionFilter << std::endl;
+            }
+            if (maxDepth >= 0) {
+                std::cout << "Max depth: " << maxDepth << std::endl;
+            }
+            std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
+        }
+        
         for (const auto& file : inputFiles) {
             listErrorsFromFile(file);
         }

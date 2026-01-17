@@ -3,4 +3,4 @@ sensor-tools (1.0.0) unstable; urgency=medium
   * Initial release
   * Added sensor-data tool for JSON to CSV conversion
 
- -- Ed Baker <ed@ebaker.me.uk>  Fri, 17 Jan 2026 00:00:00 +0000
+ -- Ed Baker <ed@ebaker.me.uk>  Sat, 17 Jan 2026 00:00:00 +0000
