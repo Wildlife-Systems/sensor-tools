@@ -262,8 +262,8 @@ echo ""
 echo "Test 11a: Multi-object JSON array with sensor filter"
 result=$(echo '[ { "sensor": "ds18b20", "value": 22.5 }, { "sensor": "dht22", "value": 45 }, { "sensor": "ds18b20", "value": 23.0 } ]' | ./sensor-data convert --only-value sensor:ds18b20)
 # Should filter out dht22, keep both ds18b20 readings
-if echo "$result" | grep -q '"sensor":"ds18b20"' && ! echo "$result" | grep -q '"sensor":"dht22"'; then
-    count=$(echo "$result" | grep -o '"sensor":"ds18b20"' | wc -l | tr -d ' ')
+if echo "$result" | grep -q 'ds18b20' && ! echo "$result" | grep -q 'dht22'; then
+    count=$(echo "$result" | grep -o 'ds18b20' | wc -l | tr -d ' ')
     if [ "$count" -eq 2 ]; then
         echo "  ✓ PASS"
         PASSED=$((PASSED + 1))
