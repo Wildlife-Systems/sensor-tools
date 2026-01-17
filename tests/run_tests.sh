@@ -100,5 +100,11 @@ bash tests/test_summarise_errors.sh
 
 echo ""
 echo "================================"
+echo "Running stats Tests"
+echo "================================"
+bash tests/test_stats.sh
+
+echo ""
+echo "================================"
 echo "All tests passed!"
 echo "================================"

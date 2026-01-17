@@ -14,6 +14,7 @@
 #include <memory>
 #include <cstdio>
 #include <array>
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -1678,6 +1679,404 @@ public:
     }
 };
 
+class StatsAnalyzer {
+private:
+    std::vector<std::string> inputFiles;
+    bool recursive;
+    std::string extensionFilter;
+    int maxDepth;
+    int verbosity;
+    std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
+    std::string columnFilter;  // Specific column to analyze (empty = analyze all numeric columns)
+    std::map<std::string, std::vector<double>> columnData;  // column name -> values
+    
+    bool matchesExtension(const std::string& filename) {
+        if (extensionFilter.empty()) {
+            return true;
+        }
+        size_t dotPos = filename.find_last_of('.');
+        if (dotPos == std::string::npos) {
+            return false;
+        }
+        std::string ext = filename.substr(dotPos);
+        return ext == extensionFilter;
+    }
+    
+    void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
+        // Check depth limit
+        if (maxDepth >= 0 && currentDepth > maxDepth) {
+            if (verbosity >= 2) {
+                std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
+            }
+            return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
+        }
+        
+#ifdef _WIN32
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
+        
+        if (hFind == INVALID_HANDLE_VALUE) {
+            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            return;
+        }
+        
+        do {
+            std::string filename = findData.cFileName;
+            if (filename != "." && filename != "..") {
+                std::string fullPath = dirPath + "\\" + filename;
+                if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
+                    }
+                } else {
+                    if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
+                        inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                    }
+                }
+            }
+        } while (FindNextFileA(hFind, &findData) != 0);
+        
+        FindClose(hFind);
+#else
+        DIR* dir = opendir(dirPath.c_str());
+        if (!dir) {
+            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            return;
+        }
+        
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            std::string filename = entry->d_name;
+            if (filename != "." && filename != "..") {
+                std::string fullPath = dirPath + "/" + filename;
+                if (FileUtils::isDirectory(fullPath)) {
+                    if (recursive) {
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
+                    }
+                } else {
+                    if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
+                        inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                    }
+                }
+            }
+        }
+        closedir(dir);
+#endif
+    }
+    
+    bool isNumeric(const std::string& str) {
+        if (str.empty()) return false;
+        try {
+            size_t pos = 0;
+            std::stod(str, &pos);
+            return pos == str.length();
+        } catch (...) {
+            return false;
+        }
+    }
+    
+    void collectDataFromReading(const std::map<std::string, std::string>& reading) {
+        for (const auto& pair : reading) {
+            // Skip if we're filtering by column and this isn't it
+            if (!columnFilter.empty() && pair.first != columnFilter) continue;
+            
+            // Try to parse as numeric
+            if (isNumeric(pair.second)) {
+                double value = std::stod(pair.second);
+                columnData[pair.first].push_back(value);
+            }
+        }
+    }
+    
+    void collectStatsFromStdin() {
+        if (verbosity >= 1) {
+            std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
+        }
+        
+        std::string line;
+        
+        if (inputFormat == "csv") {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            if (std::getline(std::cin, line) && !line.empty()) {
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(std::cin, line, needMore);
+            }
+            
+            while (std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(std::cin, line, needMore);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                collectDataFromReading(reading);
+            }
+        } else {
+            // JSON format
+            while (std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    collectDataFromReading(reading);
+                }
+            }
+        }
+    }
+    
+    void collectStatsFromFile(const std::string& filename) {
+        if (verbosity >= 1) {
+            std::cout << "Processing file: " << filename << std::endl;
+        }
+        std::ifstream infile(filename);
+        if (!infile) {
+            std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+            return;
+        }
+        
+        std::string line;
+        
+        // Check if this is a CSV file
+        if (FileUtils::isCsvFile(filename)) {
+            // CSV format
+            std::vector<std::string> csvHeaders;
+            if (std::getline(infile, line) && !line.empty()) {
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+            }
+            
+            while (std::getline(infile, line)) {
+                if (line.empty()) continue;
+                
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+                if (fields.empty()) continue;
+                
+                // Create a map from CSV headers to values
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                collectDataFromReading(reading);
+            }
+        } else {
+            // JSON format
+            while (std::getline(infile, line)) {
+                if (line.empty()) continue;
+                
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    collectDataFromReading(reading);
+                }
+            }
+        }
+        
+        infile.close();
+    }
+    
+    double calculateMedian(std::vector<double> values) {
+        if (values.empty()) return 0.0;
+        std::sort(values.begin(), values.end());
+        size_t n = values.size();
+        if (n % 2 == 0) {
+            return (values[n/2 - 1] + values[n/2]) / 2.0;
+        } else {
+            return values[n/2];
+        }
+    }
+    
+    double calculateStdDev(const std::vector<double>& values, double mean) {
+        if (values.size() <= 1) return 0.0;
+        double sum = 0.0;
+        for (double v : values) {
+            sum += (v - mean) * (v - mean);
+        }
+        return std::sqrt(sum / (values.size() - 1));
+    }
+    
+public:
+    StatsAnalyzer(int argc, char* argv[]) : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), inputFormat("json"), columnFilter("value") {
+        // Parse flags and arguments
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            
+            if (arg == "-r" || arg == "--recursive") {
+                recursive = true;
+            } else if (arg == "-v") {
+                verbosity = 1;
+            } else if (arg == "-V") {
+                verbosity = 2;
+            } else if (arg == "-c" || arg == "--column") {
+                if (i + 1 < argc) {
+                    ++i;
+                    columnFilter = argv[i];
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-f" || arg == "--format") {
+                if (i + 1 < argc) {
+                    ++i;
+                    inputFormat = argv[i];
+                    // Convert to lowercase
+                    std::transform(inputFormat.begin(), inputFormat.end(), inputFormat.begin(), ::tolower);
+                    if (inputFormat != "json" && inputFormat != "csv") {
+                        std::cerr << "Error: format must be 'json' or 'csv'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-e" || arg == "--extension") {
+                if (i + 1 < argc) {
+                    ++i;
+                    extensionFilter = argv[i];
+                    if (!extensionFilter.empty() && extensionFilter[0] != '.') {
+                        extensionFilter = "." + extensionFilter;
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-d" || arg == "--depth") {
+                if (i + 1 < argc) {
+                    ++i;
+                    try {
+                        maxDepth = std::stoi(argv[i]);
+                        if (maxDepth < 0) {
+                            std::cerr << "Error: depth must be non-negative" << std::endl;
+                            exit(1);
+                        }
+                    } catch (...) {
+                        std::cerr << "Error: invalid depth value '" << argv[i] << "'" << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg[0] == '-') {
+                std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
+                printStatsUsage(argv[0]);
+                exit(1);
+            } else {
+                // It's a file or directory path
+                if (FileUtils::isDirectory(arg)) {
+                    collectFilesFromDirectory(arg);
+                } else {
+                    inputFiles.push_back(arg);
+                }
+            }
+        }
+    }
+    
+    void analyze() {
+        if (inputFiles.empty()) {
+            // Reading from stdin
+            collectStatsFromStdin();
+        } else {
+            if (verbosity >= 1) {
+                std::cout << "Analyzing with verbosity level " << verbosity << std::endl;
+                std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+                if (!extensionFilter.empty()) {
+                    std::cout << "Extension filter: " << extensionFilter << std::endl;
+                }
+                if (maxDepth >= 0) {
+                    std::cout << "Max depth: " << maxDepth << std::endl;
+                }
+                std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
+            }
+            
+            for (const auto& file : inputFiles) {
+                collectStatsFromFile(file);
+            }
+        }
+        
+        // Print statistics
+        if (columnData.empty()) {
+            std::cout << "No numeric data found" << std::endl;
+        } else {
+            std::cout << "Statistics:" << std::endl;
+            std::cout << std::endl;
+            
+            for (const auto& pair : columnData) {
+                const std::string& colName = pair.first;
+                const std::vector<double>& values = pair.second;
+                
+                if (values.empty()) continue;
+                
+                double min = *std::min_element(values.begin(), values.end());
+                double max = *std::max_element(values.begin(), values.end());
+                double sum = 0.0;
+                for (double v : values) sum += v;
+                double mean = sum / values.size();
+                double median = calculateMedian(values);
+                double stddev = calculateStdDev(values, mean);
+                
+                std::cout << colName << ":" << std::endl;
+                std::cout << "  Count:  " << values.size() << std::endl;
+                std::cout << "  Min:    " << min << std::endl;
+                std::cout << "  Max:    " << max << std::endl;
+                std::cout << "  Mean:   " << mean << std::endl;
+                std::cout << "  Median: " << median << std::endl;
+                std::cout << "  StdDev: " << stddev << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    }
+    
+    static void printStatsUsage(const char* progName) {
+        std::cerr << "Usage: " << progName << " stats [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Calculate statistics for numeric sensor data." << std::endl;
+        std::cerr << "Shows min, max, mean, median, and standard deviation for numeric columns." << std::endl;
+        std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "  -c, --column <name>       Analyze only this column (default: value)" << std::endl;
+        std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
+        std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
+        std::cerr << "  -v                        Verbose output" << std::endl;
+        std::cerr << "  -V                        Very verbose output" << std::endl;
+        std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
+        std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Examples:" << std::endl;
+        std::cerr << "  " << progName << " stats sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " stats < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " stats -c value < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " stats -f csv < sensor1.csv" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " stats" << std::endl;
+        std::cerr << "  " << progName << " stats -r -e .out /path/to/logs/" << std::endl;
+        std::cerr << "  " << progName << " stats sensor1.csv sensor2.out" << std::endl;
+    }
+};
+
 void printUsage(const char* progName) {
     std::cerr << "Usage: " << progName << " <command> [options]" << std::endl;
     std::cerr << std::endl;
@@ -1685,6 +2084,7 @@ void printUsage(const char* progName) {
     std::cerr << "  convert           Convert JSON or CSV sensor data files to CSV" << std::endl;
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
+    std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
     std::cerr << std::endl;
     std::cerr << "For command-specific help, use:" << std::endl;
     std::cerr << "  " << progName << " <command> --help" << std::endl;
@@ -1748,6 +2148,25 @@ int main(int argc, char* argv[]) {
             
             ErrorSummarizer summarizer(newArgc, newArgv);
             summarizer.summariseErrors();
+            
+            delete[] newArgv;
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if (command == "stats") {
+        try {
+            // Create new argv for stats analyzer (skip "stats" command)
+            int newArgc = argc - 1;
+            char** newArgv = new char*[newArgc];
+            newArgv[0] = argv[0];  // program name
+            for (int i = 2; i < argc; ++i) {
+                newArgv[i - 1] = argv[i];
+            }
+            
+            StatsAnalyzer analyzer(newArgc, newArgv);
+            analyzer.analyze();
             
             delete[] newArgv;
             return 0;
