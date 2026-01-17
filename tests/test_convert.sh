@@ -257,6 +257,89 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 11a: Multi-object JSON array with sensor filter
+echo ""
+echo "Test 11a: Multi-object JSON array with sensor filter"
+result=$(echo '[ { "sensor": "ds18b20", "value": 22.5 }, { "sensor": "dht22", "value": 45 }, { "sensor": "ds18b20", "value": 23.0 } ]' | ./sensor-data convert -s ds18b20)
+# Should filter out dht22, keep both ds18b20 readings
+if echo "$result" | grep -q '"sensor":"ds18b20"' && ! echo "$result" | grep -q '"sensor":"dht22"'; then
+    count=$(echo "$result" | grep -o '"sensor":"ds18b20"' | wc -l | tr -d ' ')
+    if [ "$count" -eq 2 ]; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL - Expected 2 ds18b20 readings, got $count"
+        FAILED=$((FAILED + 1))
+    fi
+else
+    echo "  ✗ FAIL - Expected only ds18b20 sensors"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 11b: Multi-object JSON array with --remove-errors
+echo ""
+echo "Test 11b: Multi-object JSON array with --remove-errors"
+result=$(echo '[ { "sensor": "ds18b20", "value": "85" }, { "sensor": "ds18b20", "value": "22.5" }, { "sensor": "ds18b20", "value": "-127" } ]' | ./sensor-data convert --remove-errors)
+# Should filter out error values 85 and -127, keep only 22.5
+if echo "$result" | grep -q '"value":"22.5"' && ! echo "$result" | grep -q '"value":"85"' && ! echo "$result" | grep -q '"value":"-127"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only valid reading (22.5)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 11c: Multi-object JSON array with --only-value filter
+echo ""
+echo "Test 11c: Multi-object JSON array with --only-value filter"
+result=$(echo '[ { "sensor": "ds18b20", "value": "22.5" }, { "sensor": "ds18b20", "value": "23.0" }, { "sensor": "ds18b20", "value": "22.5" } ]' | ./sensor-data convert --only-value value:22.5)
+# Should keep only readings with value=22.5
+count=$(echo "$result" | grep -o '"value":"22.5"' | wc -l | tr -d ' ')
+if [ "$count" -eq 2 ] && ! echo "$result" | grep -q '"value":"23.0"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings with value=22.5"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 11d: Multi-object JSON array where all objects filtered out
+echo ""
+echo "Test 11d: Multi-object JSON array where all objects filtered out"
+result=$(echo '[ { "sensor": "dht22", "value": "45" }, { "sensor": "bmp280", "value": "1013" } ]' | ./sensor-data convert -s ds18b20)
+# Should produce empty output when all objects are filtered
+if [ -z "$result" ] || [ "$result" = "[]" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected empty output"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 11e: Multiple multi-object JSON lines with filter
+echo ""
+echo "Test 11e: Multiple multi-object JSON lines with filter"
+result=$(cat <<'EOF' | ./sensor-data convert -s ds18b20
+[ { "sensor": "ds18b20", "value": "22.5" }, { "sensor": "dht22", "value": "45" } ]
+[ { "sensor": "bmp280", "value": "1013" }, { "sensor": "ds18b20", "value": "23.0" } ]
+[ { "sensor": "dht22", "value": "50" } ]
+EOF
+)
+# Should filter to 2 output lines (one from each line that has ds18b20), third line fully filtered
+count=$(echo "$result" | grep -c "ds18b20" || true)
+if [ "$count" -eq 2 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 lines with ds18b20, got $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Test 12: CSV input to JSON output
 echo ""
 echo "Test 12: CSV input to JSON output"
