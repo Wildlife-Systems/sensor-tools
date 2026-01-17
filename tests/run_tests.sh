@@ -106,5 +106,11 @@ bash tests/test_stats.sh
 
 echo ""
 echo "================================"
+echo "Running CSV Input Tests"
+echo "================================"
+bash tests/test_csv_input.sh
+
+echo ""
+echo "================================"
 echo "All tests passed!"
 echo "================================"
