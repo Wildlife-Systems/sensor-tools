@@ -273,7 +273,7 @@ echo "--- List-errors command tests ---"
 echo ""
 echo "Test: List-errors on single CSV file"
 result=$(./sensor-data list-errors "$TESTDIR/errors.csv")
-if echo "$result" | grep -q "85" && echo "$result" | grep -q "-127"; then
+if echo "$result" | grep -q "value=85" && echo "$result" | grep -q "value=-127"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
@@ -313,7 +313,7 @@ fi
 echo ""
 echo "Test: List-errors on CSV directory"
 result=$(./sensor-data list-errors "$TESTDIR")
-if echo "$result" | grep -q "85" && echo "$result" | grep -q "-127"; then
+if echo "$result" | grep -q "value=85" && echo "$result" | grep -q "value=-127"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
@@ -425,7 +425,7 @@ mkdir -p "$TESTDIR/emptydir"
 echo ""
 echo "Test: Directory with no CSV files"
 result=$(./sensor-data convert "$TESTDIR/emptydir" 2>&1) || true
-if [ -z "$result" ] || echo "$result" | grep -qi "no.*file\|empty"; then
+if [ -z "$result" ] || echo "$result" | grep -qi "no.*file\|empty\|no input"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
