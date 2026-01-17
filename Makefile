@@ -23,7 +23,7 @@ all: $(TARGET)
 
 # Build main application
 $(TARGET): $(LIB_OBJECTS) $(SOURCES)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LIB_OBJECTS) $(LDFLAGS)
 
 # Build and run tests
 test: $(LIB_OBJECTS)

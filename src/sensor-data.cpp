@@ -21,197 +21,10 @@
 #include <dirent.h>
 #endif
 
-// CSV parser for sensor data
-class CsvParser {
-public:
-    // Parse CSV line considering proper escaping and quoting
-    // Note: This parser handles multi-line fields by reading additional lines when needed
-    static std::vector<std::string> parseCsvLine(std::istream& input, std::string& line, bool& needMoreLines) {
-        std::vector<std::string> fields;
-        std::string current;
-        bool inQuotes = false;
-        needMoreLines = false;
-        
-        while (true) {
-            for (size_t i = 0; i < line.length(); ++i) {
-                char c = line[i];
-                
-                if (inQuotes) {
-                    if (c == '"') {
-                        // Check if it's an escaped quote
-                        if (i + 1 < line.length() && line[i + 1] == '"') {
-                            current += '"';
-                            ++i;  // Skip next quote
-                        } else {
-                            inQuotes = false;
-                        }
-                    } else {
-                        current += c;
-                    }
-                } else {
-                    if (c == '"') {
-                        inQuotes = true;
-                    } else if (c == ',') {
-                        fields.push_back(current);
-                        current.clear();
-                    } else if (c != '\r') {  // Ignore CR in CRLF
-                        current += c;
-                    }
-                }
-            }
-            
-            // If we're still in quotes, we need to read more lines
-            if (inQuotes) {
-                current += '\n';  // Add newline that was consumed by getline
-                if (std::getline(input, line)) {
-                    needMoreLines = true;
-                    continue;  // Continue parsing with the next line
-                } else {
-                    // End of file while in quotes - malformed CSV
-                    break;
-                }
-            } else {
-                break;  // Done parsing this logical line
-            }
-        }
-        
-        fields.push_back(current);
-        needMoreLines = false;
-        return fields;
-    }
-    
-    // Simpler version for single-line parsing (backwards compatibility)
-    static std::vector<std::string> parseCsvLine(const std::string& line) {
-        std::vector<std::string> fields;
-        std::string current;
-        bool inQuotes = false;
-        
-        for (size_t i = 0; i < line.length(); ++i) {
-            char c = line[i];
-            
-            if (inQuotes) {
-                if (c == '"') {
-                    // Check if it's an escaped quote
-                    if (i + 1 < line.length() && line[i + 1] == '"') {
-                        current += '"';
-                        ++i;  // Skip next quote
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    current += c;
-                }
-            } else {
-                if (c == '"') {
-                    inQuotes = true;
-                } else if (c == ',') {
-                    fields.push_back(current);
-                    current.clear();
-                } else if (c != '\r') {  // Ignore CR in CRLF
-                    current += c;
-                }
-            }
-        }
-        
-        fields.push_back(current);
-        return fields;
-    }
-};
-
-// Simple JSON parser for sensor data
-class JsonParser {
-public:
-    static std::vector<std::map<std::string, std::string>> parseJsonLine(const std::string& line) {
-        std::vector<std::map<std::string, std::string>> readings;
-        
-        // Find the main object or array
-        size_t start = line.find('{');
-        if (start == std::string::npos) {
-            start = line.find('[');
-        }
-        
-        if (start == std::string::npos) {
-            return readings;
-        }
-        
-        // Simple JSON parsing - looks for key-value pairs
-        std::map<std::string, std::string> current;
-        size_t pos = start;
-        
-        while (pos < line.length()) {
-            // Find key
-            size_t keyStart = line.find('"', pos);
-            if (keyStart == std::string::npos) break;
-            
-            size_t keyEnd = line.find('"', keyStart + 1);
-            if (keyEnd == std::string::npos) break;
-            
-            std::string key = line.substr(keyStart + 1, keyEnd - keyStart - 1);
-            
-            // Find colon
-            size_t colon = line.find(':', keyEnd);
-            if (colon == std::string::npos) break;
-            
-            // Find value
-            size_t valueStart = colon + 1;
-            while (valueStart < line.length() && isspace(line[valueStart])) valueStart++;
-            
-            std::string value;
-            if (line[valueStart] == '"') {
-                // String value
-                size_t valueEnd = line.find('"', valueStart + 1);
-                if (valueEnd == std::string::npos) break;
-                // Reserve space to reduce allocations
-                value.reserve(valueEnd - valueStart - 1);
-                value = line.substr(valueStart + 1, valueEnd - valueStart - 1);
-                pos = valueEnd + 1;
-            } else if (line[valueStart] == '[') {
-                // Array - this might contain sensor readings
-                size_t bracketEnd = line.find(']', valueStart);
-                if (bracketEnd == std::string::npos) break;
-                
-                // If we have accumulated data and hit an array, might be multiple readings
-                if (!current.empty() && key == "readings") {
-                    // Parse array of readings
-                    value.reserve(bracketEnd - valueStart - 1);
-                    value = line.substr(valueStart + 1, bracketEnd - valueStart - 1);
-                }
-                pos = bracketEnd + 1;
-            } else {
-                // Numeric or other value
-                size_t valueEnd = line.find_first_of(",}]", valueStart);
-                if (valueEnd == std::string::npos) valueEnd = line.length();
-                value = line.substr(valueStart, valueEnd - valueStart);
-                // Trim whitespace - optimize by finding actual end first
-                size_t end = value.find_last_not_of(" \t\n\r");
-                if (end != std::string::npos) value = value.substr(0, end + 1);
-                pos = valueEnd;
-            }
-            
-            current[key] = value;
-            
-            // Check if we hit end of object
-            if (pos < line.length() && line[pos] == '}') {
-                if (!current.empty()) {
-                    readings.push_back(current);
-                    current.clear();
-                }
-                pos++;
-            }
-        }
-        
-        if (!current.empty()) {
-            readings.push_back(current);
-        }
-        
-        // If no readings found, return empty
-        if (readings.empty()) {
-            readings.push_back(current);
-        }
-        
-        return readings;
-    }
-};
+#include "csv_parser.h"
+#include "json_parser.h"
+#include "error_detector.h"
+#include "file_utils.h"
 
 class SensorDataConverter {
 private:
@@ -229,54 +42,6 @@ private:
     std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
-    
-    // Helper to detect if a reading contains an error
-    bool isErrorReading(const std::map<std::string, std::string>& reading) {
-        // Check for DS18B20 sensor error (temperature = 85)
-        auto typeIt = reading.find("type");
-        auto valueIt = reading.find("value");
-        auto tempIt = reading.find("temperature");
-        
-        // Check if type is ds18b20 or DS18B20 (case insensitive check)
-        bool isDS18B20 = false;
-        if (typeIt != reading.end()) {
-            std::string type = typeIt->second;
-            std::transform(type.begin(), type.end(), type.begin(), ::tolower);
-            isDS18B20 = (type == "ds18b20");
-        }
-        
-        if (isDS18B20) {
-            // Check value field
-            if (valueIt != reading.end() && valueIt->second == "85") {
-                return true;
-            }
-            // Also check temperature field as fallback
-            if (tempIt != reading.end() && tempIt->second == "85") {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    // Helper to detect if a file is CSV based on extension
-    bool isCsvFile(const std::string& filename) {
-        size_t dotPos = filename.find_last_of('.');
-        if (dotPos == std::string::npos) {
-            return false;
-        }
-        std::string ext = filename.substr(dotPos);
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        return ext == ".csv";
-    }
-    
-    bool isDirectory(const std::string& path) {
-        struct stat info;
-        if (stat(path.c_str(), &info) != 0) {
-            return false;
-        }
-        return (info.st_mode & S_IFDIR) != 0;
-    }
     
     bool matchesExtension(const std::string& filename) {
         if (extensionFilter.empty()) {
@@ -398,7 +163,7 @@ private:
             std::string filename = entry->d_name;
             if (filename != "." && filename != "..") {
                 std::string fullPath = dirPath + "/" + filename;
-                if (isDirectory(fullPath)) {
+                if (FileUtils::isDirectory(fullPath)) {
                     if (recursive) {
                         collectFilesFromDirectory(fullPath, currentDepth + 1);
                     }
@@ -434,7 +199,7 @@ private:
         std::string line;
         
         // Check if this is a CSV file
-        if (isCsvFile(filename)) {
+        if (FileUtils::isCsvFile(filename)) {
             // CSV format - first line is header
             if (std::getline(infile, line) && !line.empty()) {
                 auto fields = CsvParser::parseCsvLine(line);
@@ -486,7 +251,7 @@ private:
         std::string line;
         
         // Check if this is a CSV file
-        if (isCsvFile(filename)) {
+        if (FileUtils::isCsvFile(filename)) {
             // CSV format - first line is header
             std::vector<std::string> csvHeaders;
             if (std::getline(infile, line) && !line.empty()) {
@@ -555,7 +320,7 @@ private:
                 }
                 
                 // Check for error readings
-                if (removeErrors && isErrorReading(reading)) {
+                if (removeErrors && ErrorDetector::isErrorReading(reading)) {
                     if (verbosity >= 2) {
                         std::cout << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
                     }
@@ -641,7 +406,7 @@ private:
                     }
                     
                     // Check for error readings
-                    if (removeErrors && isErrorReading(reading)) {
+                    if (removeErrors && ErrorDetector::ErrorDetector::isErrorReading(reading)) {
                         if (verbosity >= 2) {
                             std::cout << "  Skipping error reading (DS18B20 temperature=85)" << std::endl;
                         }
@@ -771,7 +536,7 @@ public:
                 exit(1);
             } else {
                 // It's a file or directory path
-                if (isDirectory(arg)) {
+                if (FileUtils::isDirectory(arg)) {
                     collectFilesFromDirectory(arg);
                 } else {
                     inputFiles.push_back(arg);
@@ -939,25 +704,6 @@ private:
     int maxDepth;
     int verbosity;
     
-    // Helper to detect if a file is CSV based on extension
-    bool isCsvFile(const std::string& filename) {
-        size_t dotPos = filename.find_last_of('.');
-        if (dotPos == std::string::npos) {
-            return false;
-        }
-        std::string ext = filename.substr(dotPos);
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        return ext == ".csv";
-    }
-    
-    bool isDirectory(const std::string& path) {
-        struct stat info;
-        if (stat(path.c_str(), &info) != 0) {
-            return false;
-        }
-        return (info.st_mode & S_IFDIR) != 0;
-    }
-    
     bool matchesExtension(const std::string& filename) {
         if (extensionFilter.empty()) {
             return true;
@@ -968,35 +714,6 @@ private:
         }
         std::string ext = filename.substr(dotPos);
         return ext == extensionFilter;
-    }
-    
-    // Helper to detect if a reading contains an error
-    bool isErrorReading(const std::map<std::string, std::string>& reading) {
-        // Check for DS18B20 sensor error (temperature = 85)
-        auto typeIt = reading.find("type");
-        auto valueIt = reading.find("value");
-        auto tempIt = reading.find("temperature");
-        
-        // Check if type is ds18b20 or DS18B20 (case insensitive check)
-        bool isDS18B20 = false;
-        if (typeIt != reading.end()) {
-            std::string type = typeIt->second;
-            std::transform(type.begin(), type.end(), type.begin(), ::tolower);
-            isDS18B20 = (type == "ds18b20");
-        }
-        
-        if (isDS18B20) {
-            // Check value field
-            if (valueIt != reading.end() && valueIt->second == "85") {
-                return true;
-            }
-            // Also check temperature field as fallback
-            if (tempIt != reading.end() && tempIt->second == "85") {
-                return true;
-            }
-        }
-        
-        return false;
     }
     
     void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
@@ -1055,7 +772,7 @@ private:
             std::string filename = entry->d_name;
             if (filename != "." && filename != "..") {
                 std::string fullPath = dirPath + "/" + filename;
-                if (isDirectory(fullPath)) {
+                if (FileUtils::isDirectory(fullPath)) {
                     if (recursive) {
                         collectFilesFromDirectory(fullPath, currentDepth + 1);
                     }
@@ -1089,7 +806,7 @@ private:
         int lineNum = 0;
         
         // Check if this is a CSV file
-        if (isCsvFile(filename)) {
+        if (FileUtils::isCsvFile(filename)) {
             // CSV format
             std::vector<std::string> csvHeaders;
             if (std::getline(infile, line) && !line.empty()) {
@@ -1112,16 +829,16 @@ private:
                     reading[csvHeaders[i]] = fields[i];
                 }
                 
-                if (isErrorReading(reading)) {
+                if (ErrorDetector::isErrorReading(reading)) {
                     std::cout << filename << ":" << lineNum;
                     // Print relevant fields
-                    auto typeIt = reading.find("type");
+                    auto sensorIt = reading.find("sensor");
                     auto valueIt = reading.find("value");
                     auto tempIt = reading.find("temperature");
                     auto idIt = reading.find("sensor_id");
                     auto nameIt = reading.find("name");
                     
-                    if (typeIt != reading.end()) std::cout << " type=" << typeIt->second;
+                    if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
                     if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
                     if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                     if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
@@ -1130,7 +847,7 @@ private:
                 }
             }
         } else {
-            // JSON format
+            // JSON format - parseJsonLine now handles both single objects and arrays
             while (std::getline(infile, line)) {
                 lineNum++;
                 if (line.empty()) continue;
@@ -1139,16 +856,16 @@ private:
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
                     
-                    if (isErrorReading(reading)) {
+                    if (ErrorDetector::isErrorReading(reading)) {
                         std::cout << filename << ":" << lineNum;
                         // Print relevant fields
-                        auto typeIt = reading.find("type");
+                        auto sensorIt = reading.find("sensor");
                         auto valueIt = reading.find("value");
                         auto tempIt = reading.find("temperature");
                         auto idIt = reading.find("sensor_id");
                         auto nameIt = reading.find("name");
                         
-                        if (typeIt != reading.end()) std::cout << " type=" << typeIt->second;
+                        if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
                         if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
                         if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
                         if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
@@ -1208,7 +925,7 @@ public:
                 exit(1);
             } else {
                 // It's a file or directory path
-                if (isDirectory(arg)) {
+                if (FileUtils::isDirectory(arg)) {
                     collectFilesFromDirectory(arg);
                 } else {
                     inputFiles.push_back(arg);
