@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "sensor_data_converter.h"
 #include "error_lister.h"
@@ -56,16 +57,15 @@ int main(int argc, char* argv[]) {
         try {
             // Create new argv for converter (skip "convert" command)
             int newArgc = argc - 1;
-            char** newArgv = new char*[newArgc];
+            std::vector<char*> newArgv(newArgc);
             newArgv[0] = argv[0];  // program name
             for (int i = 2; i < argc; ++i) {
                 newArgv[i - 1] = argv[i];
             }
             
-            SensorDataConverter converter(newArgc, newArgv);
+            SensorDataConverter converter(newArgc, newArgv.data());
             converter.convert();
             
-            delete[] newArgv;
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -75,16 +75,15 @@ int main(int argc, char* argv[]) {
         try {
             // Create new argv for error lister (skip "list-errors" command)
             int newArgc = argc - 1;
-            char** newArgv = new char*[newArgc];
+            std::vector<char*> newArgv(newArgc);
             newArgv[0] = argv[0];  // program name
             for (int i = 2; i < argc; ++i) {
                 newArgv[i - 1] = argv[i];
             }
             
-            ErrorLister lister(newArgc, newArgv);
+            ErrorLister lister(newArgc, newArgv.data());
             lister.listErrors();
             
-            delete[] newArgv;
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -94,16 +93,15 @@ int main(int argc, char* argv[]) {
         try {
             // Create new argv for error summarizer (skip "summarise-errors" command)
             int newArgc = argc - 1;
-            char** newArgv = new char*[newArgc];
+            std::vector<char*> newArgv(newArgc);
             newArgv[0] = argv[0];  // program name
             for (int i = 2; i < argc; ++i) {
                 newArgv[i - 1] = argv[i];
             }
             
-            ErrorSummarizer summarizer(newArgc, newArgv);
+            ErrorSummarizer summarizer(newArgc, newArgv.data());
             summarizer.summariseErrors();
             
-            delete[] newArgv;
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -113,24 +111,20 @@ int main(int argc, char* argv[]) {
         try {
             // Create new argv for stats analyzer (skip "stats" command)
             int newArgc = argc - 1;
-            char** newArgv = new char*[newArgc];
+            std::vector<char*> newArgv(newArgc);
             newArgv[0] = argv[0];  // program name
             for (int i = 2; i < argc; ++i) {
                 newArgv[i - 1] = argv[i];
             }
             
-            StatsAnalyser analyser(newArgc, newArgv);
+            StatsAnalyser analyser(newArgc, newArgv.data());
             analyser.analyze();
             
-            delete[] newArgv;
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
             return 1;
         }
-    } else if (command == "--help" || command == "-h") {
-        printUsage(argv[0]);
-        return 0;
     } else {
         std::cerr << "Error: Unknown command '" << command << "'" << std::endl;
         std::cerr << std::endl;

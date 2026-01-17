@@ -16,18 +16,6 @@ private:
     int maxDepth;
     int verbosity;
     
-    bool matchesExtension(const std::string& filename) const {
-        if (extensionFilter.empty()) {
-            return true;
-        }
-        size_t dotPos = filename.find_last_of('.');
-        if (dotPos == std::string::npos) {
-            return false;
-        }
-        std::string ext = filename.substr(dotPos);
-        return ext == extensionFilter;
-    }
-    
     void collectFromDirectory(const std::string& dirPath, int currentDepth = 0) {
         // Check depth limit
         if (maxDepth >= 0 && currentDepth > maxDepth) {
@@ -57,7 +45,7 @@ private:
                         collectFromDirectory(fullPath, currentDepth + 1);
                     }
                 } else {
-                    if (matchesExtension(filename)) {
+                    if (FileUtils::matchesExtension(filename, extensionFilter)) {
                         if (verbosity >= 2) {
                             std::cout << "  Found file: " << fullPath << std::endl;
                         }
