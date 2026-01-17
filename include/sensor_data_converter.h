@@ -601,6 +601,15 @@ private:
 
 public:
     SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
+        // Check for help flag first
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "--help" || arg == "-h") {
+                printConvertUsage(argv[0]);
+                exit(0);
+            }
+        }
+        
         // argc should be at least 1 for "convert": program (may read from stdin)
         if (argc < 1) {
             printConvertUsage(argv[0]);

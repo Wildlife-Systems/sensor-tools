@@ -23,6 +23,15 @@ private:
 
 public:
     ErrorLister(int argc, char* argv[]) {
+        // Check for help flag first
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "--help" || arg == "-h") {
+                printListErrorsUsage(argv[0]);
+                exit(0);
+            }
+        }
+        
         CommonArgParser parser;
         if (!parser.parse(argc, argv)) {
             exit(1);
@@ -34,7 +43,8 @@ public:
             if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
                 arg != "-v" && arg != "-V" && arg != "-f" && arg != "--format" &&
                 arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
-                arg != "--min-date" && arg != "--max-date") {
+                arg != "--min-date" && arg != "--max-date" &&
+                arg != "-h" && arg != "--help") {
                 // Check if previous arg was a flag that takes an argument
                 if (i > 1) {
                     std::string prev = argv[i-1];

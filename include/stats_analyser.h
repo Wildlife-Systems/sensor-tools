@@ -70,6 +70,15 @@ private:
     
 public:
     StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
+        // Check for help flag first
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "--help" || arg == "-h") {
+                printStatsUsage(argv[0]);
+                exit(0);
+            }
+        }
+        
         CommonArgParser parser;
         if (!parser.parse(argc, argv)) {
             exit(1);
@@ -97,7 +106,8 @@ public:
                 arg != "-v" && arg != "-V" && arg != "-f" && arg != "--format" &&
                 arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
                 arg != "-c" && arg != "--column" &&
-                arg != "--min-date" && arg != "--max-date") {
+                arg != "--min-date" && arg != "--max-date" &&
+                arg != "-h" && arg != "--help") {
                 if (i > 1) {
                     std::string prev = argv[i-1];
                     if (prev == "-f" || prev == "--format" || prev == "-e" || prev == "--extension" ||
