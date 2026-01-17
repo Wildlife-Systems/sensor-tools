@@ -20,6 +20,18 @@ fi
 PASSED=0
 FAILED=0
 
+# Test: list-errors --help shows usage
+echo "Test: list-errors --help shows usage"
+result=$(./sensor-data list-errors --help 2>&1) || true
+if echo "$result" | grep -q -i "list-errors\|error\|usage"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected list-errors help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Helper function to run a test
 run_test() {
     local test_name="$1"
@@ -192,6 +204,129 @@ else
     FAILED=$((FAILED + 1))
 fi
 rm -f /tmp/test_error_redirect.txt
+
+# Test 11: Unknown option should fail
+echo ""
+echo "Test 11: Unknown option (--unknown)"
+result=$(echo '{"sensor":"ds18b20","value":"85"}' | ./sensor-data list-errors --unknown 2>&1) && exit_code=$? || exit_code=$?
+if [ $exit_code -ne 0 ] && echo "$result" | grep -q "Unknown option"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected error for unknown option"
+    echo "  Exit code: $exit_code"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 12: Unknown short option should fail
+echo ""
+echo "Test 12: Unknown short option (-x)"
+result=$(echo '{"sensor":"ds18b20","value":"85"}' | ./sensor-data list-errors -x 2>&1) && exit_code=$? || exit_code=$?
+if [ $exit_code -ne 0 ] && echo "$result" | grep -q "Unknown option"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected error for unknown option"
+    echo "  Exit code: $exit_code"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 13: Known options should work (-v verbose)
+echo ""
+echo "Test 13: Known option -v (verbose)"
+result=$(echo '{"sensor":"ds18b20","value":"85"}' | ./sensor-data list-errors -v 2>&1)
+if echo "$result" | grep -q "communication error"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14: Known option with argument (-f csv)
+echo ""
+echo "Test 14: Known option with argument (-f csv)"
+result=$(cat <<'EOF' | ./sensor-data list-errors -f csv 2>&1
+sensor,value,sensor_id
+ds18b20,85,001
+EOF
+)
+if echo "$result" | grep -q "communication error"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 15: Argument to known flag should not be treated as unknown option
+echo ""
+echo "Test 15: Format argument 'csv' not treated as unknown"
+result=$(cat <<'EOF' | ./sensor-data list-errors -f csv 2>&1
+sensor,value,sensor_id
+ds18b20,85,001
+EOF
+)
+# Should NOT contain "Unknown option" error
+if echo "$result" | grep -q "Unknown option"; then
+    echo "  ✗ FAIL - 'csv' was incorrectly treated as unknown option"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+else
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+fi
+
+# Test 16: Date filter arguments not treated as unknown
+echo ""
+echo "Test 16: Date filter argument not treated as unknown"
+result=$(echo '{"sensor":"ds18b20","value":"85","timestamp":"2026-01-15T10:00:00"}' | ./sensor-data list-errors --min-date 2026-01-01 2>&1)
+if echo "$result" | grep -q "Unknown option"; then
+    echo "  ✗ FAIL - Date argument incorrectly treated as unknown option"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+else
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+fi
+
+# Test 17: Extension filter argument not treated as unknown
+echo ""
+echo "Test 17: Extension filter argument not treated as unknown"
+cat <<'EOF' > /tmp/test_ext.out
+{"sensor":"ds18b20","value":"85"}
+EOF
+result=$(./sensor-data list-errors -e .out /tmp/ 2>&1)
+# Should not show "Unknown option" for ".out"
+if echo "$result" | grep -q "Unknown option"; then
+    echo "  ✗ FAIL - Extension argument incorrectly treated as unknown option"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+else
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+fi
+rm -f /tmp/test_ext.out
+
+# Test 18: Depth argument not treated as unknown
+echo ""
+echo "Test 18: Depth argument not treated as unknown"
+mkdir -p /tmp/testdir_depth
+echo '{"sensor":"ds18b20","value":"85"}' > /tmp/testdir_depth/test.out
+result=$(./sensor-data list-errors -r -d 1 -e .out /tmp/testdir_depth/ 2>&1)
+if echo "$result" | grep -q "Unknown option"; then
+    echo "  ✗ FAIL - Depth argument incorrectly treated as unknown option"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+else
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+fi
+rm -rf /tmp/testdir_depth
 
 # Summary
 echo ""

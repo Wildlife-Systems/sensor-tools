@@ -16,6 +16,57 @@ fi
 PASSED=0
 FAILED=0
 
+# Test: No arguments shows help
+echo "Test: No arguments shows help"
+result=$(./sensor-data 2>&1) || true
+if echo "$result" | grep -q -i "usage\|Usage\|USAGE"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected usage/help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Unknown command shows help
+echo ""
+echo "Test: Unknown command shows help"
+result=$(./sensor-data unknown-command 2>&1) || true
+if echo "$result" | grep -q -i "usage\|Usage\|USAGE\|Unknown command"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected usage/help or unknown command message"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: help flag shows help
+echo ""
+echo "Test: --help flag shows help"
+result=$(./sensor-data --help 2>&1) || true
+if echo "$result" | grep -q -i "usage\|Usage\|USAGE"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected usage/help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: convert --help shows convert help
+echo ""
+echo "Test: convert --help shows convert usage"
+result=$(./sensor-data convert --help 2>&1) || true
+if echo "$result" | grep -q -i "convert"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected convert help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Test 1: JSON passthrough (no filtering)
 echo "Test 1: JSON passthrough (no filtering)"
 input='[ { "sensor": "ds18b20", "value": 22.5 } ]'

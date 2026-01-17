@@ -20,6 +20,18 @@ fi
 PASSED=0
 FAILED=0
 
+# Test: stats --help shows usage
+echo "Test: stats --help shows usage"
+result=$(./sensor-data stats --help 2>&1) || true
+if echo "$result" | grep -q -i "stats\|usage"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected stats help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Test 1: Basic statistics
 echo "Test 1: Basic statistics (default: value column only)"
 result=$(cat <<'EOF' | ./sensor-data stats

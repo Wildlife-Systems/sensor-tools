@@ -20,6 +20,18 @@ fi
 PASSED=0
 FAILED=0
 
+# Test: summarise-errors --help shows usage
+echo "Test: summarise-errors --help shows usage"
+result=$(./sensor-data summarise-errors --help 2>&1) || true
+if echo "$result" | grep -q -i "summari\|error\|usage"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected summarise-errors help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Test 1: JSON stdin with multiple error types
 echo "Test 1: JSON stdin with multiple error types"
 result=$(cat <<'EOF' | ./sensor-data summarise-errors
