@@ -1,8 +1,6 @@
 #include "file_utils.h"
 #include <sys/stat.h>
 #include <algorithm>
-#include <iostream>
-#include <dirent.h>
 
 bool FileUtils::isDirectory(const std::string& path) {
     struct stat info;
@@ -32,53 +30,4 @@ bool FileUtils::matchesExtension(const std::string& filename, const std::string&
     }
     std::string ext = filename.substr(dotPos);
     return ext == extensionFilter;
-}
-
-void FileUtils::collectFilesFromDirectory(const std::string& dirPath, 
-                                         std::vector<std::string>& files,
-                                         bool recursive,
-                                         const std::string& extensionFilter,
-                                         int maxDepth,
-                                         int currentDepth,
-                                         int verbosity) {
-    // Check depth limit
-    if (maxDepth >= 0 && currentDepth > maxDepth) {
-        if (verbosity >= 2) {
-            std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
-        }
-        return;
-    }
-    
-    if (verbosity >= 1) {
-        std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
-    }
-    
-    DIR* dir = opendir(dirPath.c_str());
-    if (!dir) {
-        std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
-        return;
-    }
-    
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        std::string filename = entry->d_name;
-        if (filename != "." && filename != "..") {
-            std::string fullPath = dirPath + "/" + filename;
-            if (isDirectory(fullPath)) {
-                if (recursive) {
-                    collectFilesFromDirectory(fullPath, files, recursive, extensionFilter, maxDepth, currentDepth + 1, verbosity);
-                }
-            } else {
-                if (matchesExtension(filename, extensionFilter)) {
-                    if (verbosity >= 2) {
-                        std::cout << "  Found file: " << fullPath << std::endl;
-                    }
-                    files.push_back(fullPath);
-                } else if (verbosity >= 2 && !extensionFilter.empty()) {
-                    std::cout << "  Skipping (extension): " << fullPath << std::endl;
-                }
-            }
-        }
-    }
-    closedir(dir);
 }
