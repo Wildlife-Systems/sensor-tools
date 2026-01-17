@@ -129,6 +129,8 @@ private:
     int numThreads;
     bool usePrototype;
     std::set<std::string> notEmptyColumns;  // Columns that must not be empty
+    std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering
+    int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     
     bool isDirectory(const std::string& path) {
         struct stat info;
