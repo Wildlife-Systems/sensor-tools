@@ -4,7 +4,7 @@
 
 void test_ds18b20_error_detection() {
     std::map<std::string, std::string> reading;
-    reading["type"] = "ds18b20";
+    reading["sensor"] = "ds18b20";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
     
@@ -14,7 +14,7 @@ void test_ds18b20_error_detection() {
 
 void test_ds18b20_valid_reading() {
     std::map<std::string, std::string> reading;
-    reading["type"] = "ds18b20";
+    reading["sensor"] = "ds18b20";
     reading["value"] = "22.5";
     reading["sensor_id"] = "sensor001";
     
@@ -24,7 +24,7 @@ void test_ds18b20_valid_reading() {
 
 void test_ds18b20_case_insensitive() {
     std::map<std::string, std::string> reading;
-    reading["type"] = "DS18B20";
+    reading["sensor"] = "DS18B20";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
     
@@ -34,7 +34,7 @@ void test_ds18b20_case_insensitive() {
 
 void test_temperature_field() {
     std::map<std::string, std::string> reading;
-    reading["type"] = "ds18b20";
+    reading["sensor"] = "ds18b20";
     reading["temperature"] = "85";
     reading["sensor_id"] = "sensor001";
     
@@ -44,7 +44,7 @@ void test_temperature_field() {
 
 void test_non_ds18b20_sensor() {
     std::map<std::string, std::string> reading;
-    reading["type"] = "dht22";
+    reading["sensor"] = "dht22";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
     
