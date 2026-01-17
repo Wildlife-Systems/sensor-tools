@@ -89,16 +89,24 @@ sensor-data convert --use-prototype -r -e .out /path/to/sensor/logs/ output.csv
 # Skip rows where specific columns are empty
 sensor-data convert --not-empty unit --not-empty value -e .out /path/to/logs/ output.csv
 
+# Verbose output showing progress
+sensor-data convert -v -r -e .out /path/to/logs/ output.csv
+
+# Very verbose output showing detailed file operations
+sensor-data convert -V -r -e .out /path/to/logs/ output.csv
+
 # Mixed input
 sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 ```
 
 **Options:**
 - `-r, --recursive` - Recursively process subdirectories
+- `-v` - Verbose output (show file progress and configuration)
+- `-V` - Very verbose output (show detailed progress including files found/skipped and row filtering)
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out` or `out`)
 - `-d, --depth <n>` - Maximum recursion depth (0 = current directory only, default = unlimited)
 - `--use-prototype` - Use `sc-prototype` command to define columns (skips column discovery pass and filters to only prototype columns)
-- `--not-empty <column>` - Skip rows where the specified column is empty or missing (can be specified multiple times for multiple columns)
+- `--not-empty <column>` - Skip rows where the specified column is missing or empty (can be used multiple times)
 
 **Using `--use-prototype`:**
 

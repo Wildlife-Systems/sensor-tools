@@ -205,7 +205,14 @@ private:
     void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
         // Check depth limit
         if (maxDepth >= 0 && currentDepth > maxDepth) {
+            if (verbosity >= 2) {
+                std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
+            }
             return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
         }
         
 #ifdef _WIN32
@@ -227,7 +234,12 @@ private:
                     }
                 } else {
                     if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
                         inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
                     }
                 }
             }
@@ -252,7 +264,12 @@ private:
                     }
                 } else {
                     if (matchesExtension(filename)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
                         inputFiles.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
                     }
                 }
             }
@@ -263,6 +280,10 @@ private:
     
     // First pass: collect all column names from a file (thread-safe)
     void collectKeysFromFile(const std::string& filename) {
+        if (verbosity >= 2) {
+            std::cout << "Collecting keys from: " << filename << std::endl;
+        }
+        
         std::ifstream infile(filename);
         if (!infile) {
             std::cerr << "Warning: Cannot open file: " << filename << std::endl;
@@ -286,6 +307,9 @@ private:
         {
             std::lock_guard<std::mutex> lock(keysMutex);
             allKeys.insert(localKeys.begin(), localKeys.end());
+            if (verbosity >= 2) {
+                std::cout << "  Collected " << allKeys.size() << " unique keys so far" << std::endl;
+            }
         }
         
         infile.close();
@@ -294,6 +318,10 @@ private:
     // Second pass: write rows from a file directly to CSV (not thread-safe, called sequentially)
     void writeRowsFromFile(const std::string& filename, std::ofstream& outfile, 
                            const std::vector<std::string>& headers) {
+        if (verbosity >= 1) {
+            std::cout << "Processing file: " << filename << std::endl;
+        }
+        
         std::ifstream infile(filename);
         if (!infile) {
             std::cerr << "Warning: Cannot open file: " << filename << std::endl;
@@ -310,15 +338,24 @@ private:
                 
                 // Check if any required columns are empty
                 bool skipRow = false;
+                std::string skipReason;
                 for (const auto& reqCol : notEmptyColumns) {
                     auto it = reading.find(reqCol);
                     if (it == reading.end() || it->second.empty()) {
                         skipRow = true;
+                        if (verbosity >= 2) {
+                            skipReason = it == reading.end() ? "missing column '" + reqCol + "'" : "empty column '" + reqCol + "'";
+                        }
                         break;
                     }
                 }
                 
-                if (skipRow) continue;
+                if (skipRow) {
+                    if (verbosity >= 2) {
+                        std::cout << "  Skipping row: " << skipReason << std::endl;
+                    }
+                    continue;
+                }
                 
                 // Write row
                 for (size_t i = 0; i < headers.size(); ++i) {
@@ -347,11 +384,16 @@ private:
             }
         }
         
+        if (verbosity >= 2) {
+            std::lock_guard<std::mutex> lock(keysMutex);
+            std::cout << "  Collected " << allKeys.size() << " unique keys so far" << std::endl;
+        }
+        
         infile.close();
     }
     
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false) {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0) {
         // argc should be at least 3 for "convert": program convert input output
         if (argc < 3) {
             printConvertUsage(argv[0]);
@@ -370,6 +412,10 @@ public:
             
             if (arg == "-r" || arg == "--recursive") {
                 recursive = true;
+            } else if (arg == "-v") {
+                verbosity = 1;  // verbose
+            } else if (arg == "-V") {
+                verbosity = 2;  // very verbose
             } else if (arg == "--use-prototype") {
                 usePrototype = true;
             } else if (arg == "-e" || arg == "--extension") {
@@ -435,6 +481,27 @@ public:
         if (inputFiles.empty()) {
             std::cerr << "Error: No input files to process" << std::endl;
             return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cout << "Starting conversion with verbosity level " << verbosity << std::endl;
+            std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+            if (!extensionFilter.empty()) {
+                std::cout << "Extension filter: " << extensionFilter << std::endl;
+            }
+            if (maxDepth >= 0) {
+                std::cout << "Max depth: " << maxDepth << std::endl;
+            }
+            if (!notEmptyColumns.empty()) {
+                std::cout << "Required non-empty columns: ";
+                bool first = true;
+                for (const auto& col : notEmptyColumns) {
+                    if (!first) std::cout << ", ";
+                    std::cout << col;
+                    first = false;
+                }
+                std::cout << std::endl;
+            }
         }
         
         std::cout << "Processing " << inputFiles.size() << " file(s)..." << std::endl;
@@ -516,6 +583,8 @@ public:
         std::cerr << std::endl;
         std::cerr << "Options:" << std::endl;
         std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
+        std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
+        std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
         std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
         std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
         std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
