@@ -155,10 +155,11 @@ private:
         std::string result;
         
         // Execute sc-prototype command
+        FILE* pipe = nullptr;
 #ifdef _WIN32
-        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen("sc-prototype", "r"), _pclose);
+        pipe = _popen("sc-prototype", "r");
 #else
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("sc-prototype", "r"), pclose);
+        pipe = popen("sc-prototype", "r");
 #endif
         
         if (!pipe) {
@@ -167,9 +168,16 @@ private:
         }
         
         // Read output
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
             result += buffer.data();
         }
+        
+        // Close pipe
+#ifdef _WIN32
+        _pclose(pipe);
+#else
+        pclose(pipe);
+#endif
         
         if (result.empty()) {
             std::cerr << "Error: sc-prototype returned no output" << std::endl;
