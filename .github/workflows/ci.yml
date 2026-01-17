@@ -101,6 +101,43 @@ jobs:
         ./sensor-data convert < test_stdin.out | grep -q "bme280"
         rm test_stdin.out
     
+    - name: Integration Test - Directory traversal (non-recursive)
+      run: |
+        mkdir -p testdir
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/file2.out
+        echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/file3.txt
+        ./sensor-data convert -e .out testdir/ -o output.csv
+        grep -c "ds18b20" output.csv | grep -q "2"
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Directory traversal (recursive)
+      run: |
+        mkdir -p testdir/subdir1/subdir2
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
+        echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
+        ./sensor-data convert -r -e .out testdir/ -o output.csv
+        grep -c "ds18b20" output.csv | grep -q "3"
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Directory traversal (depth limit)
+      run: |
+        mkdir -p testdir/subdir1/subdir2
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
+        echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
+        ./sensor-data convert -r -d 1 -e .out testdir/ -o output.csv
+        grep -c "ds18b20" output.csv | grep -q "2"
+        rm -rf testdir output.csv
+    
+    - name: Integration Test - Directory with verbose output
+      run: |
+        mkdir -p testdir
+        echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
+        ./sensor-data convert -v -e .out testdir/ -o output.csv 2>&1 | grep -q "Scanning\|Processing\|Found"
+        rm -rf testdir output.csv
+    
     - name: Generate coverage report
       run: |
         echo "=== .gcno files (compile-time) ==="
