@@ -4,6 +4,10 @@ LDFLAGS = -pthread
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
+# Extract version from debian/changelog
+VERSION := $(shell head -1 debian/changelog | sed -n 's/.*([^)]*\([0-9][0-9.]*\)).*/\1/p')
+CXXFLAGS += -DVERSION="\"$(VERSION)\""
+
 # Coverage flags (set COVERAGE=1 to enable)
 ifdef COVERAGE
 CXXFLAGS += --coverage

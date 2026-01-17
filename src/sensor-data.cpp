@@ -6,6 +6,16 @@
 #include "error_summarizer.h"
 #include "stats_analyser.h"
 
+#ifndef VERSION
+#define VERSION "unknown"
+#endif
+
+void printVersion() {
+    std::cout << "sensor-data " << VERSION << std::endl;
+    std::cout << "Copyright (C) 2026 Ed Baker" << std::endl;
+    std::cout << "License: See debian/copyright for details" << std::endl;
+}
+
 void printUsage(const char* progName) {
     std::cerr << "Usage: " << progName << " <command> [options]" << std::endl;
     std::cerr << std::endl;
@@ -14,6 +24,10 @@ void printUsage(const char* progName) {
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Options:" << std::endl;
+    std::cerr << "  --help, -h        Show this help message" << std::endl;
+    std::cerr << "  --version, -V     Show version information" << std::endl;
     std::cerr << std::endl;
     std::cerr << "For command-specific help, use:" << std::endl;
     std::cerr << "  " << progName << " <command> --help" << std::endl;
@@ -26,6 +40,17 @@ int main(int argc, char* argv[]) {
     }
     
     std::string command = argv[1];
+    
+    // Handle --version and --help before command dispatch
+    if (command == "--version" || command == "-V") {
+        printVersion();
+        return 0;
+    }
+    
+    if (command == "--help" || command == "-h") {
+        printUsage(argv[0]);
+        return 0;
+    }
     
     if (command == "convert") {
         try {
