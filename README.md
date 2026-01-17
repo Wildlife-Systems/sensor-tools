@@ -77,6 +77,12 @@ sensor-data convert -r /path/to/sensor/logs/ output.csv
 # Recursive with extension filter
 sensor-data convert -r -e .out /path/to/sensor/logs/ output.csv
 
+# Limit recursion depth to 2 levels
+sensor-data convert -r -d 2 /path/to/sensor/logs/ output.csv
+
+# Combined: recursive with depth limit and extension filter
+sensor-data convert -r -d 2 -e .out /path/to/sensor/logs/ output.csv
+
 # Mixed input
 sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 ```
@@ -84,6 +90,7 @@ sensor-data convert file1.out file2.out /path/to/dir/ output.csv
 **Options:**
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out` or `out`)
+- `-d, --depth <n>` - Maximum recursion depth (0 = current directory only, default = unlimited)
 
 The `sensor-data` tool reads JSON-formatted sensor data files (one JSON object per line)
 and converts them to CSV format. Each sensor reading becomes a row in the output CSV.

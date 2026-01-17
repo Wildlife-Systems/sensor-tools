@@ -118,6 +118,7 @@ private:
     bool hasInputFiles;
     bool recursive;
     std::string extensionFilter;
+    int maxDepth;
     
     bool isDirectory(const std::string& path) {
         struct stat info;
@@ -139,7 +140,12 @@ private:
         return ext == extensionFilter;
     }
     
-    void collectFilesFromDirectory(const std::string& dirPath) {
+    void collectFilesFromDirectory(const std::string& dirPath, int currentDepth = 0) {
+        // Check depth limit
+        if (maxDepth >= 0 && currentDepth > maxDepth) {
+            return;
+        }
+        
 #ifdef _WIN32
         WIN32_FIND_DATAA findData;
         HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
@@ -155,7 +161,7 @@ private:
                 std::string fullPath = dirPath + "\\" + filename;
                 if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                     if (recursive) {
-                        collectFilesFromDirectory(fullPath);
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
                     }
                 } else {
                     if (matchesExtension(filename)) {
@@ -180,7 +186,7 @@ private:
                 std::string fullPath = dirPath + "/" + filename;
                 if (isDirectory(fullPath)) {
                     if (recursive) {
-                        collectFilesFromDirectory(fullPath);
+                        collectFilesFromDirectory(fullPath, currentDepth + 1);
                     }
                 } else {
                     if (matchesExtension(filename)) {
@@ -271,7 +277,7 @@ private:
     }
     
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter("") {
+    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1) {
         // argc should be at least 3 for "convert": program convert input output
         if (argc < 3) {
             printConvertUsage(argv[0]);
@@ -294,6 +300,23 @@ public:
                     // Ensure extension starts with a dot
                     if (!extensionFilter.empty() && extensionFilter[0] != '.') {
                         extensionFilter = "." + extensionFilter;
+                    }
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "-d" || arg == "--depth") {
+                if (i + 1 < argc - 1) {
+                    ++i;
+                    try {
+                        maxDepth = std::stoi(argv[i]);
+                        if (maxDepth < 0) {
+                            std::cerr << "Error: depth must be non-negative" << std::endl;
+                            exit(1);
+                        }
+                    } catch (...) {
+                        std::cerr << "Error: invalid depth value '" << argv[i] << "'" << std::endl;
+                        exit(1);
                     }
                 } else {
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
@@ -345,12 +368,14 @@ public:
         std::cerr << "Options:" << std::endl;
         std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
         std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
+        std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out output.csv" << std::endl;
         std::cerr << "  " << progName << " convert sensor1.out sensor2.out output.csv" << std::endl;
         std::cerr << "  " << progName << " convert -e .out /path/to/sensor/dir output.csv" << std::endl;
         std::cerr << "  " << progName << " convert -r -e .out /path/to/sensor/dir output.csv" << std::endl;
+        std::cerr << "  " << progName << " convert -r -d 2 -e .out /path/to/logs output.csv" << std::endl;
     }
 };
 
