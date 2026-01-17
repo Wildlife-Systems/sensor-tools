@@ -52,7 +52,7 @@ jobs:
     
     - name: Build main application
       run: |
-        g++ -std=c++11 -pthread -Iinclude src/sensor-data.cpp csv_parser.o json_parser.o error_detector.o file_utils.o -o sensor-data
+        g++ -std=c++11 --coverage -pthread -Iinclude src/sensor-data.cpp csv_parser.o json_parser.o error_detector.o file_utils.o -o sensor-data
     
     - name: Integration Test - List Errors
       run: |
