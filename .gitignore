@@ -11,7 +11,7 @@ build/
 
 # Compiled binaries
 sensor-data
-sensor-data.exe
+*.exe
 
 # Test executables
 test_*
