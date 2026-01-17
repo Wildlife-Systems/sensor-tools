@@ -1,40 +1,23 @@
 #include "error_detector.h"
 #include <algorithm>
+#include <cctype>
+
+namespace {
+    // Case-insensitive string comparison
+    bool equalsIgnoreCase(const std::string& a, const std::string& b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i) {
+            if (std::tolower(static_cast<unsigned char>(a[i])) != 
+                std::tolower(static_cast<unsigned char>(b[i]))) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
 
 bool ErrorDetector::isErrorReading(const std::map<std::string, std::string>& reading) {
-    // Check for DS18B20 sensor errors:
-    //   - temperature = 85 (communication error)
-    //   - temperature = -127 (power-on reset/disconnected sensor)
-    auto sensorIt = reading.find("sensor");
-    auto valueIt = reading.find("value");
-    auto tempIt = reading.find("temperature");
-    
-    // Check if sensor field is ds18b20 (case insensitive check)
-    bool isDS18B20 = false;
-    if (sensorIt != reading.end()) {
-        std::string sensor = sensorIt->second;
-        std::transform(sensor.begin(), sensor.end(), sensor.begin(), ::tolower);
-        isDS18B20 = (sensor == "ds18b20");
-    }
-    
-    if (isDS18B20) {
-        // Check value field for error values
-        if (valueIt != reading.end()) {
-            const std::string& val = valueIt->second;
-            if (val == "85" || val == "-127") {
-                return true;
-            }
-        }
-        // Also check temperature field as fallback
-        if (tempIt != reading.end()) {
-            const std::string& temp = tempIt->second;
-            if (temp == "85" || temp == "-127") {
-                return true;
-            }
-        }
-    }
-    
-    return false;
+    return !getErrorDescription(reading).empty();
 }
 
 std::string ErrorDetector::getErrorDescription(const std::map<std::string, std::string>& reading) {
@@ -43,12 +26,7 @@ std::string ErrorDetector::getErrorDescription(const std::map<std::string, std::
     auto tempIt = reading.find("temperature");
     
     // Check if sensor field is ds18b20 (case insensitive check)
-    bool isDS18B20 = false;
-    if (sensorIt != reading.end()) {
-        std::string sensor = sensorIt->second;
-        std::transform(sensor.begin(), sensor.end(), sensor.begin(), ::tolower);
-        isDS18B20 = (sensor == "ds18b20");
-    }
+    bool isDS18B20 = (sensorIt != reading.end() && equalsIgnoreCase(sensorIt->second, "ds18b20"));
     
     if (isDS18B20) {
         // Check value field for error values

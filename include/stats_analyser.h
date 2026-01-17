@@ -48,14 +48,15 @@ private:
         }
     }
     
-    double calculateMedian(std::vector<double> values) {
+    double calculateMedian(const std::vector<double>& values) {
         if (values.empty()) return 0.0;
-        std::sort(values.begin(), values.end());
-        size_t n = values.size();
+        std::vector<double> sorted = values;  // Make copy for sorting
+        std::sort(sorted.begin(), sorted.end());
+        size_t n = sorted.size();
         if (n % 2 == 0) {
-            return (values[n/2 - 1] + values[n/2]) / 2.0;
+            return (sorted[n/2 - 1] + sorted[n/2]) / 2.0;
         } else {
-            return values[n/2];
+            return sorted[n/2];
         }
     }
     
