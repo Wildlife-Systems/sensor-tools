@@ -13,10 +13,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
+    - name: Add WildlifeSystems apt repository
+      run: |
+        sudo wget -O /usr/share/keyrings/ws.gpg https://wildlife.systems/ws.gpg
+        echo -e "Types: deb\nURIs: https://apt.wildlife.systems\nSuites: stable\nComponents: main\nArchitectures: all amd64\nSigned-By: /usr/share/keyrings/ws.gpg" | sudo tee /etc/apt/sources.list.d/ws.sources > /dev/null
+    
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential g++
+        sudo apt-get install -y build-essential g++ sensor-control
     
     - name: Build with coverage
       run: make clean all COVERAGE=1
