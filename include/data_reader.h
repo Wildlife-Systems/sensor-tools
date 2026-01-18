@@ -29,31 +29,27 @@ public:
     DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "json")
         : minDate(minDate), maxDate(maxDate), verbosity(verbosity), inputFormat(format) {}
     
-    // Process readings from stdin
+    // Internal helper to process a stream (CSV or JSON format)
     template<typename Callback>
-    void processStdin(Callback callback) {
-        if (verbosity >= 1) {
-            std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
-        }
-        
+    void processStream(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName) {
         std::string line;
         int lineNum = 0;
         
-        if (inputFormat == "csv") {
-            // CSV format
+        if (isCSV) {
+            // CSV format - first line is header
             std::vector<std::string> csvHeaders;
-            if (std::getline(std::cin, line) && !line.empty()) {
+            if (std::getline(input, line) && !line.empty()) {
                 lineNum++;
                 bool needMore = false;
-                csvHeaders = CsvParser::parseCsvLine(std::cin, line, needMore);
+                csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
             }
             
-            while (std::getline(std::cin, line)) {
+            while (std::getline(input, line)) {
                 lineNum++;
                 if (line.empty()) continue;
                 
                 bool needMore = false;
-                auto fields = CsvParser::parseCsvLine(std::cin, line, needMore);
+                auto fields = CsvParser::parseCsvLine(input, line, needMore);
                 if (fields.empty()) continue;
                 
                 // Create a map from CSV headers to values
@@ -64,11 +60,11 @@ public:
                 
                 if (!passesDateFilter(reading)) continue;
                 
-                callback(reading, lineNum, "stdin");
+                callback(reading, lineNum, sourceName);
             }
         } else {
             // JSON format
-            while (std::getline(std::cin, line)) {
+            while (std::getline(input, line)) {
                 lineNum++;
                 if (line.empty()) continue;
                 
@@ -78,10 +74,19 @@ public:
                     
                     if (!passesDateFilter(reading)) continue;
                     
-                    callback(reading, lineNum, "stdin");
+                    callback(reading, lineNum, sourceName);
                 }
             }
         }
+    }
+    
+    // Process readings from stdin
+    template<typename Callback>
+    void processStdin(Callback callback) {
+        if (verbosity >= 1) {
+            std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
+        }
+        processStream(std::cin, inputFormat == "csv", callback, "stdin");
     }
     
     // Process readings from a file
@@ -97,54 +102,7 @@ public:
             return;
         }
         
-        std::string line;
-        int lineNum = 0;
-        
-        // Check if this is a CSV file
-        if (FileUtils::isCsvFile(filename)) {
-            // CSV format
-            std::vector<std::string> csvHeaders;
-            if (std::getline(infile, line) && !line.empty()) {
-                lineNum++;
-                bool needMore = false;
-                csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
-            }
-            
-            while (std::getline(infile, line)) {
-                lineNum++;
-                if (line.empty()) continue;
-                
-                bool needMore = false;
-                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-                if (fields.empty()) continue;
-                
-                // Create a map from CSV headers to values
-                std::map<std::string, std::string> reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-                
-                if (!passesDateFilter(reading)) continue;
-                
-                callback(reading, lineNum, filename);
-            }
-        } else {
-            // JSON format
-            while (std::getline(infile, line)) {
-                lineNum++;
-                if (line.empty()) continue;
-                
-                auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    
-                    if (!passesDateFilter(reading)) continue;
-                    
-                    callback(reading, lineNum, filename);
-                }
-            }
-        }
-        
+        processStream(infile, FileUtils::isCsvFile(filename), callback, filename);
         infile.close();
     }
 };

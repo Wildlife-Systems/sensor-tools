@@ -71,61 +71,43 @@ public:
         inputFiles = parser.getInputFiles();
     }
     
+    // Helper to print a single error line
+    static void printErrorLine(const std::map<std::string, std::string>& reading, 
+                               int lineNum, const std::string& source) {
+        if (!ErrorDetector::isErrorReading(reading)) return;
+        
+        std::cout << source << ":" << lineNum;
+        
+        // Print relevant fields
+        auto sensorIt = reading.find("sensor");
+        auto valueIt = reading.find("value");
+        auto tempIt = reading.find("temperature");
+        auto idIt = reading.find("sensor_id");
+        auto nameIt = reading.find("name");
+        
+        if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
+        if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
+        if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
+        if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
+        if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+        
+        std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+        std::cout << " [" << errorDesc << "]" << std::endl;
+    }
+    
     void listErrors() {
         DataReader reader(minDate, maxDate, verbosity, inputFormat);
         
         if (inputFiles.empty()) {
             // Reading from stdin
-            reader.processStdin([&](const std::map<std::string, std::string>& reading, int lineNum, const std::string& source) {
-                if (ErrorDetector::isErrorReading(reading)) {
-                    std::cout << source << ":" << lineNum;
-                    
-                    // Print relevant fields
-                    auto sensorIt = reading.find("sensor");
-                    auto valueIt = reading.find("value");
-                    auto tempIt = reading.find("temperature");
-                    auto idIt = reading.find("sensor_id");
-                    auto nameIt = reading.find("name");
-                    
-                    if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
-                    if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
-                    if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
-                    if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
-                    if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
-                    
-                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
-                    std::cout << " [" << errorDesc << "]";
-                    std::cout << std::endl;
-                }
-            });
+            reader.processStdin(printErrorLine);
             return;
         }
         
         printCommonVerboseInfo("Listing errors", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         
         for (const auto& file : inputFiles) {
-            reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int lineNum, const std::string& source) {
-                if (ErrorDetector::isErrorReading(reading)) {
-                    std::cout << source << ":" << lineNum;
-                    
-                    // Print relevant fields
-                    auto sensorIt = reading.find("sensor");
-                    auto valueIt = reading.find("value");
-                    auto tempIt = reading.find("temperature");
-                    auto idIt = reading.find("sensor_id");
-                    auto nameIt = reading.find("name");
-                    
-                    if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
-                    if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
-                    if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
-                    if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
-                    if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
-                    
-                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
-                    std::cout << " [" << errorDesc << "]";
-                    std::cout << std::endl;
-                }
-            });
+            reader.processFile(file, printErrorLine);
         }
     }
     
