@@ -58,13 +58,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
             auto readings = JsonParser::parseJsonLine(line);
             
             // Skip empty JSON arrays/objects if removeEmptyJson is set
-            if (removeEmptyJson) {
-                bool allEmpty = true;
-                for (const auto& r : readings) {
-                    if (!r.empty()) { allEmpty = false; break; }
-                }
-                if (allEmpty) continue;
-            }
+            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
 
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
@@ -116,13 +110,7 @@ long long DataCounter::countFromStdin() {
 
             auto readings = JsonParser::parseJsonLine(line);
             
-            if (removeEmptyJson) {
-                bool allEmpty = true;
-                for (const auto& r : readings) {
-                    if (!r.empty()) { allEmpty = false; break; }
-                }
-                if (allEmpty) continue;
-            }
+            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
 
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
@@ -176,13 +164,7 @@ void DataCounter::countFromStdinFollow() {
                 // JSON format
                 auto readings = JsonParser::parseJsonLine(line);
                 
-                if (removeEmptyJson) {
-                    bool allEmpty = true;
-                    for (const auto& r : readings) {
-                        if (!r.empty()) { allEmpty = false; break; }
-                    }
-                    if (allEmpty) continue;
-                }
+                if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
 
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
@@ -243,13 +225,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
         } else {
             auto readings = JsonParser::parseJsonLine(line);
             
-            if (removeEmptyJson) {
-                bool allEmpty = true;
-                for (const auto& r : readings) {
-                    if (!r.empty()) { allEmpty = false; break; }
-                }
-                if (allEmpty) continue;
-            }
+            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
 
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
@@ -287,13 +263,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
             } else {
                 auto readings = JsonParser::parseJsonLine(line);
                 
-                if (removeEmptyJson) {
-                    bool allEmpty = true;
-                    for (const auto& r : readings) {
-                        if (!r.empty()) { allEmpty = false; break; }
-                    }
-                    if (allEmpty) continue;
-                }
+                if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
 
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
@@ -323,15 +293,6 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
         }
     }
 
-    // Parse filter options
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        int result = parseFilterOption(argc, argv, i, arg);
-        if (result >= 0) {
-            i = result;
-        }
-    }
-    
     // Parse --follow flag
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];

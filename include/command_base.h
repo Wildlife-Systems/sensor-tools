@@ -72,6 +72,16 @@ protected:
     }
     
     /**
+     * Check if all readings in a vector are empty (for removeEmptyJson filtering)
+     */
+    static bool areAllReadingsEmpty(const std::vector<std::map<std::string, std::string>>& readings) {
+        for (const auto& r : readings) {
+            if (!r.empty()) return false;
+        }
+        return true;
+    }
+    
+    /**
      * Check if a reading should be included based on all active filters.
      * Subclasses can override for additional filtering.
      */
@@ -151,67 +161,6 @@ protected:
         }
         
         return true;
-    }
-    
-    /**
-     * Parse common filter options from command line.
-     * Returns the next index after consuming the argument (if any).
-     * Returns -1 if the argument was not recognized.
-     */
-    int parseFilterOption(int argc, char* argv[], int i, const std::string& arg) {
-        if (arg == "--remove-errors") {
-            removeErrors = true;
-            return i;
-        } else if (arg == "--remove-empty-json") {
-            removeEmptyJson = true;
-            return i;
-        } else if (arg == "--not-empty") {
-            if (i + 1 < argc) {
-                ++i;
-                notEmptyColumns.insert(argv[i]);
-                return i;
-            } else {
-                std::cerr << "Error: " << arg << " requires an argument" << std::endl;
-                return -1;
-            }
-        } else if (arg == "--only-value") {
-            if (i + 1 < argc) {
-                ++i;
-                std::string filter = argv[i];
-                size_t colonPos = filter.find(':');
-                if (colonPos == std::string::npos || colonPos == 0 || colonPos == filter.length() - 1) {
-                    std::cerr << "Error: --only-value requires format 'column:value'" << std::endl;
-                    return -1;
-                }
-                std::string column = filter.substr(0, colonPos);
-                std::string value = filter.substr(colonPos + 1);
-                onlyValueFilters[column].insert(value);
-                return i;
-            } else {
-                std::cerr << "Error: " << arg << " requires an argument" << std::endl;
-                return -1;
-            }
-        } else if (arg == "--exclude-value") {
-            if (i + 1 < argc) {
-                ++i;
-                std::string filter = argv[i];
-                size_t colonPos = filter.find(':');
-                if (colonPos == std::string::npos || colonPos == 0 || colonPos == filter.length() - 1) {
-                    std::cerr << "Error: --exclude-value requires format 'column:value'" << std::endl;
-                    return -1;
-                }
-                std::string column = filter.substr(0, colonPos);
-                std::string value = filter.substr(colonPos + 1);
-                excludeValueFilters[column].insert(value);
-                return i;
-            } else {
-                std::cerr << "Error: " << arg << " requires an argument" << std::endl;
-                return -1;
-            }
-        }
-        
-        // Not a filter option
-        return -2;
     }
     
     /**

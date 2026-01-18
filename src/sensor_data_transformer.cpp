@@ -390,14 +390,8 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool reject
                 std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                 exit(1);
             }
-        } else {
-            // Try to parse as filter option
-            int result = parseFilterOption(argc, argv, i, arg);
-            if (result >= 0) {
-                i = result;
-            }
-            // CommonArgParser will handle remaining options
         }
+        // CommonArgParser will handle remaining options
     }
     
     // Second pass: parse common flags and collect files
