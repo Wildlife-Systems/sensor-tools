@@ -74,14 +74,6 @@ public:
     const std::vector<std::string>& getFiles() const {
         return files;
     }
-    
-    size_t size() const {
-        return files.size();
-    }
-    
-    bool empty() const {
-        return files.empty();
-    }
 };
 
 #endif // FILE_COLLECTOR_H

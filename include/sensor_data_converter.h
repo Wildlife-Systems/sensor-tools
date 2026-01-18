@@ -207,11 +207,6 @@ private:
             }
         }
         
-        if (verbosity >= 2) {
-            std::lock_guard<std::mutex> lock(keysMutex);
-            std::cout << "  Collected " << allKeys.size() << " unique keys so far" << std::endl;
-        }
-        
         infile.close();
     }
     
@@ -990,15 +985,8 @@ public:
                 outfile << "\n";
                 
                 // Write rows from each file sequentially (streaming)
-                size_t totalRows = 0;
                 for (const auto& file : inputFiles) {
-                    size_t beforePos = outfile.tellp();
                     writeRowsFromFile(file, outfile, headers);
-                    size_t afterPos = outfile.tellp();
-                    // Estimate rows written (rough approximation)
-                    if (afterPos > beforePos) {
-                        totalRows += (afterPos - beforePos) / (headers.size() * 10);  // rough estimate
-                    }
                 }
             }
             

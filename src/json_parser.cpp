@@ -104,10 +104,3 @@ std::vector<std::map<std::string, std::string>> JsonParser::parseJsonLine(const 
     
     return readings;
 }
-
-std::vector<std::map<std::string, std::string>> JsonParser::parseJsonArray(const std::string& jsonContent) {
-    // For JSON array files like [ {...}, {...}, ... ]
-    // Simply call parseJsonLine on the entire content
-    // The existing parseJsonLine already handles arrays
-    return parseJsonLine(jsonContent);
-}

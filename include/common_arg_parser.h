@@ -26,7 +26,7 @@ public:
     
     // Parse common arguments and collect files
     // Returns true if parsing should continue, false if help was shown or error occurred
-    bool parse(int argc, char* argv[], const char* usageFunc(const char*) = nullptr) {
+    bool parse(int argc, char* argv[]) {
         FileCollector collector;
         bool collectorInitialized = false;
         
