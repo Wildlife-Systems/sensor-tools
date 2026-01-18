@@ -165,7 +165,7 @@ fi
 # Test: CSV file with sensor filter
 echo ""
 echo "Test: CSV input with sensor filter"
-result=$(./sensor-data transform -s ds18b20 "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform --only-value sensor:ds18b20 "$TESTDIR/sensor1.csv")
 count=$(echo "$result" | grep -c "ds18b20" || true)
 if [ "$count" -eq 3 ]; then
     echo "  ✓ PASS"
