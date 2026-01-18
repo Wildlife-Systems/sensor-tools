@@ -7,7 +7,7 @@ PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
 # Extract version from debian/changelog
-VERSION := $(shell head -1 debian/changelog | sed -n 's/.*(\([0-9][0-9.]*\)[^)]*).*/\1/p')
+VERSION := $(shell dpkg-parsechangelog -S Version 2>/dev/null || echo "unknown")
 CPPFLAGS += -DVERSION='"$(VERSION)"'
 
 # Coverage flags (set COVERAGE=1 to enable)
