@@ -78,7 +78,7 @@ run_test "JSON stdin to output file" \
 
 # Test 3: CSV stdin with format flag (CSV output)
 run_test "CSV stdin with -if csv" \
-    "cat /tmp/test_stdin_csv.txt | ./sensor-data transform -if csv -if csv" \
+    "cat /tmp/test_stdin_csv.txt | ./sensor-data transform -if csv -of csv" \
     "sensor,timestamp,unit,value"
 
 # Test 4: JSON stdin with redirect (JSON output - check for content)
@@ -88,7 +88,7 @@ run_test "JSON stdin with redirect" \
 
 # Test 5: CSV stdin with redirect and format flag (CSV output)
 run_test "CSV stdin with redirect and -if csv" \
-    "./sensor-data transform -if csv -if csv < /tmp/test_stdin_csv.txt" \
+    "./sensor-data transform -if csv -of csv < /tmp/test_stdin_csv.txt" \
     "bme280"
 
 # Test 6: JSON stdin with --remove-errors flag

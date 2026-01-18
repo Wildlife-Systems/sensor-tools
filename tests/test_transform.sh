@@ -372,7 +372,7 @@ fi
 # Test 12: CSV input to JSON output
 echo ""
 echo "Test 12: CSV input to JSON output"
-result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -of json
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -742,7 +742,7 @@ rm -rf testdir output.json
 # Test 24: CSV stdin to JSON output with filtering (exercises processStdinDataJson filter path)
 echo ""
 echo "Test 24: CSV stdin to JSON with --only-value filter"
-result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json --only-value sensor:ds18b20
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -of json --only-value sensor:ds18b20
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -762,7 +762,7 @@ fi
 # Test 24a: CSV stdin to JSON with --remove-errors filter
 echo ""
 echo "Test 24a: CSV stdin to JSON with --remove-errors filter"
-result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json --remove-errors
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -of json --remove-errors
 sensor,value
 ds18b20,85
 ds18b20,22.5
@@ -783,7 +783,7 @@ fi
 # Test 24b: CSV stdin to JSON output to file with filtering
 echo ""
 echo "Test 24b: CSV stdin to JSON file with --only-value filter"
-cat <<'EOF' | ./sensor-data transform -if csv -if json --only-value sensor:ds18b20 -o output.json
+cat <<'EOF' | ./sensor-data transform -if csv -of json --only-value sensor:ds18b20 -o output.json
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -865,7 +865,7 @@ fi
 # Test 25c: --exclude-value on CSV output
 echo ""
 echo "Test 25c: --exclude-value with CSV output"
-result=$(cat <<'EOF' | ./sensor-data transform -if csv --exclude-value sensor:dht22
+result=$(cat <<'EOF' | ./sensor-data transform -of csv --exclude-value sensor:dht22
 [{"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "dht22", "value": "45"}]
 [{"sensor": "ds18b20", "value": "23.0"}]
