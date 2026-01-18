@@ -67,6 +67,8 @@ install: $(TARGET)
 	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/
 	install -d $(DESTDIR)/etc/ws/sensor-errors
 	install -m 644 etc/ws/sensor-errors/*.errors $(DESTDIR)/etc/ws/sensor-errors/
+	install -d $(DESTDIR)/usr/share/bash-completion/completions
+	install -m 644 completions/sensor-data.bash $(DESTDIR)/usr/share/bash-completion/completions/sensor-data
 
 clean:
 	rm -f $(TARGET) $(LIB_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
