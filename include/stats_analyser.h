@@ -15,11 +15,13 @@
  * - Filtering by column name
  * - Date range filtering
  * - Recursive directory processing
+ * - Follow mode for files and stdin (like tail -f)
  */
 class StatsAnalyser : public CommandBase {
 private:
     std::string columnFilter;  // Specific column to analyze (empty = all, "value" = default)
     std::map<std::string, std::vector<double>> columnData;  // column name -> values
+    bool followMode;  // --follow flag for continuous monitoring
     
     /**
      * Check if a string is a valid numeric value
@@ -40,6 +42,21 @@ private:
      * Calculate standard deviation of a vector of values
      */
     static double calculateStdDev(const std::vector<double>& values, double mean);
+    
+    /**
+     * Print current statistics to stdout
+     */
+    void printStats();
+    
+    /**
+     * Analyze stdin with follow mode (like tail -f)
+     */
+    void analyzeStdinFollow();
+    
+    /**
+     * Analyze a file with follow mode (like tail -f)
+     */
+    void analyzeFileFollow(const std::string& filename);
 
 public:
     /**

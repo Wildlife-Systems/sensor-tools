@@ -59,9 +59,9 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 ```
 
 **Options:**
-- `-F, --output-format <format>` - Output format: `json` (default) or `csv`
+- `-of, --output-format <format>` - Output format: `json` (default) or `csv`
 - `-o <file>` - Output file (default: stdout)
-- `-f, --format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)
 - `-d, --depth <n>` - Maximum recursion depth
@@ -95,7 +95,8 @@ sensor-data count -r -e .out /path/to/logs/
 ```
 
 **Options:**
-- `-f, --format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-f, --follow` - Follow mode: continuously read stdin and update count
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)
 - `-d, --depth <n>` - Maximum recursion depth

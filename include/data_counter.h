@@ -15,9 +15,12 @@
  * - Value-based filtering (include/exclude)
  * - Error reading removal
  * - Recursive directory processing
+ * - Follow mode for files and stdin (like tail -f)
  */
 class DataCounter : public CommandBase {
 private:
+    bool followMode;  // --follow flag for continuous monitoring
+    
     /**
      * Count readings from a single file
      */
@@ -27,6 +30,16 @@ private:
      * Count readings from stdin
      */
     long long countFromStdin();
+    
+    /**
+     * Count readings from stdin with follow mode (like tail -f)
+     */
+    void countFromStdinFollow();
+    
+    /**
+     * Count readings from a file with follow mode (like tail -f)
+     */
+    void countFromFileFollow(const std::string& filename);
 
 public:
     /**

@@ -139,7 +139,7 @@ fi
 # Test: CSV file with format conversion to CSV
 echo ""
 echo "Test: CSV input to CSV output"
-result=$(./sensor-data transform -F csv "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform -if csv "$TESTDIR/sensor1.csv")
 if echo "$result" | head -1 | grep -q "sensor" && echo "$result" | head -1 | grep -q "value"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))

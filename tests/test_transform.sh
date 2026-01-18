@@ -113,7 +113,7 @@ fi
 # Test 2: JSON to CSV conversion
 echo ""
 echo "Test 2: JSON to CSV conversion"
-result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -F csv)
+result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -if csv)
 if echo "$result" | grep -q "sensor,value" && echo "$result" | grep -q "ds18b20,22.5"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -239,10 +239,10 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 9: Output format -F json (explicit)
+# Test 9: Output format -if json (explicit)
 echo ""
-echo "Test 9: Output format -F json (explicit)"
-result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -F json)
+echo "Test 9: Output format -if json (explicit)"
+result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -if json)
 if echo "$result" | grep -q '"sensor"' && echo "$result" | grep -q '"value"'; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -372,7 +372,7 @@ fi
 # Test 12: CSV input to JSON output
 echo ""
 echo "Test 12: CSV input to JSON output"
-result=$(cat <<'EOF' | ./sensor-data transform -f csv -F json
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -407,7 +407,7 @@ mkdir -p testdir
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/file3.txt
-./sensor-data transform -F csv -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 2 ]; then
@@ -425,7 +425,7 @@ mkdir -p testdir/subdir1/subdir2
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
-./sensor-data transform -F csv -r -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -r -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 3 ]; then
@@ -442,7 +442,7 @@ echo "Test 16: Depth 0 (root only)"
 mkdir -p testdir/subdir1
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
-./sensor-data transform -F csv -r -d 0 -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -r -d 0 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 1 ]; then
@@ -460,7 +460,7 @@ mkdir -p testdir/subdir1/subdir2
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
-./sensor-data transform -F csv -r -d 1 -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -r -d 1 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 2 ]; then
@@ -479,7 +479,7 @@ echo '{"sensor":"ds18b20","value":"1"}' > testdir/file.out
 echo '{"sensor":"ds18b20","value":"2"}' > testdir/sub1/file.out
 echo '{"sensor":"ds18b20","value":"3"}' > testdir/sub1/sub2/file.out
 echo '{"sensor":"ds18b20","value":"4"}' > testdir/sub1/sub2/sub3/file.out
-./sensor-data transform -F csv -r -d 2 -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -r -d 2 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 3 ]; then
@@ -499,7 +499,7 @@ echo '{"sensor":"ds18b20","value":"2"}' > testdir/a/file.out
 echo '{"sensor":"ds18b20","value":"3"}' > testdir/a/b/file.out
 echo '{"sensor":"ds18b20","value":"4"}' > testdir/a/b/c/file.out
 echo '{"sensor":"ds18b20","value":"5"}' > testdir/a/b/c/d/file.out
-./sensor-data transform -F csv -r -e .out testdir/ -o output.csv
+./sensor-data transform -if csv -r -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 5 ]; then
@@ -581,7 +581,7 @@ echo ""
 echo "Test 22b: --use-prototype produces valid CSV output"
 mkdir -p testdir
 echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-output=$(./sensor-data transform --use-prototype -F csv testdir/test.out 2>&1)
+output=$(./sensor-data transform --use-prototype -if csv testdir/test.out 2>&1)
 rm -rf testdir
 # Check that output contains data rows (not just errors)
 if echo "$output" | grep -q "22.5\|ds18b20\|1234567890"; then
@@ -598,7 +598,7 @@ echo ""
 echo "Test 22c: --use-prototype with file output"
 mkdir -p testdir
 echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-./sensor-data transform --use-prototype -F csv -o output.csv testdir/test.out 2>/dev/null
+./sensor-data transform --use-prototype -if csv -o output.csv testdir/test.out 2>/dev/null
 if [ -f output.csv ] && grep -q "22.5\|ds18b20" output.csv; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -621,7 +621,7 @@ cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
 [{"sensor": "bmp280", "value": "1013"}, {"sensor": "ds18b20", "value": "23.0"}]
 EOF
-result=$(./sensor-data transform -F json --only-value sensor:ds18b20 testdir/test.out)
+result=$(./sensor-data transform -if json --only-value sensor:ds18b20 testdir/test.out)
 rm -rf testdir
 # Should filter to only ds18b20 readings (2 readings from 2 lines)
 count=$(echo "$result" | grep -c "ds18b20" || true)
@@ -642,7 +642,7 @@ cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "85"}, {"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "ds18b20", "value": "-127"}, {"sensor": "ds18b20", "value": "23.0"}]
 EOF
-result=$(./sensor-data transform -F json --remove-errors testdir/test.out)
+result=$(./sensor-data transform -if json --remove-errors testdir/test.out)
 rm -rf testdir
 # Should remove error values 85 and -127, keep 22.5 and 23.0
 if echo "$result" | grep -q "22.5" && echo "$result" | grep -q "23.0" && ! echo "$result" | grep -q '":85"\|":-127"'; then
@@ -664,7 +664,7 @@ cat > testdir/test.out << 'EOF'
 [{"timestamp": "1709424000", "sensor": "ds18b20", "value": "24.0"}]
 EOF
 # Filter to readings in January 2024 (1704067200 = 2024-01-01)
-result=$(./sensor-data transform -F json --min-date 2024-01-01 --max-date 2024-01-31 testdir/test.out)
+result=$(./sensor-data transform -if json --min-date 2024-01-01 --max-date 2024-01-31 testdir/test.out)
 rm -rf testdir
 # Should only include the first reading (Jan 2024)
 if echo "$result" | grep -q "22.5" && ! echo "$result" | grep -q "23.0\|24.0"; then
@@ -685,7 +685,7 @@ cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "dht22", "value": "50"}]
 EOF
-result=$(./sensor-data transform -F json --only-value sensor:ds18b20 testdir/test.out)
+result=$(./sensor-data transform -if json --only-value sensor:ds18b20 testdir/test.out)
 rm -rf testdir
 # Should output only line with ds18b20 (other lines completely filtered)
 line_count=$(echo "$result" | grep -c '\[' || true)
@@ -705,7 +705,7 @@ mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "ds18b20", "value": "85"}, {"sensor": "dht22", "value": "45"}]
 EOF
-result=$(./sensor-data transform -F json --remove-errors --only-value sensor:ds18b20 testdir/test.out)
+result=$(./sensor-data transform -if json --remove-errors --only-value sensor:ds18b20 testdir/test.out)
 rm -rf testdir
 # Should keep only non-error ds18b20 reading (22.5), filter out 85 (error) and dht22
 if echo "$result" | grep -q "22.5" && ! echo "$result" | grep -q '":85"\|dht22'; then
@@ -724,7 +724,7 @@ mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
 EOF
-./sensor-data transform -F json --only-value sensor:ds18b20 -o output.json testdir/test.out
+./sensor-data transform -if json --only-value sensor:ds18b20 -o output.json testdir/test.out
 if [ -f output.json ] && grep -q "ds18b20" output.json && ! grep -q "dht22" output.json; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -742,7 +742,7 @@ rm -rf testdir output.json
 # Test 24: CSV stdin to JSON output with filtering (exercises processStdinDataJson filter path)
 echo ""
 echo "Test 24: CSV stdin to JSON with --only-value filter"
-result=$(cat <<'EOF' | ./sensor-data transform -f csv -F json --only-value sensor:ds18b20
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json --only-value sensor:ds18b20
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -762,7 +762,7 @@ fi
 # Test 24a: CSV stdin to JSON with --remove-errors filter
 echo ""
 echo "Test 24a: CSV stdin to JSON with --remove-errors filter"
-result=$(cat <<'EOF' | ./sensor-data transform -f csv -F json --remove-errors
+result=$(cat <<'EOF' | ./sensor-data transform -if csv -if json --remove-errors
 sensor,value
 ds18b20,85
 ds18b20,22.5
@@ -783,7 +783,7 @@ fi
 # Test 24b: CSV stdin to JSON output to file with filtering
 echo ""
 echo "Test 24b: CSV stdin to JSON file with --only-value filter"
-cat <<'EOF' | ./sensor-data transform -f csv -F json --only-value sensor:ds18b20 -o output.json
+cat <<'EOF' | ./sensor-data transform -if csv -if json --only-value sensor:ds18b20 -o output.json
 sensor,value
 ds18b20,22.5
 dht22,45
@@ -865,7 +865,7 @@ fi
 # Test 25c: --exclude-value on CSV output
 echo ""
 echo "Test 25c: --exclude-value with CSV output"
-result=$(cat <<'EOF' | ./sensor-data transform -F csv --exclude-value sensor:dht22
+result=$(cat <<'EOF' | ./sensor-data transform -if csv --exclude-value sensor:dht22
 [{"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "dht22", "value": "45"}]
 [{"sensor": "ds18b20", "value": "23.0"}]
@@ -891,7 +891,7 @@ cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
 [{"sensor": "bmp280", "value": "1013"}, {"sensor": "ds18b20", "value": "23.0"}]
 EOF
-result=$(./sensor-data transform -F json --exclude-value sensor:dht22 --exclude-value sensor:bmp280 testdir/test.out)
+result=$(./sensor-data transform -if json --exclude-value sensor:dht22 --exclude-value sensor:bmp280 testdir/test.out)
 rm -rf testdir
 # Should exclude dht22 and bmp280, keep only ds18b20
 if echo "$result" | grep -q "ds18b20" && ! echo "$result" | grep -q "dht22\|bmp280"; then

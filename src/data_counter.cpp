@@ -1,6 +1,8 @@
 #include "data_counter.h"
 #include <fstream>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 
 #include "csv_parser.h"
 #include "json_parser.h"
@@ -134,9 +136,184 @@ long long DataCounter::countFromStdin() {
     return count;
 }
 
+void DataCounter::countFromStdinFollow() {
+    if (verbosity >= 1) {
+        std::cerr << "Reading from stdin with follow mode..." << std::endl;
+    }
+
+    long long count = 0;
+    std::string line;
+    std::vector<std::string> csvHeaders;
+    bool headerParsed = false;
+
+    // Print initial count
+    std::cout << count << std::endl;
+
+    while (true) {
+        if (std::getline(std::cin, line)) {
+            if (line.empty()) continue;
+
+            if (inputFormat == "csv") {
+                if (!headerParsed) {
+                    csvHeaders = CsvParser::parseCsvLine(line);
+                    headerParsed = true;
+                    continue;
+                }
+
+                auto fields = CsvParser::parseCsvLine(line);
+                if (fields.empty()) continue;
+
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+
+                if (shouldIncludeReading(reading)) {
+                    count++;
+                    std::cout << count << std::endl;
+                }
+            } else {
+                // JSON format
+                auto readings = JsonParser::parseJsonLine(line);
+                
+                if (removeEmptyJson) {
+                    bool allEmpty = true;
+                    for (const auto& r : readings) {
+                        if (!r.empty()) { allEmpty = false; break; }
+                    }
+                    if (allEmpty) continue;
+                }
+
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    if (shouldIncludeReading(reading)) {
+                        count++;
+                        std::cout << count << std::endl;
+                    }
+                }
+            }
+        } else {
+            // No more data available, wait briefly and try again
+            std::cin.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+}
+
+void DataCounter::countFromFileFollow(const std::string& filename) {
+    if (verbosity >= 1) {
+        std::cerr << "Following file: " << filename << std::endl;
+    }
+
+    std::ifstream infile(filename);
+    if (!infile) {
+        std::cerr << "Error: Cannot open file: " << filename << std::endl;
+        return;
+    }
+
+    long long count = 0;
+    std::string line;
+    std::vector<std::string> csvHeaders;
+    bool isCSV = FileUtils::isCsvFile(filename);
+
+    // Read existing content first
+    if (isCSV) {
+        if (std::getline(infile, line) && !line.empty()) {
+            bool needMore = false;
+            csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+        }
+    }
+
+    while (std::getline(infile, line)) {
+        if (line.empty()) continue;
+
+        if (isCSV) {
+            bool needMore = false;
+            auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+            if (fields.empty()) continue;
+
+            std::map<std::string, std::string> reading;
+            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                reading[csvHeaders[i]] = fields[i];
+            }
+
+            if (shouldIncludeReading(reading)) {
+                count++;
+            }
+        } else {
+            auto readings = JsonParser::parseJsonLine(line);
+            
+            if (removeEmptyJson) {
+                bool allEmpty = true;
+                for (const auto& r : readings) {
+                    if (!r.empty()) { allEmpty = false; break; }
+                }
+                if (allEmpty) continue;
+            }
+
+            for (const auto& reading : readings) {
+                if (reading.empty()) continue;
+                if (shouldIncludeReading(reading)) {
+                    count++;
+                }
+            }
+        }
+    }
+
+    // Print initial count
+    std::cout << count << std::endl;
+
+    // Now follow the file for new content
+    infile.clear();  // Clear EOF flag
+    
+    while (true) {
+        if (std::getline(infile, line)) {
+            if (line.empty()) continue;
+
+            if (isCSV) {
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+                if (fields.empty()) continue;
+
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+
+                if (shouldIncludeReading(reading)) {
+                    count++;
+                    std::cout << count << std::endl;
+                }
+            } else {
+                auto readings = JsonParser::parseJsonLine(line);
+                
+                if (removeEmptyJson) {
+                    bool allEmpty = true;
+                    for (const auto& r : readings) {
+                        if (!r.empty()) { allEmpty = false; break; }
+                    }
+                    if (allEmpty) continue;
+                }
+
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    if (shouldIncludeReading(reading)) {
+                        count++;
+                        std::cout << count << std::endl;
+                    }
+                }
+            }
+        } else {
+            // No more data available, wait briefly and try again
+            infile.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+}
+
 // ===== Constructor =====
 
-DataCounter::DataCounter(int argc, char* argv[]) {
+DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -154,6 +331,14 @@ DataCounter::DataCounter(int argc, char* argv[]) {
             i = result;
         }
     }
+    
+    // Parse --follow flag
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--follow" || arg == "-f") {
+            followMode = true;
+        }
+    }
 
     // Parse common flags and collect files
     CommonArgParser parser;
@@ -167,15 +352,16 @@ DataCounter::DataCounter(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-f" && arg != "--format" &&
+            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
             arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
             arg != "--not-empty" && arg != "--only-value" && arg != "--exclude-value" &&
             arg != "--remove-errors" && arg != "--remove-empty-json" &&
             arg != "--min-date" && arg != "--max-date" &&
+            arg != "--follow" && arg != "-f" &&
             arg != "-h" && arg != "--help") {
             if (i > 1) {
                 std::string prev = argv[i-1];
-                if (prev == "-f" || prev == "--format" || prev == "-e" || prev == "--extension" ||
+                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
                     prev == "-d" || prev == "--depth" || prev == "--not-empty" ||
                     prev == "--only-value" || prev == "--exclude-value" ||
                     prev == "--min-date" || prev == "--max-date") {
@@ -192,6 +378,24 @@ DataCounter::DataCounter(int argc, char* argv[]) {
 // ===== Main count method =====
 
 void DataCounter::count() {
+    if (!hasInputFiles && followMode) {
+        // Follow mode with stdin
+        countFromStdinFollow();
+        return;
+    }
+    
+    if (followMode && inputFiles.size() == 1) {
+        // Follow mode with a single file
+        countFromFileFollow(inputFiles[0]);
+        return;
+    }
+    
+    if (followMode && inputFiles.size() > 1) {
+        std::cerr << "Warning: --follow only supports a single file, using first file only" << std::endl;
+        countFromFileFollow(inputFiles[0]);
+        return;
+    }
+    
     long long totalCount = 0;
 
     if (!hasInputFiles) {
@@ -214,7 +418,8 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "Accepts the same filtering options as 'transform'." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
-    std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -f, --follow              Follow mode: continuously monitor file/stdin for new data" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -234,4 +439,6 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count -r -e .out /path/to/logs" << std::endl;
     std::cerr << "  " << progName << " count --remove-errors sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --only-value type:temperature sensor1.out" << std::endl;
+    std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;
+    std::cerr << "  tail -f sensor.out | " << progName << " count --follow" << std::endl;
 }

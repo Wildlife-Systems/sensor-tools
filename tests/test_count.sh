@@ -199,7 +199,7 @@ input='type,value
 ds18b20,22.5
 ds18b20,23.0
 bme280,24.0'
-result=$(echo "$input" | ./sensor-data count -f csv)
+result=$(echo "$input" | ./sensor-data count -if csv)
 if [ "$result" = "3" ]; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -217,7 +217,7 @@ input='type,value
 ds18b20,22.5
 ds18b20,23.0
 bme280,24.0'
-result=$(echo "$input" | ./sensor-data count -f csv --only-value type:ds18b20)
+result=$(echo "$input" | ./sensor-data count -if csv --only-value type:ds18b20)
 if [ "$result" = "2" ]; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))

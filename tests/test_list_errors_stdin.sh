@@ -117,8 +117,8 @@ fi
 
 # Test 5: CSV stdin with error value 85
 echo ""
-echo "Test 5: CSV stdin with -f csv flag and error value 85"
-result=$(cat <<'EOF' | ./sensor-data list-errors -f csv
+echo "Test 5: CSV stdin with -if csv flag and error value 85"
+result=$(cat <<'EOF' | ./sensor-data list-errors -if csv
 sensor,value,sensor_id
 ds18b20,85,001
 EOF
@@ -134,8 +134,8 @@ fi
 
 # Test 6: CSV stdin with error value -127
 echo ""
-echo "Test 6: CSV stdin with -f csv flag and error value -127"
-result=$(cat <<'EOF' | ./sensor-data list-errors -f csv
+echo "Test 6: CSV stdin with -if csv flag and error value -127"
+result=$(cat <<'EOF' | ./sensor-data list-errors -if csv
 sensor,value,sensor_id
 ds18b20,-127,002
 EOF
@@ -246,10 +246,10 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14: Known option with argument (-f csv)
+# Test 14: Known option with argument (-if csv)
 echo ""
-echo "Test 14: Known option with argument (-f csv)"
-result=$(cat <<'EOF' | ./sensor-data list-errors -f csv 2>&1
+echo "Test 14: Known option with argument (-if csv)"
+result=$(cat <<'EOF' | ./sensor-data list-errors -if csv 2>&1
 sensor,value,sensor_id
 ds18b20,85,001
 EOF
@@ -266,7 +266,7 @@ fi
 # Test 15: Argument to known flag should not be treated as unknown option
 echo ""
 echo "Test 15: Format argument 'csv' not treated as unknown"
-result=$(cat <<'EOF' | ./sensor-data list-errors -f csv 2>&1
+result=$(cat <<'EOF' | ./sensor-data list-errors -if csv 2>&1
 sensor,value,sensor_id
 ds18b20,85,001
 EOF

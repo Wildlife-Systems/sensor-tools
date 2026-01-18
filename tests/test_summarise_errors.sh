@@ -90,8 +90,8 @@ fi
 
 # Test 4: CSV stdin
 echo ""
-echo "Test 4: CSV stdin with -f csv flag"
-result=$(cat <<'EOF' | ./sensor-data summarise-errors -f csv
+echo "Test 4: CSV stdin with -if csv flag"
+result=$(cat <<'EOF' | ./sensor-data summarise-errors -if csv
 sensor,value,sensor_id
 ds18b20,85,001
 ds18b20,-127,002

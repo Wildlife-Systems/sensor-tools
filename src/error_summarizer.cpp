@@ -24,13 +24,13 @@ ErrorSummarizer::ErrorSummarizer(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-f" && arg != "--format" &&
+            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
             arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
             arg != "--min-date" && arg != "--max-date" &&
             arg != "-h" && arg != "--help") {
             if (i > 1) {
                 std::string prev = argv[i-1];
-                if (prev == "-f" || prev == "--format" || prev == "-e" || prev == "--extension" ||
+                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
                     prev == "-d" || prev == "--depth" || prev == "--min-date" || prev == "--max-date") {
                     continue;
                 }
@@ -49,7 +49,7 @@ ErrorSummarizer::ErrorSummarizer(int argc, char* argv[]) {
 void ErrorSummarizer::summariseErrors() {
     DataReader reader(minDate, maxDate, verbosity, inputFormat);
     
-    auto countError = [&](const std::map<std::string, std::string>& reading, int lineNum, const std::string& source) {
+    auto countError = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
         if (ErrorDetector::isErrorReading(reading)) {
             std::string errorDesc = ErrorDetector::getErrorDescription(reading);
             errorCounts[errorDesc]++;
@@ -87,10 +87,10 @@ void ErrorSummarizer::printSummariseErrorsUsage(const char* progName) {
     std::cerr << std::endl;
     std::cerr << "Summarise error readings in sensor data files with counts." << std::endl;
     std::cerr << "Currently detects DS18B20 sensors with temperature/value of 85 or -127 (error conditions)." << std::endl;
-    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -if is used)." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
-    std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output" << std::endl;
     std::cerr << "  -V                        Very verbose output" << std::endl;

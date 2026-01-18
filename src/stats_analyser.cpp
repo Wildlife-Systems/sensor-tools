@@ -1,6 +1,9 @@
 #include "stats_analyser.h"
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <thread>
+#include <iomanip>
 
 #include "data_reader.h"
 
@@ -55,7 +58,7 @@ void StatsAnalyser::collectDataFromReading(const std::map<std::string, std::stri
 
 // ===== Constructor =====
 
-StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
+StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value"), followMode(false) {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -70,7 +73,7 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
         exit(1);
     }
     
-    // Parse StatsAnalyser-specific options (-c/--column)
+    // Parse StatsAnalyser-specific options (-c/--column and --follow)
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         
@@ -86,6 +89,8 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
                 std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                 exit(1);
             }
+        } else if (arg == "--follow" || arg == "-f") {
+            followMode = true;
         }
     }
     
@@ -93,14 +98,15 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-f" && arg != "--format" &&
+            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
             arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
             arg != "-c" && arg != "--column" &&
+            arg != "--follow" && arg != "-f" &&
             arg != "--min-date" && arg != "--max-date" &&
             arg != "-h" && arg != "--help") {
             if (i > 1) {
                 std::string prev = argv[i-1];
-                if (prev == "-f" || prev == "--format" || prev == "-e" || prev == "--extension" ||
+                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
                     prev == "-d" || prev == "--depth" || prev == "-c" || prev == "--column" ||
                     prev == "--min-date" || prev == "--max-date") {
                     continue;
@@ -115,12 +121,255 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value") {
     copyFromParser(parser);
 }
 
+// ===== Print stats helper =====
+
+void StatsAnalyser::printStats() {
+    if (columnData.empty()) {
+        std::cout << "No numeric data found" << std::endl;
+        return;
+    }
+    
+    std::cout << "Statistics:" << std::endl;
+    std::cout << std::endl;
+    
+    for (const auto& pair : columnData) {
+        const std::string& colName = pair.first;
+        const std::vector<double>& values = pair.second;
+        
+        if (values.empty()) continue;
+        
+        double min = *std::min_element(values.begin(), values.end());
+        double max = *std::max_element(values.begin(), values.end());
+        double sum = 0.0;
+        for (double v : values) sum += v;
+        double mean = sum / values.size();
+        double median = calculateMedian(values);
+        double stddev = calculateStdDev(values, mean);
+        
+        std::cout << colName << ":" << std::endl;
+        std::cout << "  Count:  " << values.size() << std::endl;
+        std::cout << "  Min:    " << min << std::endl;
+        std::cout << "  Max:    " << max << std::endl;
+        std::cout << "  Mean:   " << mean << std::endl;
+        std::cout << "  Median: " << median << std::endl;
+        std::cout << "  StdDev: " << stddev << std::endl;
+        std::cout << std::endl;
+    }
+}
+
+// ===== Follow mode for stdin =====
+
+void StatsAnalyser::analyzeStdinFollow() {
+    if (verbosity >= 1) {
+        std::cerr << "Reading from stdin with follow mode (format: " << inputFormat << ")..." << std::endl;
+    }
+    
+    std::string line;
+    std::vector<std::string> csvHeaders;
+    bool headerParsed = false;
+    
+    // Print initial stats (will say "No numeric data found")
+    printStats();
+    std::cout << "---" << std::endl;
+    
+    while (true) {
+        if (std::getline(std::cin, line)) {
+            if (line.empty()) continue;
+            
+            bool dataUpdated = false;
+            
+            if (inputFormat == "csv") {
+                if (!headerParsed) {
+                    csvHeaders = CsvParser::parseCsvLine(line);
+                    headerParsed = true;
+                    continue;
+                }
+                
+                auto fields = CsvParser::parseCsvLine(line);
+                if (fields.empty()) continue;
+                
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                // Check date filter
+                if (minDate > 0 || maxDate > 0) {
+                    long long timestamp = DateUtils::getTimestamp(reading);
+                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+                }
+                
+                collectDataFromReading(reading);
+                dataUpdated = true;
+            } else {
+                // JSON format
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    // Check date filter
+                    if (minDate > 0 || maxDate > 0) {
+                        long long timestamp = DateUtils::getTimestamp(reading);
+                        if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+                    }
+                    
+                    collectDataFromReading(reading);
+                    dataUpdated = true;
+                }
+            }
+            
+            if (dataUpdated) {
+                printStats();
+                std::cout << "---" << std::endl;
+            }
+        } else {
+            // No more data available, wait briefly and try again
+            std::cin.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+}
+
+void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
+    if (verbosity >= 1) {
+        std::cerr << "Following file: " << filename << " (format: " << (FileUtils::isCsvFile(filename) ? "csv" : "json") << ")..." << std::endl;
+    }
+    
+    std::ifstream infile(filename);
+    if (!infile) {
+        std::cerr << "Error: Cannot open file: " << filename << std::endl;
+        return;
+    }
+    
+    std::string line;
+    std::vector<std::string> csvHeaders;
+    bool isCSV = FileUtils::isCsvFile(filename);
+    
+    // Read existing content first
+    if (isCSV) {
+        if (std::getline(infile, line) && !line.empty()) {
+            bool needMore = false;
+            csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+        }
+        
+        while (std::getline(infile, line)) {
+            if (line.empty()) continue;
+            
+            bool needMore = false;
+            auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+            if (fields.empty()) continue;
+            
+            std::map<std::string, std::string> reading;
+            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                reading[csvHeaders[i]] = fields[i];
+            }
+            
+            if (minDate > 0 || maxDate > 0) {
+                long long timestamp = DateUtils::getTimestamp(reading);
+                if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+            }
+            
+            collectDataFromReading(reading);
+        }
+    } else {
+        while (std::getline(infile, line)) {
+            if (line.empty()) continue;
+            
+            auto readings = JsonParser::parseJsonLine(line);
+            for (const auto& reading : readings) {
+                if (reading.empty()) continue;
+                
+                if (minDate > 0 || maxDate > 0) {
+                    long long timestamp = DateUtils::getTimestamp(reading);
+                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+                }
+                
+                collectDataFromReading(reading);
+            }
+        }
+    }
+    
+    // Print initial stats
+    printStats();
+    std::cout << "---" << std::endl;
+    
+    // Now follow the file for new content
+    infile.clear();  // Clear EOF flag
+    
+    while (true) {
+        if (std::getline(infile, line)) {
+            if (line.empty()) continue;
+            
+            bool dataUpdated = false;
+            
+            if (isCSV) {
+                bool needMore = false;
+                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+                if (fields.empty()) continue;
+                
+                std::map<std::string, std::string> reading;
+                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                    reading[csvHeaders[i]] = fields[i];
+                }
+                
+                if (minDate > 0 || maxDate > 0) {
+                    long long timestamp = DateUtils::getTimestamp(reading);
+                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+                }
+                
+                collectDataFromReading(reading);
+                dataUpdated = true;
+            } else {
+                auto readings = JsonParser::parseJsonLine(line);
+                for (const auto& reading : readings) {
+                    if (reading.empty()) continue;
+                    
+                    if (minDate > 0 || maxDate > 0) {
+                        long long timestamp = DateUtils::getTimestamp(reading);
+                        if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
+                    }
+                    
+                    collectDataFromReading(reading);
+                    dataUpdated = true;
+                }
+            }
+            
+            if (dataUpdated) {
+                printStats();
+                std::cout << "---" << std::endl;
+            }
+        } else {
+            // No more data available, wait briefly and try again
+            infile.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+}
+
 // ===== Main analyze method =====
 
 void StatsAnalyser::analyze() {
+    if (inputFiles.empty() && followMode) {
+        // Follow mode with stdin
+        analyzeStdinFollow();
+        return;
+    }
+    
+    if (followMode && inputFiles.size() == 1) {
+        // Follow mode with a single file
+        analyzeFileFollow(inputFiles[0]);
+        return;
+    }
+    
+    if (followMode && inputFiles.size() > 1) {
+        std::cerr << "Warning: --follow only supports a single file, using first file only" << std::endl;
+        analyzeFileFollow(inputFiles[0]);
+        return;
+    }
+    
     DataReader reader(minDate, maxDate, verbosity, inputFormat);
     
-    auto collectData = [&](const std::map<std::string, std::string>& reading, int lineNum, const std::string& source) {
+    auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
         collectDataFromReading(reading);
     };
     
@@ -134,37 +383,7 @@ void StatsAnalyser::analyze() {
         }
     }
     
-    // Print statistics
-    if (columnData.empty()) {
-        std::cout << "No numeric data found" << std::endl;
-    } else {
-        std::cout << "Statistics:" << std::endl;
-        std::cout << std::endl;
-        
-        for (const auto& pair : columnData) {
-            const std::string& colName = pair.first;
-            const std::vector<double>& values = pair.second;
-            
-            if (values.empty()) continue;
-            
-            double min = *std::min_element(values.begin(), values.end());
-            double max = *std::max_element(values.begin(), values.end());
-            double sum = 0.0;
-            for (double v : values) sum += v;
-            double mean = sum / values.size();
-            double median = calculateMedian(values);
-            double stddev = calculateStdDev(values, mean);
-            
-            std::cout << colName << ":" << std::endl;
-            std::cout << "  Count:  " << values.size() << std::endl;
-            std::cout << "  Min:    " << min << std::endl;
-            std::cout << "  Max:    " << max << std::endl;
-            std::cout << "  Mean:   " << mean << std::endl;
-            std::cout << "  Median: " << median << std::endl;
-            std::cout << "  StdDev: " << stddev << std::endl;
-            std::cout << std::endl;
-        }
-    }
+    printStats();
 }
 
 // ===== Usage printing =====
@@ -174,11 +393,12 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << std::endl;
     std::cerr << "Calculate statistics for numeric sensor data." << std::endl;
     std::cerr << "Shows min, max, mean, median, and standard deviation for numeric columns." << std::endl;
-    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -if is used)." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "  -c, --column <name>       Analyze only this column (default: value, use 'all' for all columns)" << std::endl;
-    std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -f, --follow              Follow mode: continuously read input and update stats (stdin or single file)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output" << std::endl;
     std::cerr << "  -V                        Very verbose output" << std::endl;
@@ -192,8 +412,9 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  " << progName << " stats < sensor1.out" << std::endl;
     std::cerr << "  " << progName << " stats -c value < sensor1.out" << std::endl;
     std::cerr << "  " << progName << " stats -c all < sensor1.out" << std::endl;
-    std::cerr << "  " << progName << " stats -f csv < sensor1.csv" << std::endl;
+    std::cerr << "  " << progName << " stats -if csv < sensor1.csv" << std::endl;
     std::cerr << "  cat sensor1.out | " << progName << " stats" << std::endl;
     std::cerr << "  " << progName << " stats -r -e .out /path/to/logs/" << std::endl;
     std::cerr << "  " << progName << " stats sensor1.csv sensor2.out" << std::endl;
+    std::cerr << "  tail -f sensor.out | " << progName << " stats --follow" << std::endl;
 }

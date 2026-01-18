@@ -18,14 +18,14 @@ _sensor_data() {
     local commands="transform count list-errors summarise-errors stats"
     
     # Common options for all commands
-    local common_opts="-r --recursive -v -V -e --extension -d --depth -f --format --min-date --max-date"
+    local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -F --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
-    local count_opts="--not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local transform_opts="-o --output -of --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
+    local count_opts="-f --follow --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
-    local stats_opts="-o --output --column --group-by"
+    local stats_opts="-f --follow -o --output --column --group-by"
 
     # Determine which command we're completing for
     local cmd=""
@@ -66,11 +66,11 @@ _sensor_data() {
             COMPREPLY=($(compgen -W "0 1 2 3 5 10" -- "$cur"))
             return
             ;;
-        -f|--format)
+        -if|--input-format)
             COMPREPLY=($(compgen -W "json csv" -- "$cur"))
             return
             ;;
-        -F|--output-format)
+        -of|--output-format)
             COMPREPLY=($(compgen -W "json csv" -- "$cur"))
             return
             ;;

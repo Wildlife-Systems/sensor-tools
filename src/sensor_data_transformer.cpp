@@ -363,7 +363,7 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[])
                 std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                 exit(1);
             }
-        } else if (arg == "-F" || arg == "--output-format") {
+        } else if (arg == "-of" || arg == "--output-format") {
             if (i + 1 < argc) {
                 ++i;
                 outputFormat = argv[i];
@@ -663,14 +663,14 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "For JSON: Each line in input files should contain JSON with sensor readings." << std::endl;
     std::cerr << "For CSV: Files with .csv extension are automatically detected and processed." << std::endl;
     std::cerr << "Each sensor reading will become a row in the output." << std::endl;
-    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -f is used)." << std::endl;
+    std::cerr << "If no input files are specified, reads from stdin (assumes JSON format unless -if is used)." << std::endl;
     std::cerr << "Output is written to stdout unless -o/--output is specified." << std::endl;
     std::cerr << "Default output format: JSON (matching .out file format)." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "  -o, --output <file>       Output file (default: stdout)" << std::endl;
-    std::cerr << "  -f, --format <fmt>        Input format for stdin: json or csv (default: json)" << std::endl;
-    std::cerr << "  -F, --output-format <fmt> Output format: json or csv (default: json)" << std::endl;
+    std::cerr << "  -if, --input-format <fmt>  Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -of, --output-format <fmt> Output format: json or csv (default: json)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -689,7 +689,7 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " transform sensor1.out" << std::endl;
     std::cerr << "  " << progName << " transform < sensor1.out" << std::endl;
-    std::cerr << "  " << progName << " transform -f csv < sensor1.csv" << std::endl;
+    std::cerr << "  " << progName << " transform -if csv < sensor1.csv" << std::endl;
     std::cerr << "  cat sensor1.out | " << progName << " transform" << std::endl;
     std::cerr << "  cat sensor1.out | " << progName << " transform -o output.csv" << std::endl;
     std::cerr << "  " << progName << " transform -o output.csv sensor1.out" << std::endl;

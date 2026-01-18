@@ -88,8 +88,8 @@ fi
 
 # Test 4: CSV input
 echo ""
-echo "Test 4: CSV input with -f csv"
-result=$(cat <<'EOF' | ./sensor-data stats -f csv
+echo "Test 4: CSV input with -if csv"
+result=$(cat <<'EOF' | ./sensor-data stats -if csv
 sensor,value,sensor_id
 ds18b20,22.5,001
 ds18b20,23.0,002

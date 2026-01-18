@@ -47,10 +47,10 @@ Show version information.
 .BR \-o ", " \-\-output " " \fIfile\fR
 Output file (default: stdout).
 .TP
-.BR \-f ", " \-\-format " " \fIfmt\fR
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
 Input format for stdin: json or csv (default: json).
 .TP
-.BR \-F ", " \-\-output\-format " " \fIfmt\fR
+.BR \-of ", " \-\-output\-format " " \fIfmt\fR
 Output format: json or csv (default: json).
 .TP
 .BR \-r ", " \-\-recursive
@@ -96,8 +96,11 @@ Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 .SH COUNT OPTIONS
 .TP
-.BR \-f ", " \-\-format " " \fIfmt\fR
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
 Input format for stdin: json or csv (default: json).
+.TP
+.BR \-f ", " \-\-follow
+Follow mode: continuously read input and update count (stdin or single file).
 .TP
 .BR \-r ", " \-\-recursive
 Recursively process subdirectories.
@@ -136,7 +139,7 @@ Filter readings after this date.
 Filter readings before this date.
 .SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
 .TP
-.BR \-f ", " \-\-format " " \fIfmt\fR
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
 Input format for stdin: json or csv (default: json).
 .TP
 .BR \-r ", " \-\-recursive
@@ -164,8 +167,11 @@ Filter readings before this date.
 .BR \-c ", " \-\-column " " \fIname\fR
 Analyze only this column (default: value).
 .TP
-.BR \-f ", " \-\-format " " \fIfmt\fR
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
 Input format for stdin: json or csv (default: json).
+.TP
+.BR \-f ", " \-\-follow
+Follow mode: continuously read input and update stats (stdin or single file).
 .TP
 .BR \-r ", " \-\-recursive
 Recursively process subdirectories.
@@ -191,7 +197,7 @@ Filter readings before this date.
 Transform a JSON sensor file to CSV:
 .PP
 .RS
-sensor\-data transform \-F csv sensor1.out
+sensor\-data transform \-of csv sensor1.out
 .RE
 .PP
 Transform multiple files with error filtering:

@@ -39,13 +39,13 @@ public:
                 verbosity = 1;
             } else if (arg == "-V") {
                 verbosity = 2;
-            } else if (arg == "-f" || arg == "--format") {
+            } else if (arg == "-if" || arg == "--input-format") {
                 if (i + 1 < argc) {
                     ++i;
                     inputFormat = argv[i];
                     std::transform(inputFormat.begin(), inputFormat.end(), inputFormat.begin(), ::tolower);
                     if (inputFormat != "json" && inputFormat != "csv") {
-                        std::cerr << "Error: format must be 'json' or 'csv'" << std::endl;
+                        std::cerr << "Error: input format must be 'json' or 'csv'" << std::endl;
                         return false;
                     }
                 } else {
@@ -63,7 +63,7 @@ public:
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     return false;
                 }
-            } else if (arg == "-F" || arg == "--output-format") {
+            } else if (arg == "-of" || arg == "--output-format") {
                 // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
@@ -71,6 +71,8 @@ public:
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     return false;
                 }
+            } else if (arg == "-f" || arg == "--follow") {
+                // Skip this flag - handled by DataCounter and StatsAnalyser
             } else if (arg == "-o" || arg == "--output") {
                 // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
