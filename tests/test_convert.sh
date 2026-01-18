@@ -613,6 +613,132 @@ else
 fi
 rm -rf testdir output.csv
 
+# Test 14: JSON file to JSON output with filtering (exercises writeRowsFromFileJson filter path)
+echo ""
+echo "Test 14: JSON file to JSON with --only-value filter"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}, {"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data convert -F json --only-value sensor:ds18b20 testdir/test.out)
+rm -rf testdir
+# Should filter to only ds18b20 readings (2 readings from 2 lines)
+count=$(echo "$result" | grep -c "ds18b20" || true)
+if [ "$count" -eq 2 ] && ! echo "$result" | grep -q "dht22\|bmp280"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 ds18b20 readings only"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14a: JSON file to JSON with --remove-errors filter
+echo ""
+echo "Test 14a: JSON file to JSON with --remove-errors filter"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "ds18b20", "value": "85"}, {"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "-127"}, {"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data convert -F json --remove-errors testdir/test.out)
+rm -rf testdir
+# Should remove error values 85 and -127, keep 22.5 and 23.0
+if echo "$result" | grep -q "22.5" && echo "$result" | grep -q "23.0" && ! echo "$result" | grep -q '":85"\|":-127"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only valid readings (22.5, 23.0)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14b: JSON file to JSON with date filter
+echo ""
+echo "Test 14b: JSON file to JSON with date filter"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"timestamp": "1704067200", "sensor": "ds18b20", "value": "22.5"}]
+[{"timestamp": "1706745600", "sensor": "ds18b20", "value": "23.0"}]
+[{"timestamp": "1709424000", "sensor": "ds18b20", "value": "24.0"}]
+EOF
+# Filter to readings in January 2024 (1704067200 = 2024-01-01)
+result=$(./sensor-data convert -F json --min-date 2024-01-01 --max-date 2024-01-31 testdir/test.out)
+rm -rf testdir
+# Should only include the first reading (Jan 2024)
+if echo "$result" | grep -q "22.5" && ! echo "$result" | grep -q "23.0\|24.0"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only January 2024 reading"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14c: JSON file to JSON where entire line is filtered out
+echo ""
+echo "Test 14c: JSON file to JSON with all readings filtered from some lines"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "dht22", "value": "45"}, {"sensor": "bmp280", "value": "1013"}]
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "50"}]
+EOF
+result=$(./sensor-data convert -F json --only-value sensor:ds18b20 testdir/test.out)
+rm -rf testdir
+# Should output only line with ds18b20 (other lines completely filtered)
+line_count=$(echo "$result" | grep -c '\[' || true)
+if [ "$line_count" -eq 1 ] && echo "$result" | grep -q "ds18b20"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 1 output line with ds18b20"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14d: JSON file to JSON with multiple readings filtered to one per line
+echo ""
+echo "Test 14d: JSON file with multiple objects, some filtered per line"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "ds18b20", "value": "85"}, {"sensor": "dht22", "value": "45"}]
+EOF
+result=$(./sensor-data convert -F json --remove-errors --only-value sensor:ds18b20 testdir/test.out)
+rm -rf testdir
+# Should keep only non-error ds18b20 reading (22.5), filter out 85 (error) and dht22
+if echo "$result" | grep -q "22.5" && ! echo "$result" | grep -q '":85"\|dht22'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only valid ds18b20 reading (22.5)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14e: JSON file to JSON output to file with filtering
+echo ""
+echo "Test 14e: JSON file to JSON file output with filtering"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
+EOF
+./sensor-data convert -F json --only-value sensor:ds18b20 -o output.json testdir/test.out
+if [ -f output.json ] && grep -q "ds18b20" output.json && ! grep -q "dht22" output.json; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected output.json with only ds18b20"
+    if [ -f output.json ]; then
+        echo "  File contents: $(cat output.json)"
+    else
+        echo "  File not created"
+    fi
+    FAILED=$((FAILED + 1))
+fi
+rm -rf testdir output.json
+
 # Summary
 echo ""
 echo "================================"
