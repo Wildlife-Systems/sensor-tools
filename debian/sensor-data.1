@@ -175,6 +175,12 @@ Input format for stdin: json or csv (default: json).
 .BR \-f ", " \-\-follow
 Follow mode: continuously read input and update stats (stdin or single file).
 .TP
+.BI \-\-only\-value " col:val"
+Only include rows where column has specific value (can be used multiple times).
+.TP
+.BI \-\-exclude\-value " col:val"
+Exclude rows where column has specific value (can be used multiple times).
+.TP
 .BR \-r ", " \-\-recursive
 Recursively process subdirectories.
 .TP

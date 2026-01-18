@@ -118,12 +118,14 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value"), fo
             arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
             arg != "-c" && arg != "--column" &&
             arg != "--follow" && arg != "-f" &&
+            arg != "--only-value" && arg != "--exclude-value" &&
             arg != "--min-date" && arg != "--max-date" &&
             arg != "-h" && arg != "--help") {
             if (i > 1) {
                 std::string prev = argv[i-1];
                 if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
                     prev == "-d" || prev == "--depth" || prev == "-c" || prev == "--column" ||
+                    prev == "--only-value" || prev == "--exclude-value" ||
                     prev == "--min-date" || prev == "--max-date") {
                     continue;
                 }
@@ -266,11 +268,8 @@ void StatsAnalyser::analyzeStdinFollow() {
                     reading[csvHeaders[i]] = fields[i];
                 }
                 
-                // Check date filter
-                if (minDate > 0 || maxDate > 0) {
-                    long long timestamp = DateUtils::getTimestamp(reading);
-                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-                }
+                // Check all filters (date, only-value, exclude-value, etc.)
+                if (!shouldIncludeReading(reading)) continue;
                 
                 collectDataFromReading(reading);
                 dataUpdated = true;
@@ -280,11 +279,8 @@ void StatsAnalyser::analyzeStdinFollow() {
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
                     
-                    // Check date filter
-                    if (minDate > 0 || maxDate > 0) {
-                        long long timestamp = DateUtils::getTimestamp(reading);
-                        if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-                    }
+                    // Check all filters (date, only-value, exclude-value, etc.)
+                    if (!shouldIncludeReading(reading)) continue;
                     
                     collectDataFromReading(reading);
                     dataUpdated = true;
@@ -337,10 +333,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
                 reading[csvHeaders[i]] = fields[i];
             }
             
-            if (minDate > 0 || maxDate > 0) {
-                long long timestamp = DateUtils::getTimestamp(reading);
-                if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-            }
+            if (!shouldIncludeReading(reading)) continue;
             
             collectDataFromReading(reading);
         }
@@ -352,10 +345,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
                 
-                if (minDate > 0 || maxDate > 0) {
-                    long long timestamp = DateUtils::getTimestamp(reading);
-                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-                }
+                if (!shouldIncludeReading(reading)) continue;
                 
                 collectDataFromReading(reading);
             }
@@ -385,10 +375,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
                     reading[csvHeaders[i]] = fields[i];
                 }
                 
-                if (minDate > 0 || maxDate > 0) {
-                    long long timestamp = DateUtils::getTimestamp(reading);
-                    if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-                }
+                if (!shouldIncludeReading(reading)) continue;
                 
                 collectDataFromReading(reading);
                 dataUpdated = true;
@@ -397,10 +384,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
                     
-                    if (minDate > 0 || maxDate > 0) {
-                        long long timestamp = DateUtils::getTimestamp(reading);
-                        if (!DateUtils::isInDateRange(timestamp, minDate, maxDate)) continue;
-                    }
+                    if (!shouldIncludeReading(reading)) continue;
                     
                     collectDataFromReading(reading);
                     dataUpdated = true;
@@ -443,6 +427,7 @@ void StatsAnalyser::analyze() {
     DataReader reader(minDate, maxDate, verbosity, inputFormat);
     
     auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+        if (!shouldIncludeReading(reading)) return;
         collectDataFromReading(reading);
     };
     
@@ -472,6 +457,8 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  -c, --column <name>       Analyze only this column (default: value, use 'all' for all columns)" << std::endl;
     std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
     std::cerr << "  -f, --follow              Follow mode: continuously read input and update stats (stdin or single file)" << std::endl;
+    std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
+    std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output" << std::endl;
     std::cerr << "  -V                        Very verbose output" << std::endl;
@@ -489,5 +476,6 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  cat sensor1.out | " << progName << " stats" << std::endl;
     std::cerr << "  " << progName << " stats -r -e .out /path/to/logs/" << std::endl;
     std::cerr << "  " << progName << " stats sensor1.csv sensor2.out" << std::endl;
+    std::cerr << "  " << progName << " stats --only-value sensor:ds18b20 sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " stats --follow" << std::endl;
 }

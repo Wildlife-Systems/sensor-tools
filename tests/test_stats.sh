@@ -412,6 +412,69 @@ else
     echo "  Got: $result"
     FAILED=$((FAILED + 1))
 fi
+
+# Test 21: --only-value filter
+echo ""
+echo "Test 21: --only-value filter"
+result=$(cat <<'EOF' | ./sensor-data stats --only-value sensor:ds18b20
+{"sensor":"ds18b20","value":"22.5"}
+{"sensor":"dht22","value":"65.0"}
+{"sensor":"ds18b20","value":"23.0"}
+{"sensor":"bme280","value":"1013.25"}
+{"sensor":"ds18b20","value":"24.5"}
+EOF
+)
+# Should only include 3 ds18b20 readings
+if echo "$result" | grep -q "Count:.*3"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 3 readings (only ds18b20)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 22: --exclude-value filter
+echo ""
+echo "Test 22: --exclude-value filter"
+result=$(cat <<'EOF' | ./sensor-data stats --exclude-value sensor:ds18b20
+{"sensor":"ds18b20","value":"22.5"}
+{"sensor":"dht22","value":"65.0"}
+{"sensor":"ds18b20","value":"23.0"}
+{"sensor":"bme280","value":"1013.25"}
+{"sensor":"ds18b20","value":"24.5"}
+EOF
+)
+# Should only include 2 readings (dht22 and bme280)
+if echo "$result" | grep -q "Count:.*2"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings (excluding ds18b20)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 23: Multiple --only-value filters (AND logic)
+echo ""
+echo "Test 23: Multiple --only-value filters"
+result=$(cat <<'EOF' | ./sensor-data stats --only-value sensor:ds18b20 --only-value unit:C
+{"sensor":"ds18b20","value":"22.5","unit":"C"}
+{"sensor":"ds18b20","value":"85","unit":"F"}
+{"sensor":"dht22","value":"65.0","unit":"C"}
+{"sensor":"ds18b20","value":"23.0","unit":"C"}
+EOF
+)
+# Should only include ds18b20 readings with unit:C (2 readings)
+if echo "$result" | grep -q "Count:.*2"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings (ds18b20 with unit:C)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

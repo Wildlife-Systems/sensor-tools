@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <map>
+#include <set>
 #include "date_utils.h"
 #include "file_collector.h"
 
@@ -18,6 +20,8 @@ private:
     long long minDate;
     long long maxDate;
     std::vector<std::string> inputFiles;
+    std::map<std::string, std::set<std::string>> onlyValueFilters;
+    std::map<std::string, std::set<std::string>> excludeValueFilters;
     
 public:
     CommonArgParser() 
@@ -78,10 +82,42 @@ public:
                 if (i + 1 < argc) {
                     ++i;
                 }
-            } else if (arg == "--not-empty" || arg == "--only-value" || arg == "--exclude-value") {
-                // Skip these flags and their arguments - handled by SensorDataTransformer
+            } else if (arg == "--not-empty") {
+                // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
+                }
+            } else if (arg == "--only-value") {
+                if (i + 1 < argc) {
+                    ++i;
+                    std::string value = argv[i];
+                    size_t colonPos = value.find(':');
+                    if (colonPos == std::string::npos || colonPos == 0 || colonPos == value.length() - 1) {
+                        std::cerr << "Error: --only-value requires format 'column:value'" << std::endl;
+                        return false;
+                    }
+                    std::string col = value.substr(0, colonPos);
+                    std::string val = value.substr(colonPos + 1);
+                    onlyValueFilters[col].insert(val);
+                } else {
+                    std::cerr << "Error: --only-value requires an argument" << std::endl;
+                    return false;
+                }
+            } else if (arg == "--exclude-value") {
+                if (i + 1 < argc) {
+                    ++i;
+                    std::string value = argv[i];
+                    size_t colonPos = value.find(':');
+                    if (colonPos == std::string::npos || colonPos == 0 || colonPos == value.length() - 1) {
+                        std::cerr << "Error: --exclude-value requires format 'column:value'" << std::endl;
+                        return false;
+                    }
+                    std::string col = value.substr(0, colonPos);
+                    std::string val = value.substr(colonPos + 1);
+                    excludeValueFilters[col].insert(val);
+                } else {
+                    std::cerr << "Error: --exclude-value requires an argument" << std::endl;
+                    return false;
                 }
             } else if (arg == "-c" || arg == "--column") {
                 // Skip this flag and its argument - handled by StatsAnalyser
@@ -155,6 +191,8 @@ public:
     long long getMinDate() const { return minDate; }
     long long getMaxDate() const { return maxDate; }
     const std::vector<std::string>& getInputFiles() const { return inputFiles; }
+    const std::map<std::string, std::set<std::string>>& getOnlyValueFilters() const { return onlyValueFilters; }
+    const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const { return excludeValueFilters; }
 };
 
 // Helper function to print common verbose information

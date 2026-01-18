@@ -210,6 +210,8 @@ protected:
         maxDate = parser.getMaxDate();
         inputFiles = parser.getInputFiles();
         hasInputFiles = !inputFiles.empty();
+        onlyValueFilters = parser.getOnlyValueFilters();
+        excludeValueFilters = parser.getExcludeValueFilters();
     }
     
     /**
