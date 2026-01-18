@@ -76,7 +76,7 @@ public:
                 if (i + 1 < argc) {
                     ++i;
                 }
-            } else if (arg == "--not-empty" || arg == "--only-value") {
+            } else if (arg == "--not-empty" || arg == "--only-value" || arg == "--exclude-value") {
                 // Skip these flags and their arguments - handled by SensorDataConverter
                 if (i + 1 < argc) {
                     ++i;
