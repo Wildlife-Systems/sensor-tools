@@ -453,6 +453,71 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --allowed-values with comma-separated list
+echo ""
+echo "Test: --allowed-values with comma-separated values"
+result=$(cat <<'EOF' | ./sensor-data count --allowed-values sensor ds18b20,dht22
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+if [ "$result" = "3" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 3 (ds18b20 x2 + dht22 x1)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --allowed-values with file
+echo ""
+echo "Test: --allowed-values with file of values"
+# Create a temp file with allowed values
+tmpfile=$(mktemp)
+echo "ds18b20" > "$tmpfile"
+echo "dht22" >> "$tmpfile"
+result=$(cat <<'EOF' | ./sensor-data count --allowed-values sensor "$tmpfile"
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+rm -f "$tmpfile"
+if [ "$result" = "3" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 3 (ds18b20 x2 + dht22 x1)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --allowed-values with single value
+echo ""
+echo "Test: --allowed-values with single value"
+result=$(cat <<'EOF' | ./sensor-data count --allowed-values sensor ds18b20
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2 (ds18b20 x2)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

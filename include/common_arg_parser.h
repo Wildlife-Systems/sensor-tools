@@ -2,6 +2,7 @@
 #define COMMON_ARG_PARSER_H
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <algorithm>
 #include <map>
@@ -22,6 +23,7 @@ private:
     std::vector<std::string> inputFiles;
     std::map<std::string, std::set<std::string>> onlyValueFilters;
     std::map<std::string, std::set<std::string>> excludeValueFilters;
+    std::map<std::string, std::set<std::string>> allowedValues;
     std::set<std::string> notEmptyColumns;
     bool removeEmptyJson;
     bool removeErrors;
@@ -134,6 +136,51 @@ public:
                     std::cerr << "Error: --exclude-value requires an argument" << std::endl;
                     return false;
                 }
+            } else if (arg == "--allowed-values") {
+                if (i + 2 < argc) {
+                    ++i;
+                    std::string column = argv[i];
+                    ++i;
+                    std::string valuesArg = argv[i];
+                    // Check if valuesArg is a file or comma-separated values
+                    std::ifstream file(valuesArg);
+                    if (file.good()) {
+                        // It's a file - read values line by line
+                        std::string line;
+                        while (std::getline(file, line)) {
+                            // Trim whitespace
+                            size_t start = line.find_first_not_of(" \t\r\n");
+                            size_t end = line.find_last_not_of(" \t\r\n");
+                            if (start != std::string::npos && end != std::string::npos) {
+                                allowedValues[column].insert(line.substr(start, end - start + 1));
+                            }
+                        }
+                    } else {
+                        // Treat as comma-separated values
+                        size_t pos = 0;
+                        while (pos < valuesArg.length()) {
+                            size_t commaPos = valuesArg.find(',', pos);
+                            if (commaPos == std::string::npos) {
+                                commaPos = valuesArg.length();
+                            }
+                            std::string val = valuesArg.substr(pos, commaPos - pos);
+                            // Trim whitespace
+                            size_t start = val.find_first_not_of(" \t");
+                            size_t end = val.find_last_not_of(" \t");
+                            if (start != std::string::npos && end != std::string::npos) {
+                                allowedValues[column].insert(val.substr(start, end - start + 1));
+                            }
+                            pos = commaPos + 1;
+                        }
+                    }
+                    if (allowedValues[column].empty()) {
+                        std::cerr << "Error: --allowed-values requires at least one value" << std::endl;
+                        return false;
+                    }
+                } else {
+                    std::cerr << "Error: --allowed-values requires <column> and <values|file>" << std::endl;
+                    return false;
+                }
             } else if (arg == "-c" || arg == "--column") {
                 // Skip this flag and its argument - handled by StatsAnalyser
                 if (i + 1 < argc) {
@@ -208,6 +255,7 @@ public:
     const std::vector<std::string>& getInputFiles() const { return inputFiles; }
     const std::map<std::string, std::set<std::string>>& getOnlyValueFilters() const { return onlyValueFilters; }
     const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const { return excludeValueFilters; }
+    const std::map<std::string, std::set<std::string>>& getAllowedValues() const { return allowedValues; }
     const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
     bool getRemoveEmptyJson() const { return removeEmptyJson; }
     bool getRemoveErrors() const { return removeErrors; }
@@ -231,15 +279,16 @@ public:
         
         // Common filtering options
         static const std::set<std::string> filterOptions = {
-            "--not-empty", "--only-value", "--exclude-value",
+            "--not-empty", "--only-value", "--exclude-value", "--allowed-values",
             "--remove-errors", "--remove-empty-json", "--clean"
         };
         
         // Options that take arguments (need to skip the next arg)
+        // Note: --allowed-values takes TWO args but we handle that specially
         static const std::set<std::string> optionsWithArgs = {
             "-if", "--input-format", "-e", "--extension", "-d", "--depth",
             "--min-date", "--max-date", "--not-empty", "--only-value", 
-            "--exclude-value", "-o", "--output", "-of", "--output-format",
+            "--exclude-value", "--allowed-values", "-o", "--output", "-of", "--output-format",
             "-c", "--column"
         };
         

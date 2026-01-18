@@ -84,6 +84,11 @@ Only include rows where column has specific value (can be used multiple times).
 .BI \-\-exclude\-value " col:val"
 Exclude rows where column has specific value (can be used multiple times).
 .TP
+.BI \-\-allowed\-values " column" " values|file"
+Only include rows where column value is in the allowed list. 
+The second argument can be comma-separated values (e.g., ds18b20,dht22) 
+or a file path with one value per line.
+.TP
 .B \-\-remove\-errors
 Remove error readings (DS18B20 value=85 or \-127).
 .TP
@@ -132,6 +137,11 @@ Only include rows where column has specific value (can be used multiple times).
 .TP
 .BI \-\-exclude\-value " col:val"
 Exclude rows where column has specific value (can be used multiple times).
+.TP
+.BI \-\-allowed\-values " column" " values|file"
+Only include rows where column value is in the allowed list. 
+The second argument can be comma-separated values (e.g., ds18b20,dht22) 
+or a file path with one value per line.
 .TP
 .B \-\-remove\-errors
 Remove error readings (DS18B20 value=85 or \-127).
@@ -188,6 +198,11 @@ Only include rows where column has specific value (can be used multiple times).
 .TP
 .BI \-\-exclude\-value " col:val"
 Exclude rows where column has specific value (can be used multiple times).
+.TP
+.BI \-\-allowed\-values " column" " values|file"
+Only include rows where column value is in the allowed list. 
+The second argument can be comma-separated values (e.g., ds18b20,dht22) 
+or a file path with one value per line.
 .TP
 .BI \-\-not\-empty " column"
 Skip rows where column is empty (can be used multiple times).

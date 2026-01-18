@@ -43,6 +43,7 @@ protected:
     std::set<std::string> notEmptyColumns;
     std::map<std::string, std::set<std::string>> onlyValueFilters;
     std::map<std::string, std::set<std::string>> excludeValueFilters;
+    std::map<std::string, std::set<std::string>> allowedValues;
     
     // Constructor with default values
     CommandBase() 
@@ -119,6 +120,22 @@ protected:
                 if (verbosity >= 2) {
                     std::cerr << "  Skipping row: column '" << filter.first << "' has excluded value '" 
                              << it->second << "'" << std::endl;
+                }
+                return false;
+            }
+        }
+        
+        // Check allowed values filters
+        for (const auto& filter : allowedValues) {
+            auto it = reading.find(filter.first);
+            if (it == reading.end() || filter.second.count(it->second) == 0) {
+                if (verbosity >= 2) {
+                    if (it == reading.end()) {
+                        std::cerr << "  Skipping row: missing column '" << filter.first << "'" << std::endl;
+                    } else {
+                        std::cerr << "  Skipping row: column '" << filter.first << "' value '" 
+                                 << it->second << "' not in allowed values" << std::endl;
+                    }
                 }
                 return false;
             }
@@ -212,6 +229,7 @@ protected:
         hasInputFiles = !inputFiles.empty();
         onlyValueFilters = parser.getOnlyValueFilters();
         excludeValueFilters = parser.getExcludeValueFilters();
+        allowedValues = parser.getAllowedValues();
         notEmptyColumns = parser.getNotEmptyColumns();
         removeEmptyJson = parser.getRemoveEmptyJson();
         removeErrors = parser.getRemoveErrors();
@@ -255,6 +273,12 @@ protected:
                     }
                 }
                 std::cerr << std::endl;
+            }
+            if (!allowedValues.empty()) {
+                for (const auto& filter : allowedValues) {
+                    std::cerr << "Allowed values for '" << filter.first << "': " 
+                              << filter.second.size() << " value(s)" << std::endl;
+                }
             }
         }
     }
