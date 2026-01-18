@@ -739,6 +739,69 @@ else
 fi
 rm -rf testdir output.json
 
+# Test 24: CSV stdin to JSON output with filtering (exercises processStdinDataJson filter path)
+echo ""
+echo "Test 24: CSV stdin to JSON with --only-value filter"
+result=$(cat <<'EOF' | ./sensor-data convert -f csv -F json --only-value sensor:ds18b20
+sensor,value
+ds18b20,22.5
+dht22,45
+ds18b20,23.0
+EOF
+)
+# Should filter to only ds18b20 readings
+if echo "$result" | grep -q "ds18b20" && ! echo "$result" | grep -q "dht22"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only ds18b20 readings"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 24a: CSV stdin to JSON with --remove-errors filter
+echo ""
+echo "Test 24a: CSV stdin to JSON with --remove-errors filter"
+result=$(cat <<'EOF' | ./sensor-data convert -f csv -F json --remove-errors
+sensor,value
+ds18b20,85
+ds18b20,22.5
+ds18b20,-127
+ds18b20,23.0
+EOF
+)
+# Should remove error values 85 and -127, keep 22.5 and 23.0
+if echo "$result" | grep -q "22.5" && echo "$result" | grep -q "23.0" && ! echo "$result" | grep -q '":85"\|":-127"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only valid readings (22.5, 23.0)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 24b: CSV stdin to JSON output to file with filtering
+echo ""
+echo "Test 24b: CSV stdin to JSON file with --only-value filter"
+cat <<'EOF' | ./sensor-data convert -f csv -F json --only-value sensor:ds18b20 -o output.json
+sensor,value
+ds18b20,22.5
+dht22,45
+EOF
+if [ -f output.json ] && grep -q "ds18b20" output.json && ! grep -q "dht22" output.json; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected output.json with only ds18b20"
+    if [ -f output.json ]; then
+        echo "  File contents: $(cat output.json)"
+    else
+        echo "  File not created"
+    fi
+    FAILED=$((FAILED + 1))
+fi
+rm -f output.json
+
 # Summary
 echo ""
 echo "================================"
