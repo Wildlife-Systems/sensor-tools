@@ -957,6 +957,63 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 26d: Verbose output with file input and --not-empty filter
+echo ""
+echo "Test 26d: Verbose file input with --not-empty filter"
+mkdir -p testdir
+echo '[{"sensor": "ds18b20", "value": "22.5"}]' > testdir/verbose_test.out
+result=$(./sensor-data convert -v --not-empty sensor testdir/verbose_test.out 2>&1)
+if echo "$result" | grep -q "Required non-empty columns:.*sensor"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing required non-empty columns"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26e: Verbose output with file input and --only-value filter
+echo ""
+echo "Test 26e: Verbose file input with --only-value filter"
+result=$(./sensor-data convert -v --only-value sensor:ds18b20 testdir/verbose_test.out 2>&1)
+if echo "$result" | grep -q "Value filters (include):.*sensor=ds18b20"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing include value filters"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26f: Verbose output with file input and --exclude-value filter
+echo ""
+echo "Test 26f: Verbose file input with --exclude-value filter"
+result=$(./sensor-data convert -v --exclude-value sensor:dht22 testdir/verbose_test.out 2>&1)
+if echo "$result" | grep -q "Value filters (exclude):.*sensor=dht22"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing exclude value filters"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26g: Verbose output with file input and multiple filters combined
+echo ""
+echo "Test 26g: Verbose file input with multiple filters combined"
+result=$(./sensor-data convert -v --not-empty value --only-value sensor:ds18b20 --exclude-value value:85 testdir/verbose_test.out 2>&1)
+rm -rf testdir
+if echo "$result" | grep -q "Required non-empty columns:" && \
+   echo "$result" | grep -q "Value filters (include):" && \
+   echo "$result" | grep -q "Value filters (exclude):"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing all filter types"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
