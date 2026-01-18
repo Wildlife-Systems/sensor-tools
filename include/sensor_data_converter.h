@@ -703,6 +703,40 @@ public:
             // Reading from stdin
             if (verbosity >= 1) {
                 std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
+                if (!notEmptyColumns.empty()) {
+                    std::cerr << "Required non-empty columns: ";
+                    bool first = true;
+                    for (const auto& col : notEmptyColumns) {
+                        if (!first) std::cerr << ", ";
+                        std::cerr << col;
+                        first = false;
+                    }
+                    std::cerr << std::endl;
+                }
+                if (!onlyValueFilters.empty()) {
+                    std::cerr << "Value filters (include): ";
+                    bool first = true;
+                    for (const auto& filter : onlyValueFilters) {
+                        for (const auto& val : filter.second) {
+                            if (!first) std::cerr << ", ";
+                            std::cerr << filter.first << "=" << val;
+                            first = false;
+                        }
+                    }
+                    std::cerr << std::endl;
+                }
+                if (!excludeValueFilters.empty()) {
+                    std::cerr << "Value filters (exclude): ";
+                    bool first = true;
+                    for (const auto& filter : excludeValueFilters) {
+                        for (const auto& val : filter.second) {
+                            if (!first) std::cerr << ", ";
+                            std::cerr << filter.first << "=" << val;
+                            first = false;
+                        }
+                    }
+                    std::cerr << std::endl;
+                }
             }
             
             // Streaming path: JSON input -> JSON output (can stream line by line)
