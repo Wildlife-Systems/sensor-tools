@@ -50,7 +50,7 @@ test: $(LIB_OBJECTS)
 # Run integration tests (requires bash)
 test-integration: $(TARGET)
 	@echo "Running integration tests..."
-	@bash tests/test_convert.sh
+	@bash tests/test_transform.sh
 	@bash tests/test_stdin_stdout.sh
 	@bash tests/test_list_errors_stdin.sh
 	@bash tests/test_summarise_errors.sh

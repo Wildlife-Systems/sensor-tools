@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "sensor_data_converter.h"
+#include "sensor_data_transformer.h"
 #include "error_lister.h"
 #include "error_summarizer.h"
 #include "stats_analyser.h"
@@ -21,7 +21,7 @@ void printUsage(const char* progName) {
     std::cerr << "Usage: " << progName << " <command> [options]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Commands:" << std::endl;
-    std::cerr << "  convert           Convert JSON or CSV sensor data files to CSV" << std::endl;
+    std::cerr << "  transform         Transform JSON or CSV sensor data files" << std::endl;
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
@@ -64,11 +64,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     
-    if (command == "convert") {
+    if (command == "transform") {
         try {
             std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
-            SensorDataConverter converter(static_cast<int>(newArgv.size()), newArgv.data());
-            converter.convert();
+            SensorDataTransformer transformer(static_cast<int>(newArgv.size()), newArgv.data());
+            transformer.transform();
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;

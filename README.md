@@ -7,7 +7,7 @@ A command-line tool for processing and analysing sensor data files.
 
 ## Features
 
-- Convert between JSON and CSV formats
+- Transform between JSON and CSV formats
 - Stream processing for large files (JSON to JSON)
 - Filter by date range (`--min-date`, `--max-date`)
 - Detect and filter sensor error readings (DS18B20 temperature errors)
@@ -34,28 +34,28 @@ sudo dpkg -i ../sensor-tools_*.deb
 
 ## Commands
 
-### convert
+### transform
 
-Convert sensor data files between formats.
+Transform sensor data files between formats.
 
 ```bash
 # JSON to CSV
-sensor-data convert -F csv input.out output.csv
+sensor-data transform -F csv input.out output.csv
 
 # JSON to JSON (streaming, preserves format)
-sensor-data convert input.out output.out
+sensor-data transform input.out output.out
 
 # Filter by date range
-sensor-data convert --min-date 2026-01-01 --max-date 2026-01-31 input.out
+sensor-data transform --min-date 2026-01-01 --max-date 2026-01-31 input.out
 
 # Remove error readings
-sensor-data convert --remove-errors input.out output.out
+sensor-data transform --remove-errors input.out output.out
 
 # Stdin to stdout (streaming)
-cat sensors.out | sensor-data convert
+cat sensors.out | sensor-data transform
 
 # Recursive directory processing
-sensor-data convert -r -e .out /path/to/logs/ output.csv
+sensor-data transform -r -e .out /path/to/logs/ output.csv
 ```
 
 **Options:**
@@ -170,7 +170,7 @@ sensors-tools/
 │   ├── file_collector.h      # File collection
 │   ├── file_utils.h          # File utilities
 │   ├── json_parser.h         # JSON parsing
-│   ├── sensor_data_converter.h # convert command
+│   ├── sensor_data_transformer.h # transform command
 │   └── stats_analyser.h      # stats command
 ├── src/
 │   ├── sensor-data.cpp       # Main entry point

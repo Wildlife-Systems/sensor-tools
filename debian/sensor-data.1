@@ -9,15 +9,15 @@ sensor\-data \- tools for managing and reading sensor data
 .SH DESCRIPTION
 .B sensor\-data
 provides command-line tools for working with sensor data files.
-It can convert between JSON and CSV formats, detect and filter error readings,
+It can transform between JSON and CSV formats, detect and filter error readings,
 and calculate statistics on numeric sensor data.
 .PP
 Input files can be JSON (.out format with one JSON array per line) or CSV.
 If no input files are specified, data is read from stdin.
 .SH COMMANDS
 .TP
-.B convert
-Convert JSON or CSV sensor data files to JSON or CSV format.
+.B transform
+Transform JSON or CSV sensor data files to JSON or CSV format.
 Each sensor reading becomes a row in the output.
 .TP
 .B list\-errors
@@ -38,7 +38,7 @@ Show help message.
 .TP
 .BR \-V ", " \-\-version
 Show version information.
-.SH CONVERT OPTIONS
+.SH TRANSFORM OPTIONS
 .TP
 .BR \-o ", " \-\-output " " \fIfile\fR
 Output file (default: stdout).
@@ -141,28 +141,28 @@ Filter readings after this date.
 .BI \-\-max\-date " date"
 Filter readings before this date.
 .SH EXAMPLES
-Convert a JSON sensor file to CSV:
+Transform a JSON sensor file to CSV:
 .PP
 .RS
-sensor\-data convert \-F csv sensor1.out
+sensor\-data transform \-F csv sensor1.out
 .RE
 .PP
-Convert multiple files with error filtering:
+Transform multiple files with error filtering:
 .PP
 .RS
-sensor\-data convert \-\-remove\-errors \-o output.csv sensor1.out sensor2.out
+sensor\-data transform \-\-remove\-errors \-o output.csv sensor1.out sensor2.out
 .RE
 .PP
-Convert all .out files in a directory recursively:
+Transform all .out files in a directory recursively:
 .PP
 .RS
-sensor\-data convert \-r \-e .out \-o output.csv /path/to/logs/
+sensor\-data transform \-r \-e .out \-o output.csv /path/to/logs/
 .RE
 .PP
 Read from stdin and filter by sensor type:
 .PP
 .RS
-cat sensor1.out | sensor\-data convert \-\-only\-value sensor:ds18b20
+cat sensor1.out | sensor\-data transform \-\-only\-value sensor:ds18b20
 .RE
 .PP
 List error readings in sensor files:
@@ -180,7 +180,7 @@ sensor\-data stats \-c temperature sensor1.out
 Filter by date range:
 .PP
 .RS
-sensor\-data convert \-\-min\-date 2024\-01\-01 \-\-max\-date 2024\-12\-31 sensor.out
+sensor\-data transform \-\-min\-date 2024\-01\-01 \-\-max\-date 2024\-12\-31 sensor.out
 .RE
 .SH EXIT STATUS
 .TP

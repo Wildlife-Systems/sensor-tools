@@ -5,13 +5,13 @@ _sensor_data() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="convert list-errors summarise-errors stats"
+    local commands="transform list-errors summarise-errors stats"
     
     # Common options for all commands
     local common_opts="-r --recursive -v -V -e --extension -d --depth -f --format --min-date --max-date"
     
     # Command-specific options
-    local convert_opts="-o --output -F --output-format --use-prototype --not-empty --only-value --remove-errors"
+    local transform_opts="-o --output -F --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
     local stats_opts="-o --output --column --group-by"
@@ -21,7 +21,7 @@ _sensor_data() {
     local i
     for ((i=1; i < cword; i++)); do
         case "${words[i]}" in
-            convert|list-errors|summarise-errors|stats)
+            transform|list-errors|summarise-errors|stats)
                 cmd="${words[i]}"
                 break
                 ;;
@@ -80,8 +80,8 @@ _sensor_data() {
     # Complete based on command
     if [[ "$cur" == -* ]]; then
         case "$cmd" in
-            convert)
-                COMPREPLY=($(compgen -W "$common_opts $convert_opts" -- "$cur"))
+            transform)
+                COMPREPLY=($(compgen -W "$common_opts $transform_opts" -- "$cur"))
                 ;;
             list-errors)
                 COMPREPLY=($(compgen -W "$common_opts $list_errors_opts" -- "$cur"))

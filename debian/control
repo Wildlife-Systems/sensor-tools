@@ -17,5 +17,5 @@ Description: Tools for managing and reading sensor data
  .
  Features include:
   * Command-line tools for sensor interaction
-  * JSON to CSV converter for sensor data files
+  * JSON/CSV transformer for sensor data files
   * Support for processing multiple files and directories

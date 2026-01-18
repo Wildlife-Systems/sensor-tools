@@ -64,7 +64,7 @@ public:
                     return false;
                 }
             } else if (arg == "-F" || arg == "--output-format") {
-                // Skip this flag and its argument - handled by SensorDataConverter
+                // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
                 } else {
@@ -72,12 +72,12 @@ public:
                     return false;
                 }
             } else if (arg == "-o" || arg == "--output") {
-                // Skip this flag and its argument - handled by SensorDataConverter
+                // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
                 }
             } else if (arg == "--not-empty" || arg == "--only-value" || arg == "--exclude-value") {
-                // Skip these flags and their arguments - handled by SensorDataConverter
+                // Skip these flags and their arguments - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
                 }
@@ -87,7 +87,7 @@ public:
                     ++i;
                 }
             } else if (arg == "--use-prototype" || arg == "--remove-errors") {
-                // Skip these flags - handled by SensorDataConverter
+                // Skip these flags - handled by SensorDataTransformer
             } else if (arg == "-d" || arg == "--depth") {
                 if (i + 1 < argc) {
                     ++i;

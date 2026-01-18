@@ -1,5 +1,5 @@
-#ifndef SENSOR_DATA_CONVERTER_H
-#define SENSOR_DATA_CONVERTER_H
+#ifndef SENSOR_DATA_TRANSFORMER_H
+#define SENSOR_DATA_TRANSFORMER_H
 
 #include <iostream>
 #include <fstream>
@@ -23,7 +23,7 @@
 #include "error_detector.h"
 #include "file_utils.h"
 
-class SensorDataConverter {
+class SensorDataTransformer {
 private:
     std::vector<std::string> inputFiles;
     std::string outputFile;
@@ -391,7 +391,7 @@ private:
                 outfile << sp << "]";
             }
         }
-        // Note: JSON stdin → JSON output uses the streaming path in convert(),
+        // Note: JSON stdin → JSON output uses the streaming path in transform(),
         // so this function is only called for CSV input → JSON output.
     }
 
@@ -581,26 +581,26 @@ private:
     }
 
 public:
-    SensorDataConverter(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), removeWhitespace(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
+    SensorDataTransformer(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), removeWhitespace(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
         // Check for help flag first
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--help" || arg == "-h") {
-                printConvertUsage(argv[0]);
+                printTransformUsage(argv[0]);
                 exit(0);
             }
         }
         
-        // argc should be at least 1 for "convert": program (may read from stdin)
+        // argc should be at least 1 for "transform": program (may read from stdin)
         if (argc < 1) {
-            printConvertUsage(argv[0]);
+            printTransformUsage(argv[0]);
             exit(1);
         }
         
         // Output file is empty by default (will use stdout)
         outputFile = "";
         
-        // First pass: parse converter-specific flags
+        // First pass: parse transformer-specific flags
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             
@@ -693,7 +693,7 @@ public:
         hasInputFiles = !inputFiles.empty();
     }
     
-    void convert() {
+    void transform() {
         // Set default output format if not specified - JSON (.out format) is the default
         if (outputFormat.empty()) {
             outputFormat = "json";
@@ -1042,10 +1042,10 @@ public:
         }
     }
     
-    static void printConvertUsage(const char* progName) {
-        std::cerr << "Usage: " << progName << " convert [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
+    static void printTransformUsage(const char* progName) {
+        std::cerr << "Usage: " << progName << " transform [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "Convert JSON or CSV sensor data files to JSON or CSV format." << std::endl;
+        std::cerr << "Transform JSON or CSV sensor data files to JSON or CSV format." << std::endl;
         std::cerr << "For JSON: Each line in input files should contain JSON with sensor readings." << std::endl;
         std::cerr << "For CSV: Files with .csv extension are automatically detected and processed." << std::endl;
         std::cerr << "Each sensor reading will become a row in the output." << std::endl;
@@ -1072,24 +1072,24 @@ public:
         std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Examples:" << std::endl;
-        std::cerr << "  " << progName << " convert sensor1.out" << std::endl;
-        std::cerr << "  " << progName << " convert < sensor1.out" << std::endl;
-        std::cerr << "  " << progName << " convert -f csv < sensor1.csv" << std::endl;
-        std::cerr << "  cat sensor1.out | " << progName << " convert" << std::endl;
-        std::cerr << "  cat sensor1.out | " << progName << " convert -o output.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -o output.csv sensor1.out" << std::endl;
-        std::cerr << "  " << progName << " convert -o output.csv sensor1.csv sensor2.csv" << std::endl;
-        std::cerr << "  " << progName << " convert -o output.csv sensor1.out sensor2.out" << std::endl;
-        std::cerr << "  " << progName << " convert --remove-errors -o output.csv sensor1.out" << std::endl;
-        std::cerr << "  " << progName << " convert -e .out -o output.csv /path/to/sensor/dir" << std::endl;
-        std::cerr << "  " << progName << " convert -r -e .csv -o output.csv /path/to/sensor/dir" << std::endl;
-        std::cerr << "  " << progName << " convert -r -e .out -o output.csv /path/to/sensor/dir" << std::endl;
-        std::cerr << "  " << progName << " convert -r -d 2 -e .out -o output.csv /path/to/logs" << std::endl;
-        std::cerr << "  " << progName << " convert --use-prototype -r -e .out -o output.csv /path/to/logs" << std::endl;
-        std::cerr << "  " << progName << " convert --not-empty unit --not-empty value -e .out -o output.csv /logs" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature -r -e .out -o output.csv /logs" << std::endl;
-        std::cerr << "  " << progName << " convert --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
+        std::cerr << "  " << progName << " transform sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " transform < sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " transform -f csv < sensor1.csv" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " transform" << std::endl;
+        std::cerr << "  cat sensor1.out | " << progName << " transform -o output.csv" << std::endl;
+        std::cerr << "  " << progName << " transform -o output.csv sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " transform -o output.csv sensor1.csv sensor2.csv" << std::endl;
+        std::cerr << "  " << progName << " transform -o output.csv sensor1.out sensor2.out" << std::endl;
+        std::cerr << "  " << progName << " transform --remove-errors -o output.csv sensor1.out" << std::endl;
+        std::cerr << "  " << progName << " transform -e .out -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " transform -r -e .csv -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " transform -r -e .out -o output.csv /path/to/sensor/dir" << std::endl;
+        std::cerr << "  " << progName << " transform -r -d 2 -e .out -o output.csv /path/to/logs" << std::endl;
+        std::cerr << "  " << progName << " transform --use-prototype -r -e .out -o output.csv /path/to/logs" << std::endl;
+        std::cerr << "  " << progName << " transform --not-empty unit --not-empty value -e .out -o output.csv /logs" << std::endl;
+        std::cerr << "  " << progName << " transform --only-value type:temperature -r -e .out -o output.csv /logs" << std::endl;
+        std::cerr << "  " << progName << " transform --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
     }
 };
 
-#endif // SENSOR_DATA_CONVERTER_H
+#endif // SENSOR_DATA_TRANSFORMER_H
