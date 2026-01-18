@@ -56,14 +56,16 @@ jobs:
     - name: Build Debian package
       run: |
         dpkg-buildpackage -us -uc -b
+        mkdir -p debian-output
+        cp ../sensor-tools_*.deb debian-output/
     
     - name: Run lintian checks
       run: |
-        lintian --info --display-info ../sensor-tools_*.deb || true
+        lintian --info --display-info debian-output/*.deb || true
     
     - name: Upload .deb artifact
       uses: actions/upload-artifact@v4
       with:
         name: debian-package
-        path: ../sensor-tools_*.deb
+        path: debian-output/*.deb
         retention-days: 14
