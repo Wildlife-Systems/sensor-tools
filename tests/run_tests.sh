@@ -66,16 +66,16 @@ echo "Testing list-errors command..."
 ./sensor-data list-errors test.out | grep -q "sensor001" && echo "[PASS] list-errors found error"
 
 echo ""
-echo "Testing convert command..."
-./sensor-data convert -o output.csv test.out
-grep -q "sensor001" output.csv && echo "[PASS] convert created CSV"
-grep -q "sensor002" output.csv && echo "[PASS] convert included valid reading"
+echo "Testing transform command..."
+./sensor-data transform -o output.csv test.out
+grep -q "sensor001" output.csv && echo "[PASS] transform created CSV"
+grep -q "sensor002" output.csv && echo "[PASS] transform included valid reading"
 
 echo ""
-echo "Testing convert with --remove-errors..."
-./sensor-data convert --remove-errors -o output-clean.csv test.out
-grep -q "sensor002" output-clean.csv && echo "[PASS] convert kept valid reading"
-! grep -q "85" output-clean.csv && echo "[PASS] convert removed error reading"
+echo "Testing transform with --remove-errors..."
+./sensor-data transform --remove-errors -o output-clean.csv test.out
+grep -q "sensor002" output-clean.csv && echo "[PASS] transform kept valid reading"
+! grep -q "85" output-clean.csv && echo "[PASS] transform removed error reading"
 
 # Cleanup
 rm -f test.out output.csv output-clean.csv

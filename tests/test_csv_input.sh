@@ -61,16 +61,16 @@ EOF
 echo "Created test files in $TESTDIR"
 
 # ============================================
-# CONVERT COMMAND TESTS
+# transform COMMAND TESTS
 # ============================================
 
 echo ""
-echo "--- Convert command tests ---"
+echo "--- transform command tests ---"
 
 # Test: Single CSV file input
 echo ""
 echo "Test: Single CSV file input"
-result=$(./sensor-data convert "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform "$TESTDIR/sensor1.csv")
 if echo "$result" | grep -q "22.5" && echo "$result" | grep -q "23.0" && echo "$result" | grep -q "21.5"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -83,7 +83,7 @@ fi
 # Test: Multiple CSV files input
 echo ""
 echo "Test: Multiple CSV files input"
-result=$(./sensor-data convert "$TESTDIR/sensor1.csv" "$TESTDIR/sensor2.csv")
+result=$(./sensor-data transform "$TESTDIR/sensor1.csv" "$TESTDIR/sensor2.csv")
 if echo "$result" | grep -q "22.5" && echo "$result" | grep -q "25.0"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -96,7 +96,7 @@ fi
 # Test: CSV directory input
 echo ""
 echo "Test: CSV directory input (non-recursive)"
-result=$(./sensor-data convert "$TESTDIR")
+result=$(./sensor-data transform "$TESTDIR")
 count=$(echo "$result" | grep -c "ds18b20" || true)
 # Should find files in root only: sensor1.csv (3), sensor2.csv (2), errors.csv (4) = 9 records
 if [ "$count" -eq 9 ]; then
@@ -111,7 +111,7 @@ fi
 # Test: CSV directory input recursive
 echo ""
 echo "Test: CSV directory input (recursive)"
-result=$(./sensor-data convert -r "$TESTDIR")
+result=$(./sensor-data transform -r "$TESTDIR")
 count=$(echo "$result" | grep -c "ds18b20" || true)
 # Should find all files: root (9) + subdir1 (2) + subdir2 (2) = 13 records
 if [ "$count" -eq 13 ]; then
@@ -126,7 +126,7 @@ fi
 # Test: CSV file with format conversion to JSON
 echo ""
 echo "Test: CSV input to JSON output (default)"
-result=$(./sensor-data convert "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform "$TESTDIR/sensor1.csv")
 if echo "$result" | grep -q '"sensor"' && echo "$result" | grep -q '"value"'; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -139,7 +139,7 @@ fi
 # Test: CSV file with format conversion to CSV
 echo ""
 echo "Test: CSV input to CSV output"
-result=$(./sensor-data convert -F csv "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform -F csv "$TESTDIR/sensor1.csv")
 if echo "$result" | head -1 | grep -q "sensor" && echo "$result" | head -1 | grep -q "value"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -152,7 +152,7 @@ fi
 # Test: CSV file with remove-errors flag
 echo ""
 echo "Test: CSV input with --remove-errors"
-result=$(./sensor-data convert --remove-errors "$TESTDIR/errors.csv")
+result=$(./sensor-data transform --remove-errors "$TESTDIR/errors.csv")
 if echo "$result" | grep -q "22.5" && ! echo "$result" | grep -q '"value":"85"' && ! echo "$result" | grep -q '"value":"-127"'; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -165,7 +165,7 @@ fi
 # Test: CSV file with sensor filter
 echo ""
 echo "Test: CSV input with sensor filter"
-result=$(./sensor-data convert -s ds18b20 "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform -s ds18b20 "$TESTDIR/sensor1.csv")
 count=$(echo "$result" | grep -c "ds18b20" || true)
 if [ "$count" -eq 3 ]; then
     echo "  ✓ PASS"
@@ -179,7 +179,7 @@ fi
 # Test: CSV file with only-value filter
 echo ""
 echo "Test: CSV input with --only-value filter"
-result=$(./sensor-data convert --only-value value:22.5 "$TESTDIR/sensor1.csv")
+result=$(./sensor-data transform --only-value value:22.5 "$TESTDIR/sensor1.csv")
 count=$(echo "$result" | grep -c "22.5" || true)
 if [ "$count" -eq 1 ]; then
     echo "  ✓ PASS"
@@ -395,7 +395,7 @@ EOF
 
 echo ""
 echo "Test: Empty CSV file (header only)"
-result=$(./sensor-data convert "$TESTDIR/empty.csv")
+result=$(./sensor-data transform "$TESTDIR/empty.csv")
 # Should produce empty output or just headers
 if [ -z "$result" ] || echo "$result" | grep -q "^\[\]$" || ! echo "$result" | grep -q "ds18b20"; then
     echo "  ✓ PASS"
@@ -424,7 +424,7 @@ fi
 mkdir -p "$TESTDIR/emptydir"
 echo ""
 echo "Test: Directory with no CSV files"
-result=$(./sensor-data convert "$TESTDIR/emptydir" 2>&1) || true
+result=$(./sensor-data transform "$TESTDIR/emptydir" 2>&1) || true
 if [ -z "$result" ] || echo "$result" | grep -qi "no.*file\|empty\|no input"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))

@@ -43,14 +43,14 @@ check_error() {
 echo ""
 echo "--- Invalid date format errors ---"
 
-# Test: Invalid --min-date format (convert)
-check_error "convert: Invalid --min-date format" \
-    "echo '{}' | ./sensor-data convert --min-date invalid-date" \
+# Test: Invalid --min-date format (transform)
+check_error "transform: Invalid --min-date format" \
+    "echo '{}' | ./sensor-data transform --min-date invalid-date" \
     "invalid date format"
 
-# Test: Invalid --max-date format (convert)
-check_error "convert: Invalid --max-date format" \
-    "echo '{}' | ./sensor-data convert --max-date not-a-date" \
+# Test: Invalid --max-date format (transform)
+check_error "transform: Invalid --max-date format" \
+    "echo '{}' | ./sensor-data transform --max-date not-a-date" \
     "invalid date format"
 
 # Test: Invalid --min-date format (stats)
@@ -64,33 +64,33 @@ check_error "stats: Invalid --max-date format" \
     "invalid date format"
 
 # Test: Invalid date - day out of range (32)
-check_error "convert: Invalid date - day 32" \
-    "echo '{}' | ./sensor-data convert --min-date 2024-01-32" \
+check_error "transform: Invalid date - day 32" \
+    "echo '{}' | ./sensor-data transform --min-date 2024-01-32" \
     "invalid date format"
 
 # Test: Invalid date - month out of range (13)
-check_error "convert: Invalid date - month 13" \
-    "echo '{}' | ./sensor-data convert --min-date 2024-13-15" \
+check_error "transform: Invalid date - month 13" \
+    "echo '{}' | ./sensor-data transform --min-date 2024-13-15" \
     "invalid date format"
 
 # Test: Invalid date - Feb 30
-check_error "convert: Invalid date - Feb 30" \
-    "echo '{}' | ./sensor-data convert --min-date 2024-02-30" \
+check_error "transform: Invalid date - Feb 30" \
+    "echo '{}' | ./sensor-data transform --min-date 2024-02-30" \
     "invalid date format"
 
 # Test: Invalid date - Feb 29 in non-leap year
-check_error "convert: Invalid date - Feb 29 in non-leap year" \
-    "echo '{}' | ./sensor-data convert --min-date 2026-02-29" \
+check_error "transform: Invalid date - Feb 29 in non-leap year" \
+    "echo '{}' | ./sensor-data transform --min-date 2026-02-29" \
     "invalid date format"
 
 # Test: Invalid date - invalid time (hour 25)
-check_error "convert: Invalid date - hour 25" \
-    "echo '{}' | ./sensor-data convert --min-date 2024-01-15T25:00:00" \
+check_error "transform: Invalid date - hour 25" \
+    "echo '{}' | ./sensor-data transform --min-date 2024-01-15T25:00:00" \
     "invalid date format"
 
 # Test: Invalid UK format - day too large (2024/01/01 parses as day=2024)
-check_error "convert: Invalid UK format - day too large" \
-    "echo '{}' | ./sensor-data convert --min-date 2024/01/01" \
+check_error "transform: Invalid UK format - day too large" \
+    "echo '{}' | ./sensor-data transform --min-date 2024/01/01" \
     "invalid date format"
 
 # Test: Invalid --min-date format (list-errors)
@@ -121,63 +121,63 @@ echo ""
 echo "--- Missing argument errors ---"
 
 # Test: --min-date missing argument
-check_error "convert: --min-date missing argument" \
-    "echo '{}' | ./sensor-data convert --min-date" \
+check_error "transform: --min-date missing argument" \
+    "echo '{}' | ./sensor-data transform --min-date" \
     "requires an argument"
 
 # Test: --max-date missing argument
-check_error "convert: --max-date missing argument" \
-    "echo '{}' | ./sensor-data convert --max-date" \
+check_error "transform: --max-date missing argument" \
+    "echo '{}' | ./sensor-data transform --max-date" \
     "requires an argument"
 
 # Test: -o missing argument
-check_error "convert: -o missing argument" \
-    "echo '{}' | ./sensor-data convert -o" \
+check_error "transform: -o missing argument" \
+    "echo '{}' | ./sensor-data transform -o" \
     "requires an argument"
 
 # Test: --output missing argument
-check_error "convert: --output missing argument" \
-    "echo '{}' | ./sensor-data convert --output" \
+check_error "transform: --output missing argument" \
+    "echo '{}' | ./sensor-data transform --output" \
     "requires an argument"
 
 # Test: -F missing argument
-check_error "convert: -F missing argument" \
-    "echo '{}' | ./sensor-data convert -F" \
+check_error "transform: -F missing argument" \
+    "echo '{}' | ./sensor-data transform -F" \
     "requires an argument"
 
 # Test: --output-format missing argument
-check_error "convert: --output-format missing argument" \
-    "echo '{}' | ./sensor-data convert --output-format" \
+check_error "transform: --output-format missing argument" \
+    "echo '{}' | ./sensor-data transform --output-format" \
     "requires an argument"
 
 # Test: --not-empty missing argument
-check_error "convert: --not-empty missing argument" \
-    "echo '{}' | ./sensor-data convert --not-empty" \
+check_error "transform: --not-empty missing argument" \
+    "echo '{}' | ./sensor-data transform --not-empty" \
     "requires an argument"
 
 # Test: --only-value missing argument
-check_error "convert: --only-value missing argument" \
-    "echo '{}' | ./sensor-data convert --only-value" \
+check_error "transform: --only-value missing argument" \
+    "echo '{}' | ./sensor-data transform --only-value" \
     "requires an argument"
 
 # Test: -f missing argument
-check_error "convert: -f missing argument" \
-    "echo '{}' | ./sensor-data convert -f" \
+check_error "transform: -f missing argument" \
+    "echo '{}' | ./sensor-data transform -f" \
     "requires an argument"
 
 # Test: --format missing argument
-check_error "convert: --format missing argument" \
-    "echo '{}' | ./sensor-data convert --format" \
+check_error "transform: --format missing argument" \
+    "echo '{}' | ./sensor-data transform --format" \
     "requires an argument"
 
 # Test: -e missing argument
-check_error "convert: -e missing argument" \
-    "echo '{}' | ./sensor-data convert -e" \
+check_error "transform: -e missing argument" \
+    "echo '{}' | ./sensor-data transform -e" \
     "requires an argument"
 
 # Test: -d missing argument
-check_error "convert: -d missing argument" \
-    "echo '{}' | ./sensor-data convert -d" \
+check_error "transform: -d missing argument" \
+    "echo '{}' | ./sensor-data transform -d" \
     "requires an argument"
 
 # Test: stats -c missing argument
@@ -198,38 +198,38 @@ echo ""
 echo "--- Invalid format errors ---"
 
 # Test: Invalid --output-format value
-check_error "convert: Invalid --output-format value" \
-    "echo '{}' | ./sensor-data convert -F xml" \
+check_error "transform: Invalid --output-format value" \
+    "echo '{}' | ./sensor-data transform -F xml" \
     "must be 'json' or 'csv'"
 
 # Test: Invalid --output-format value (yaml)
-check_error "convert: Invalid --output-format value (yaml)" \
-    "echo '{}' | ./sensor-data convert --output-format yaml" \
+check_error "transform: Invalid --output-format value (yaml)" \
+    "echo '{}' | ./sensor-data transform --output-format yaml" \
     "must be 'json' or 'csv'"
 
 # Test: Invalid --only-value format (no colon)
-check_error "convert: --only-value missing colon" \
-    "echo '{}' | ./sensor-data convert --only-value sensor_value" \
+check_error "transform: --only-value missing colon" \
+    "echo '{}' | ./sensor-data transform --only-value sensor_value" \
     "requires format 'column:value'"
 
 # Test: Invalid --only-value format (colon at start)
-check_error "convert: --only-value colon at start" \
-    "echo '{}' | ./sensor-data convert --only-value :value" \
+check_error "transform: --only-value colon at start" \
+    "echo '{}' | ./sensor-data transform --only-value :value" \
     "requires format 'column:value'"
 
 # Test: Invalid --only-value format (colon at end)
-check_error "convert: --only-value colon at end" \
-    "echo '{}' | ./sensor-data convert --only-value column:" \
+check_error "transform: --only-value colon at end" \
+    "echo '{}' | ./sensor-data transform --only-value column:" \
     "requires format 'column:value'"
 
 # Test: Invalid depth value (non-numeric)
-check_error "convert: Invalid depth value (non-numeric)" \
-    "echo '{}' | ./sensor-data convert -d abc" \
+check_error "transform: Invalid depth value (non-numeric)" \
+    "echo '{}' | ./sensor-data transform -d abc" \
     "invalid depth value"
 
 # Test: Invalid depth value (negative)
-check_error "convert: Invalid depth value (negative)" \
-    "echo '{}' | ./sensor-data convert -d -5" \
+check_error "transform: Invalid depth value (negative)" \
+    "echo '{}' | ./sensor-data transform -d -5" \
     "depth must be non-negative"
 
 # ============================================
@@ -266,9 +266,9 @@ check_error "Unknown command" \
 echo ""
 echo "--- No input data errors ---"
 
-# Test: Empty stdin for convert with streaming JSON
-check_error "convert: Empty stdin" \
-    "echo '' | ./sensor-data convert" \
+# Test: Empty stdin for transform with streaming JSON
+check_error "transform: Empty stdin" \
+    "echo '' | ./sensor-data transform" \
     "No input"
 
 # ============================================
@@ -279,13 +279,13 @@ echo ""
 echo "--- File/directory errors ---"
 
 # Test: Non-existent file
-check_error "convert: Non-existent file" \
-    "./sensor-data convert nonexistent_file.json 2>&1" \
+check_error "transform: Non-existent file" \
+    "./sensor-data transform nonexistent_file.json 2>&1" \
     "Cannot open\|No such file\|Warning"
 
 # Test: Non-existent directory
-check_error "convert: Non-existent directory" \
-    "./sensor-data convert /nonexistent/path/ 2>&1" \
+check_error "transform: Non-existent directory" \
+    "./sensor-data transform /nonexistent/path/ 2>&1" \
     "Cannot open\|No such\|Warning\|No input"
 
 # ============================================
@@ -298,7 +298,7 @@ echo "--- Valid edge cases (should succeed) ---"
 # Test: Valid date format YYYY-MM-DD
 echo ""
 echo "Test: Valid date format YYYY-MM-DD"
-result=$(echo '{"sensor":"ds18b20","value":"22.5","timestamp":"2024-01-15"}' | ./sensor-data convert --min-date 2024-01-01 --max-date 2024-12-31 2>&1) || true
+result=$(echo '{"sensor":"ds18b20","value":"22.5","timestamp":"2024-01-15"}' | ./sensor-data transform --min-date 2024-01-01 --max-date 2024-12-31 2>&1) || true
 if ! echo "$result" | grep -qi "error"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -311,7 +311,7 @@ fi
 # Test: Valid date format with time
 echo ""
 echo "Test: Valid date format with time"
-result=$(echo '{"sensor":"ds18b20","value":"22.5","timestamp":"2024-01-15T10:00:00"}' | ./sensor-data convert --min-date 2024-01-15T00:00:00 --max-date 2024-01-15T23:59:59 2>&1) || true
+result=$(echo '{"sensor":"ds18b20","value":"22.5","timestamp":"2024-01-15T10:00:00"}' | ./sensor-data transform --min-date 2024-01-15T00:00:00 --max-date 2024-01-15T23:59:59 2>&1) || true
 if ! echo "$result" | grep -qi "error"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -324,7 +324,7 @@ fi
 # Test: Valid --only-value format
 echo ""
 echo "Test: Valid --only-value format"
-result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data convert --only-value sensor:ds18b20 2>&1) || true
+result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform --only-value sensor:ds18b20 2>&1) || true
 if ! echo "$result" | grep -qi "error"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -337,7 +337,7 @@ fi
 # Test: Valid depth value
 echo ""
 echo "Test: Valid depth value"
-result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data convert -d 0 2>&1) || true
+result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -d 0 2>&1) || true
 if ! echo "$result" | grep -qi "error.*depth"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
