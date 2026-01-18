@@ -140,9 +140,9 @@ check_error "transform: --output missing argument" \
     "echo '{}' | ./sensor-data transform --output" \
     "requires an argument"
 
-# Test: -F missing argument
-check_error "transform: -F missing argument" \
-    "echo '{}' | ./sensor-data transform -F" \
+# Test: -of missing argument
+check_error "transform: -of missing argument" \
+    "echo '{}' | ./sensor-data transform -of" \
     "requires an argument"
 
 # Test: --output-format missing argument
@@ -160,14 +160,14 @@ check_error "transform: --only-value missing argument" \
     "echo '{}' | ./sensor-data transform --only-value" \
     "requires an argument"
 
-# Test: -f missing argument
-check_error "transform: -f missing argument" \
-    "echo '{}' | ./sensor-data transform -f" \
+# Test: -if missing argument
+check_error "transform: -if missing argument" \
+    "echo '{}' | ./sensor-data transform -if" \
     "requires an argument"
 
-# Test: --format missing argument
-check_error "transform: --format missing argument" \
-    "echo '{}' | ./sensor-data transform --format" \
+# Test: --input-format missing argument
+check_error "transform: --input-format missing argument" \
+    "echo '{}' | ./sensor-data transform --input-format" \
     "requires an argument"
 
 # Test: -e missing argument
@@ -199,7 +199,7 @@ echo "--- Invalid format errors ---"
 
 # Test: Invalid --output-format value
 check_error "transform: Invalid --output-format value" \
-    "echo '{}' | ./sensor-data transform -F xml" \
+    "echo '{}' | ./sensor-data transform -of xml" \
     "must be 'json' or 'csv'"
 
 # Test: Invalid --output-format value (yaml)
