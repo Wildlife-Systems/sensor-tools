@@ -1,0 +1,7 @@
+# DS18B20 temperature sensor error definitions
+# Format: field:value:description
+
+value:85:DS18B20 communication error (value=85)
+value:-127:DS18B20 disconnected or power-on reset (value=-127)
+temperature:85:DS18B20 communication error (temperature=85)
+temperature:-127:DS18B20 disconnected or power-on reset (temperature=-127)
