@@ -903,6 +903,60 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 26: Verbose output with --not-empty filter
+echo ""
+echo "Test 26: Verbose output with --not-empty filter"
+result=$(echo '{"sensor": "ds18b20", "value": "22.5"}' | ./sensor-data convert -v --not-empty sensor 2>&1)
+if echo "$result" | grep -q "Required non-empty columns:.*sensor"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing required non-empty columns"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26a: Verbose output with --only-value filter
+echo ""
+echo "Test 26a: Verbose output with --only-value filter"
+result=$(echo '{"sensor": "ds18b20", "value": "22.5"}' | ./sensor-data convert -v --only-value sensor:ds18b20 2>&1)
+if echo "$result" | grep -q "Value filters (include):.*sensor=ds18b20"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing include value filters"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26b: Verbose output with --exclude-value filter
+echo ""
+echo "Test 26b: Verbose output with --exclude-value filter"
+result=$(echo '{"sensor": "ds18b20", "value": "22.5"}' | ./sensor-data convert -v --exclude-value sensor:dht22 2>&1)
+if echo "$result" | grep -q "Value filters (exclude):.*sensor=dht22"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing exclude value filters"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26c: Verbose output with multiple filters combined
+echo ""
+echo "Test 26c: Verbose output with multiple filters combined"
+result=$(echo '{"sensor": "ds18b20", "value": "22.5"}' | ./sensor-data convert -v --not-empty value --only-value sensor:ds18b20 --exclude-value value:85 2>&1)
+if echo "$result" | grep -q "Required non-empty columns:" && \
+   echo "$result" | grep -q "Value filters (include):" && \
+   echo "$result" | grep -q "Value filters (exclude):"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected verbose output showing all filter types"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
