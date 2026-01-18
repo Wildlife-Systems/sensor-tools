@@ -36,7 +36,8 @@ private:
     int numThreads;
     bool usePrototype;
     std::set<std::string> notEmptyColumns;  // Columns that must not be empty
-    std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering
+    std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering (include)
+    std::map<std::string, std::string> excludeValueFilters;  // Column:value pairs for filtering (exclude)
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
     bool removeWhitespace;  // Remove extra whitespace from output (compact format)
@@ -48,7 +49,7 @@ private:
     // Check if any filtering is active (affects whether we can pass-through JSON lines)
     bool hasActiveFilters() const {
         return !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
-               removeErrors || removeWhitespace || minDate > 0 || maxDate > 0;
+               !excludeValueFilters.empty() || removeErrors || removeWhitespace || minDate > 0 || maxDate > 0;
     }
     
     // Execute sc-prototype command and parse columns from JSON output
@@ -426,7 +427,7 @@ private:
             }
         }
         
-        // Check value filters
+        // Check value filters (include)
         for (const auto& filter : onlyValueFilters) {
             auto it = reading.find(filter.first);
             if (it == reading.end() || it->second != filter.second) {
@@ -437,6 +438,18 @@ private:
                         std::cerr << "  Skipping row: column '" << filter.first << "' has value '" 
                                  << it->second << "' (expected '" << filter.second << "')" << std::endl;
                     }
+                }
+                return false;
+            }
+        }
+        
+        // Check value filters (exclude)
+        for (const auto& filter : excludeValueFilters) {
+            auto it = reading.find(filter.first);
+            if (it != reading.end() && it->second == filter.second) {
+                if (verbosity >= 2) {
+                    std::cerr << "  Skipping row: column '" << filter.first << "' has excluded value '" 
+                             << filter.second << "'" << std::endl;
                 }
                 return false;
             }
@@ -625,6 +638,22 @@ public:
                     std::string column = filter.substr(0, colonPos);
                     std::string value = filter.substr(colonPos + 1);
                     onlyValueFilters[column] = value;
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    exit(1);
+                }
+            } else if (arg == "--exclude-value") {
+                if (i + 1 < argc) {
+                    ++i;
+                    std::string filter = argv[i];
+                    size_t colonPos = filter.find(':');
+                    if (colonPos == std::string::npos || colonPos == 0 || colonPos == filter.length() - 1) {
+                        std::cerr << "Error: --exclude-value requires format 'column:value'" << std::endl;
+                        exit(1);
+                    }
+                    std::string column = filter.substr(0, colonPos);
+                    std::string value = filter.substr(colonPos + 1);
+                    excludeValueFilters[column] = value;
                 } else {
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     exit(1);
@@ -988,6 +1017,7 @@ public:
         std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
         std::cerr << "  --not-empty <column>      Skip rows where column is empty (can be used multiple times)" << std::endl;
         std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
+        std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
         std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
         std::cerr << "  --remove-whitespace       Remove extra whitespace from output (compact format)" << std::endl;
         std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;

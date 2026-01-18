@@ -802,6 +802,107 @@ else
 fi
 rm -f output.json
 
+# Test 25: --exclude-value filter (exclude specific sensor)
+echo ""
+echo "Test 25: --exclude-value filter"
+result=$(cat <<'EOF' | ./sensor-data convert --exclude-value sensor:dht22
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+# Should exclude dht22 readings, keep ds18b20
+if echo "$result" | grep -q "ds18b20" && ! echo "$result" | grep -q "dht22"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected ds18b20 readings only (dht22 excluded)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 25a: --exclude-value with multiple exclusions
+echo ""
+echo "Test 25a: --exclude-value with multiple exclusions"
+result=$(cat <<'EOF' | ./sensor-data convert --exclude-value sensor:dht22 --exclude-value sensor:bmp280
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+# Should exclude both dht22 and bmp280
+if echo "$result" | grep -q "ds18b20" && ! echo "$result" | grep -q "dht22\|bmp280"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only ds18b20 (dht22 and bmp280 excluded)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 25b: --exclude-value combined with --only-value
+echo ""
+echo "Test 25b: --exclude-value combined with --only-value"
+result=$(cat <<'EOF' | ./sensor-data convert --only-value sensor:ds18b20 --exclude-value value:85
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+# Should include only ds18b20 but exclude the one with value=85
+count=$(echo "$result" | grep -c "ds18b20" || true)
+if [ "$count" -eq 2 ] && ! echo "$result" | grep -q '"value": "85"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 ds18b20 readings (excluding value=85)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 25c: --exclude-value on CSV output
+echo ""
+echo "Test 25c: --exclude-value with CSV output"
+result=$(cat <<'EOF' | ./sensor-data convert -F csv --exclude-value sensor:dht22
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+# Should have CSV with ds18b20 rows only
+ds_count=$(echo "$result" | grep -c "ds18b20" || true)
+dht_count=$(echo "$result" | grep -c "dht22" || true)
+if [ "$ds_count" -eq 2 ] && [ "$dht_count" -eq 0 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 ds18b20 rows in CSV, 0 dht22"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 25d: --exclude-value with file input
+echo ""
+echo "Test 25d: --exclude-value with file input"
+mkdir -p testdir
+cat > testdir/test.out << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
+[{"sensor": "bmp280", "value": "1013"}, {"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data convert -F json --exclude-value sensor:dht22 --exclude-value sensor:bmp280 testdir/test.out)
+rm -rf testdir
+# Should exclude dht22 and bmp280, keep only ds18b20
+if echo "$result" | grep -q "ds18b20" && ! echo "$result" | grep -q "dht22\|bmp280"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only ds18b20 readings"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
