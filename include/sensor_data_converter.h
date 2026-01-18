@@ -389,41 +389,9 @@ private:
                 writeJsonObject(reading, outfile);
                 outfile << sp << "]";
             }
-        } else {
-            // JSON format - preserve line-by-line structure
-            for (const auto& line : lines) {
-                if (line.empty()) continue;
-                
-                // If no filtering, pass through the original line
-                if (!hasActiveFilters()) {
-                    if (!firstOutput) outfile << "\n";
-                    firstOutput = false;
-                    outfile << line;
-                } else {
-                    // Parse, filter, and rebuild the line
-                    auto readings = JsonParser::parseJsonLine(line);
-                    std::vector<std::map<std::string, std::string>> filtered;
-                    
-                    for (const auto& reading : readings) {
-                        if (reading.empty()) continue;
-                        if (shouldIncludeReading(reading)) {
-                            filtered.push_back(reading);
-                        }
-                    }
-                    
-                    if (!filtered.empty()) {
-                        if (!firstOutput) outfile << "\n";
-                        firstOutput = false;
-                        outfile << "[" << sp;
-                        for (size_t i = 0; i < filtered.size(); ++i) {
-                            if (i > 0) outfile << "," << sp;
-                            writeJsonObject(filtered[i], outfile);
-                        }
-                        outfile << sp << "]";
-                    }
-                }
-            }
         }
+        // Note: JSON stdin → JSON output uses the streaming path in convert(),
+        // so this function is only called for CSV input → JSON output.
     }
 
     // Check if a reading passes date filter
