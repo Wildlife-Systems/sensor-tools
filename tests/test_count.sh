@@ -431,6 +431,28 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: Count with --clean (combines --remove-empty-json --not-empty value --remove-errors)
+echo ""
+echo "Test: Count with --clean filter"
+result=$(cat <<'EOF' | ./sensor-data count --clean
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": ""}]
+[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+[{"sensor": "ds18b20", "value": "-127"}]
+[{}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2 (--clean excludes empty values, errors, and empty JSON)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

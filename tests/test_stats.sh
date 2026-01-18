@@ -475,6 +475,66 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 24: --remove-errors filter
+echo ""
+echo "Test 24: --remove-errors filter"
+result=$(cat <<'EOF' | ./sensor-data stats --remove-errors
+{"sensor":"ds18b20","value":"22.5"}
+{"sensor":"ds18b20","value":"85"}
+{"sensor":"ds18b20","value":"-127"}
+{"sensor":"ds18b20","value":"23.0"}
+EOF
+)
+# Should exclude 85 and -127, leaving 2 readings
+if echo "$result" | grep -q "Count:.*2"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings (excluding errors 85 and -127)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 25: --not-empty filter
+echo ""
+echo "Test 25: --not-empty filter"
+result=$(cat <<'EOF' | ./sensor-data stats --not-empty value
+{"sensor":"ds18b20","value":"22.5"}
+{"sensor":"ds18b20","value":""}
+{"sensor":"ds18b20","value":"23.0"}
+EOF
+)
+# Should exclude empty value, leaving 2 readings
+if echo "$result" | grep -q "Count:.*2"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings (excluding empty value)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 26: --clean filter (combines --remove-empty-json --not-empty value --remove-errors)
+echo ""
+echo "Test 26: --clean filter"
+result=$(cat <<'EOF' | ./sensor-data stats --clean
+{"sensor":"ds18b20","value":"22.5"}
+{"sensor":"ds18b20","value":""}
+{"sensor":"ds18b20","value":"85"}
+{"sensor":"ds18b20","value":"23.0"}
+{"sensor":"ds18b20","value":"-127"}
+EOF
+)
+# Should exclude empty, 85, and -127, leaving 2 readings
+if echo "$result" | grep -q "Count:.*2"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 readings (--clean excludes empty and errors)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

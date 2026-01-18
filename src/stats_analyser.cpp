@@ -120,13 +120,15 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value"), fo
             arg != "--follow" && arg != "-f" &&
             arg != "--only-value" && arg != "--exclude-value" &&
             arg != "--min-date" && arg != "--max-date" &&
+            arg != "--clean" && arg != "--not-empty" && arg != "--remove-empty-json" &&
+            arg != "--remove-errors" &&
             arg != "-h" && arg != "--help") {
             if (i > 1) {
                 std::string prev = argv[i-1];
                 if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
                     prev == "-d" || prev == "--depth" || prev == "-c" || prev == "--column" ||
                     prev == "--only-value" || prev == "--exclude-value" ||
-                    prev == "--min-date" || prev == "--max-date") {
+                    prev == "--min-date" || prev == "--max-date" || prev == "--not-empty") {
                     continue;
                 }
             }
@@ -459,6 +461,10 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  -f, --follow              Follow mode: continuously read input and update stats (stdin or single file)" << std::endl;
     std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
     std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
+    std::cerr << "  --not-empty <col>         Only include rows where column is not empty" << std::endl;
+    std::cerr << "  --remove-empty-json       Remove rows with empty JSON objects" << std::endl;
+    std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
+    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output" << std::endl;
     std::cerr << "  -V                        Very verbose output" << std::endl;
@@ -478,4 +484,5 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  " << progName << " stats sensor1.csv sensor2.out" << std::endl;
     std::cerr << "  " << progName << " stats --only-value sensor:ds18b20 sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " stats --follow" << std::endl;
+    std::cerr << "  " << progName << " stats --clean sensor.out  # exclude empty values" << std::endl;
 }

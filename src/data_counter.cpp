@@ -355,7 +355,7 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
             arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
             arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
             arg != "--not-empty" && arg != "--only-value" && arg != "--exclude-value" &&
-            arg != "--remove-errors" && arg != "--remove-empty-json" &&
+            arg != "--remove-errors" && arg != "--remove-empty-json" && arg != "--clean" &&
             arg != "--min-date" && arg != "--max-date" &&
             arg != "--follow" && arg != "-f" &&
             arg != "-h" && arg != "--help") {
@@ -430,6 +430,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value" << std::endl;
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
+    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date" << std::endl;
     std::cerr << std::endl;
@@ -439,6 +440,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count -r -e .out /path/to/logs" << std::endl;
     std::cerr << "  " << progName << " count --remove-errors sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --only-value type:temperature sensor1.out" << std::endl;
+    std::cerr << "  " << progName << " count --clean sensor.out  # exclude empty values" << std::endl;
     std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " count --follow" << std::endl;
 }

@@ -212,6 +212,9 @@ protected:
         hasInputFiles = !inputFiles.empty();
         onlyValueFilters = parser.getOnlyValueFilters();
         excludeValueFilters = parser.getExcludeValueFilters();
+        notEmptyColumns = parser.getNotEmptyColumns();
+        removeEmptyJson = parser.getRemoveEmptyJson();
+        removeErrors = parser.getRemoveErrors();
     }
     
     /**

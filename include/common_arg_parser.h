@@ -22,11 +22,14 @@ private:
     std::vector<std::string> inputFiles;
     std::map<std::string, std::set<std::string>> onlyValueFilters;
     std::map<std::string, std::set<std::string>> excludeValueFilters;
+    std::set<std::string> notEmptyColumns;
+    bool removeEmptyJson;
+    bool removeErrors;
     
 public:
     CommonArgParser() 
         : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), 
-          inputFormat("json"), minDate(0), maxDate(0) {}
+          inputFormat("json"), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false) {}
     
     // Parse common arguments and collect files
     // Returns true if parsing should continue, false if help was shown or error occurred
@@ -83,10 +86,22 @@ public:
                     ++i;
                 }
             } else if (arg == "--not-empty") {
-                // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
                     ++i;
+                    notEmptyColumns.insert(argv[i]);
+                } else {
+                    std::cerr << "Error: --not-empty requires an argument" << std::endl;
+                    return false;
                 }
+            } else if (arg == "--remove-empty-json") {
+                removeEmptyJson = true;
+            } else if (arg == "--remove-errors") {
+                removeErrors = true;
+            } else if (arg == "--clean") {
+                // --clean expands to --remove-empty-json --not-empty value --remove-errors
+                removeEmptyJson = true;
+                notEmptyColumns.insert("value");
+                removeErrors = true;
             } else if (arg == "--only-value") {
                 if (i + 1 < argc) {
                     ++i;
@@ -193,6 +208,9 @@ public:
     const std::vector<std::string>& getInputFiles() const { return inputFiles; }
     const std::map<std::string, std::set<std::string>>& getOnlyValueFilters() const { return onlyValueFilters; }
     const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const { return excludeValueFilters; }
+    const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
+    bool getRemoveEmptyJson() const { return removeEmptyJson; }
+    bool getRemoveErrors() const { return removeErrors; }
 };
 
 // Helper function to print common verbose information

@@ -72,6 +72,7 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--remove-empty-json` - Remove empty JSON input lines (e.g., `[{}]`, `[]`)
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
@@ -107,6 +108,7 @@ sensor-data count -r -e .out /path/to/logs/
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--exclude-value <col:val>` - Exclude rows where column equals value
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
@@ -154,7 +156,24 @@ sensor-data stats -c all input.out
 
 # From stdin
 cat sensors.out | sensor-data stats
+
+# Clean statistics (exclude empty values and errors)
+sensor-data stats --clean input.out
 ```
+
+**Options:**
+- `-c, --column <name>` - Analyze only this column (default: value, use 'all' for all columns)
+- `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-f, --follow` - Follow mode: continuously read input and update stats
+- `--only-value <col:val>` - Only include rows where column equals value
+- `--exclude-value <col:val>` - Exclude rows where column equals value
+- `--not-empty <column>` - Skip rows where column is empty
+- `--remove-empty-json` - Remove empty JSON input lines
+- `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `-r, --recursive` - Recursively process subdirectories
+- `-v` - Verbose output
+- `-V` - Very verbose output
 
 Output:
 ```
