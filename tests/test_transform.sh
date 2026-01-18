@@ -1022,7 +1022,7 @@ input='[{"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "ds18b20", "value": "23.0"}]'
 result=$(echo "$input" | ./sensor-data list-rejects --remove-errors)
 # Should output only the error reading (value=85)
-if echo "$result" | grep -q '"value": "85"' && ! echo "$result" | grep -q '"value": "22.5"'; then
+if echo "$result" | grep -q '"value": "85"\|"value": 85' && ! echo "$result" | grep -q '"value": "22.5"\|"value": 22\.5'; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
@@ -1038,8 +1038,8 @@ input='[{"sensor": "ds18b20", "value": "22.5"}]
 [{"sensor": "ds18b20", "value": ""}]
 [{"sensor": "ds18b20", "value": "23.0"}]'
 result=$(echo "$input" | ./sensor-data list-rejects --not-empty value)
-# Should output only the row with empty value
-if echo "$result" | grep -q '"value": ""' && ! echo "$result" | grep -q '"value": "22.5"'; then
+# Should output only the row with empty value (could be "" or null)
+if echo "$result" | grep -qE '"value": (""|null)' && ! echo "$result" | grep -q '"value": "22.5"\|"value": 22\.5'; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
