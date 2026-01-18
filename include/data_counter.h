@@ -16,6 +16,7 @@
 #include "json_parser.h"
 #include "error_detector.h"
 #include "file_utils.h"
+#include "file_collector.h"
 
 class DataCounter {
 private:
@@ -377,12 +378,11 @@ public:
 
         // Expand directories to file lists
         if (hasInputFiles) {
-            std::vector<std::string> expandedFiles;
+            FileCollector collector(recursive, extensionFilter, maxDepth, verbosity);
             for (const auto& path : inputFiles) {
-                auto files = FileUtils::expandPath(path, recursive, extensionFilter, maxDepth);
-                expandedFiles.insert(expandedFiles.end(), files.begin(), files.end());
+                collector.addPath(path);
             }
-            inputFiles = expandedFiles;
+            inputFiles = collector.getFiles();
         }
     }
 
