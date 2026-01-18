@@ -1,12 +1,14 @@
-CXX = g++
-CXXFLAGS = -Wall -O2 -std=c++11 -pthread -Iinclude
-LDFLAGS = -pthread
+CXX ?= g++
+CXXFLAGS ?= -Wall -O2
+CXXFLAGS += -std=c++11 -pthread -Iinclude
+LDFLAGS += -pthread
+CPPFLAGS ?=
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
 # Extract version from debian/changelog
 VERSION := $(shell head -1 debian/changelog | sed -n 's/.*([^)]*\([0-9][0-9.]*\)).*/\1/p')
-CXXFLAGS += -DVERSION="\"$(VERSION)\""
+CPPFLAGS += -DVERSION="\"$(VERSION)\""
 
 # Coverage flags (set COVERAGE=1 to enable)
 ifdef COVERAGE
@@ -29,20 +31,20 @@ all: $(TARGET)
 
 # Build library objects
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 # Build main application
 $(TARGET): $(LIB_OBJECTS) $(SOURCES)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LIB_OBJECTS) $(LDFLAGS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LIB_OBJECTS) $(LDFLAGS)
 
 # Build and run tests
 test: $(LIB_OBJECTS)
 	@echo "Building and running unit tests..."
-	@$(CXX) $(CXXFLAGS) tests/test_csv_parser.cpp src/csv_parser.o -o test_csv_parser && ./test_csv_parser
-	@$(CXX) $(CXXFLAGS) tests/test_json_parser.cpp src/json_parser.o -o test_json_parser && ./test_json_parser
-	@$(CXX) $(CXXFLAGS) tests/test_error_detector.cpp src/error_detector.o -o test_error_detector && ./test_error_detector
-	@$(CXX) $(CXXFLAGS) tests/test_file_utils.cpp src/file_utils.o -o test_file_utils && ./test_file_utils
-	@$(CXX) $(CXXFLAGS) tests/test_date_utils.cpp -o test_date_utils && ./test_date_utils
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_csv_parser.cpp src/csv_parser.o -o test_csv_parser $(LDFLAGS) && ./test_csv_parser
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_json_parser.cpp src/json_parser.o -o test_json_parser $(LDFLAGS) && ./test_json_parser
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_error_detector.cpp src/error_detector.o -o test_error_detector $(LDFLAGS) && ./test_error_detector
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_file_utils.cpp src/file_utils.o -o test_file_utils $(LDFLAGS) && ./test_file_utils
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_date_utils.cpp -o test_date_utils $(LDFLAGS) && ./test_date_utils
 	@echo "All unit tests passed!"
 
 # Run integration tests (requires bash)
