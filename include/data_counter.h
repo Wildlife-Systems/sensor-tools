@@ -132,8 +132,12 @@ private:
                 auto readings = JsonParser::parseJsonLine(line);
                 
                 // Skip empty JSON arrays/objects if removeEmptyJson is set
-                if (removeEmptyJson && readings.empty()) {
-                    continue;
+                if (removeEmptyJson) {
+                    bool allEmpty = true;
+                    for (const auto& r : readings) {
+                        if (!r.empty()) { allEmpty = false; break; }
+                    }
+                    if (allEmpty) continue;
                 }
 
                 for (const auto& reading : readings) {
@@ -187,8 +191,12 @@ private:
 
                 auto readings = JsonParser::parseJsonLine(line);
                 
-                if (removeEmptyJson && readings.empty()) {
-                    continue;
+                if (removeEmptyJson) {
+                    bool allEmpty = true;
+                    for (const auto& r : readings) {
+                        if (!r.empty()) { allEmpty = false; break; }
+                    }
+                    if (allEmpty) continue;
                 }
 
                 for (const auto& reading : readings) {

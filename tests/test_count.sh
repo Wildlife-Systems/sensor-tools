@@ -246,6 +246,191 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# ================================
+# FILE-BASED TESTS
+# ================================
+
+echo ""
+echo "================================"
+echo "File-based count tests"
+echo "================================"
+
+# Create temporary test files
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
+
+# Test: Count from JSON file
+echo ""
+echo "Test: Count from JSON file"
+cat > "$TMPDIR/test.out" << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+[{"sensor": "bme280", "value": "24.0"}]
+EOF
+result=$(./sensor-data count "$TMPDIR/test.out")
+if [ "$result" = "3" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 3"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from JSON file with filter
+echo ""
+echo "Test: Count from JSON file with --only-value filter"
+result=$(./sensor-data count --only-value sensor:ds18b20 "$TMPDIR/test.out")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from CSV file
+echo ""
+echo "Test: Count from CSV file"
+cat > "$TMPDIR/test.csv" << 'EOF'
+sensor,value,unit
+ds18b20,22.5,C
+ds18b20,23.0,C
+bme280,24.0,C
+dht22,25.0,C
+EOF
+result=$(./sensor-data count "$TMPDIR/test.csv")
+if [ "$result" = "4" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 4"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from CSV file with filter
+echo ""
+echo "Test: Count from CSV file with --only-value filter"
+result=$(./sensor-data count --only-value sensor:ds18b20 "$TMPDIR/test.csv")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from CSV file with --remove-errors
+echo ""
+echo "Test: Count from CSV file with --remove-errors"
+cat > "$TMPDIR/test-errors.csv" << 'EOF'
+sensor,value
+ds18b20,22.5
+ds18b20,85
+ds18b20,-127
+ds18b20,23.0
+EOF
+result=$(./sensor-data count --remove-errors "$TMPDIR/test-errors.csv")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from JSON file with --remove-errors
+echo ""
+echo "Test: Count from JSON file with --remove-errors"
+cat > "$TMPDIR/test-errors.out" << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "ds18b20", "value": "-127"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data count --remove-errors "$TMPDIR/test-errors.out")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count from JSON file with --remove-empty-json
+echo ""
+echo "Test: Count from JSON file with --remove-empty-json"
+cat > "$TMPDIR/test-empty.out" << 'EOF'
+[{}]
+[]
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data count --remove-empty-json "$TMPDIR/test-empty.out")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count multiple files
+echo ""
+echo "Test: Count from multiple files"
+cat > "$TMPDIR/file1.out" << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+cat > "$TMPDIR/file2.out" << 'EOF'
+[{"sensor": "bme280", "value": "24.0"}]
+[{"sensor": "dht22", "value": "25.0"}]
+[{"sensor": "ds18b20", "value": "26.0"}]
+EOF
+result=$(./sensor-data count "$TMPDIR/file1.out" "$TMPDIR/file2.out")
+if [ "$result" = "5" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 5"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Count with --not-empty from file
+echo ""
+echo "Test: Count from file with --not-empty filter"
+cat > "$TMPDIR/test-empty-values.out" << 'EOF'
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": ""}]
+[{"sensor": "ds18b20"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+result=$(./sensor-data count --not-empty value "$TMPDIR/test-empty-values.out")
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
