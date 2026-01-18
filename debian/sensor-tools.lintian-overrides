@@ -1,0 +1,3 @@
+# No fortifiable libc functions used - this is a modern C++ codebase
+# using std::string and streams rather than C-style string functions
+sensor-tools: hardening-no-fortify-functions [usr/bin/sensor-data]
