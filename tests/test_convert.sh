@@ -557,9 +557,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test: --use-prototype uses sc-prototype for column definitions
+# Test 22a: --use-prototype uses sc-prototype for column definitions
 echo ""
-echo "Test 13: --use-prototype uses sc-prototype for column definitions"
+echo "Test 22a: --use-prototype uses sc-prototype for column definitions"
 # Create test data
 mkdir -p testdir
 echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
@@ -576,9 +576,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test: --use-prototype with CSV output
+# Test 22b: --use-prototype with CSV output
 echo ""
-echo "Test 13a: --use-prototype produces valid CSV output"
+echo "Test 22b: --use-prototype produces valid CSV output"
 mkdir -p testdir
 echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
 output=$(./sensor-data convert --use-prototype -F csv testdir/test.out 2>&1)
@@ -593,9 +593,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test: --use-prototype with file output
+# Test 22c: --use-prototype with file output
 echo ""
-echo "Test 13b: --use-prototype with file output"
+echo "Test 22c: --use-prototype with file output"
 mkdir -p testdir
 echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
 ./sensor-data convert --use-prototype -F csv -o output.csv testdir/test.out 2>/dev/null
@@ -613,9 +613,9 @@ else
 fi
 rm -rf testdir output.csv
 
-# Test 14: JSON file to JSON output with filtering (exercises writeRowsFromFileJson filter path)
+# Test 23: JSON file to JSON output with filtering (exercises writeRowsFromFileJson filter path)
 echo ""
-echo "Test 14: JSON file to JSON with --only-value filter"
+echo "Test 23: JSON file to JSON with --only-value filter"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
@@ -634,9 +634,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14a: JSON file to JSON with --remove-errors filter
+# Test 23a: JSON file to JSON with --remove-errors filter
 echo ""
-echo "Test 14a: JSON file to JSON with --remove-errors filter"
+echo "Test 23a: JSON file to JSON with --remove-errors filter"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "85"}, {"sensor": "ds18b20", "value": "22.5"}]
@@ -654,9 +654,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14b: JSON file to JSON with date filter
+# Test 23b: JSON file to JSON with date filter
 echo ""
-echo "Test 14b: JSON file to JSON with date filter"
+echo "Test 23b: JSON file to JSON with date filter"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"timestamp": "1704067200", "sensor": "ds18b20", "value": "22.5"}]
@@ -676,9 +676,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14c: JSON file to JSON where entire line is filtered out
+# Test 23c: JSON file to JSON where entire line is filtered out
 echo ""
-echo "Test 14c: JSON file to JSON with all readings filtered from some lines"
+echo "Test 23c: JSON file to JSON with all readings filtered from some lines"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "dht22", "value": "45"}, {"sensor": "bmp280", "value": "1013"}]
@@ -698,9 +698,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14d: JSON file to JSON with multiple readings filtered to one per line
+# Test 23d: JSON file to JSON with multiple readings filtered to one per line
 echo ""
-echo "Test 14d: JSON file with multiple objects, some filtered per line"
+echo "Test 23d: JSON file with multiple objects, some filtered per line"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "ds18b20", "value": "85"}, {"sensor": "dht22", "value": "45"}]
@@ -717,9 +717,9 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 14e: JSON file to JSON output to file with filtering
+# Test 23e: JSON file to JSON output to file with filtering
 echo ""
-echo "Test 14e: JSON file to JSON file output with filtering"
+echo "Test 23e: JSON file to JSON file output with filtering"
 mkdir -p testdir
 cat > testdir/test.out << 'EOF'
 [{"sensor": "ds18b20", "value": "22.5"}, {"sensor": "dht22", "value": "45"}]
