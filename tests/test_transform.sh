@@ -1014,6 +1014,53 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 27: list-rejects command outputs rejected readings
+echo ""
+echo "Test 27: list-rejects outputs rejected readings"
+input='[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "ds18b20", "value": "23.0"}]'
+result=$(echo "$input" | ./sensor-data list-rejects --remove-errors)
+# Should output only the error reading (value=85)
+if echo "$result" | grep -q '"value": "85"' && ! echo "$result" | grep -q '"value": "22.5"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only error reading (value=85)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 28: list-rejects with --not-empty shows empty value rows
+echo ""
+echo "Test 28: list-rejects --not-empty shows rows with empty values"
+input='[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": ""}]
+[{"sensor": "ds18b20", "value": "23.0"}]'
+result=$(echo "$input" | ./sensor-data list-rejects --not-empty value)
+# Should output only the row with empty value
+if echo "$result" | grep -q '"value": ""' && ! echo "$result" | grep -q '"value": "22.5"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected only row with empty value"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 29: list-rejects --help shows list-rejects usage
+echo ""
+echo "Test 29: list-rejects --help shows usage"
+result=$(./sensor-data list-rejects --help 2>&1) || true
+if echo "$result" | grep -q "list-rejects"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected list-rejects usage text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

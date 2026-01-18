@@ -20,6 +20,11 @@ If no input files are specified, data is read from stdin.
 Transform JSON or CSV sensor data files to JSON or CSV format.
 Each sensor reading becomes a row in the output.
 .TP
+.B list\-rejects
+List rejected readings (inverse of transform filters).
+Outputs readings that would be filtered OUT by the specified filters.
+Accepts the same options as transform.
+.TP
 .B count
 Count sensor data readings that match the specified filters.
 Outputs a single number representing the count of matching readings.

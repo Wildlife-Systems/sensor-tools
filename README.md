@@ -47,6 +47,24 @@ sensor-data transform input.out output.out
 
 # Filter by date range
 sensor-data transform --min-date 2026-01-01 --max-date 2026-01-31 input.out
+```
+
+### list-rejects
+
+List rejected readings (inverse of transform filters). Useful for inspecting which readings would be filtered out.
+
+```bash
+# Show error readings that would be removed
+sensor-data list-rejects --remove-errors input.out
+
+# Show readings that would be filtered by --clean
+sensor-data list-rejects --clean input.out
+
+# Show rows with empty values
+cat data.out | sensor-data list-rejects --not-empty value
+
+# Show readings outside date range
+sensor-data list-rejects --min-date 2026-01-01 input.out
 
 # Remove error readings
 sensor-data transform --remove-errors input.out output.out

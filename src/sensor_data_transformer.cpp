@@ -6,9 +6,19 @@
 
 // ===== Private helper methods =====
 
+/**
+ * Check if a reading should be output based on filters and rejectMode.
+ * In normal mode: output if passes filters
+ * In reject mode: output if fails filters (but not for empty/whitespace-only readings)
+ */
+bool SensorDataTransformer::shouldOutputReading(const std::map<std::string, std::string>& reading) {
+    bool passesFilter = shouldIncludeReading(reading);
+    return rejectMode ? !passesFilter : passesFilter;
+}
+
 bool SensorDataTransformer::hasActiveFilters() const {
-    return !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
-           !excludeValueFilters.empty() || removeErrors || removeWhitespace || 
+    return rejectMode || !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
+           !excludeValueFilters.empty() || !allowedValues.empty() || removeErrors || removeWhitespace || 
            removeEmptyJson || minDate > 0 || maxDate > 0;
 }
 
@@ -138,7 +148,7 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
                 reading[csvHeaders[i]] = fields[i];
             }
             
-            if (!shouldIncludeReading(reading)) continue;
+            if (!shouldOutputReading(reading)) continue;
             writeRow(reading, headers, outfile);
         }
     } else {
@@ -149,7 +159,7 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
             auto readings = JsonParser::parseJsonLine(line);
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
-                if (!shouldIncludeReading(reading)) continue;
+                if (!shouldOutputReading(reading)) continue;
                 writeRow(reading, headers, outfile);
             }
         }
@@ -194,7 +204,7 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
                 reading[csvHeaders[i]] = fields[i];
             }
             
-            if (!shouldIncludeReading(reading)) continue;
+            if (!shouldOutputReading(reading)) continue;
             
             if (!firstOutput) outfile << "\n";
             firstOutput = false;
@@ -217,7 +227,7 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
                 
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
-                    if (shouldIncludeReading(reading)) {
+                    if (shouldOutputReading(reading)) {
                         filtered.push_back(reading);
                     }
                 }
@@ -263,7 +273,7 @@ void SensorDataTransformer::processStdinData(const std::vector<std::string>& lin
                 reading[csvHeaders[i]] = fields[i];
             }
             
-            if (!shouldIncludeReading(reading)) continue;
+            if (!shouldOutputReading(reading)) continue;
             writeRow(reading, headers, outfile);
         }
     } else {
@@ -273,7 +283,7 @@ void SensorDataTransformer::processStdinData(const std::vector<std::string>& lin
             auto readings = JsonParser::parseJsonLine(line);
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
-                if (!shouldIncludeReading(reading)) continue;
+                if (!shouldOutputReading(reading)) continue;
                 writeRow(reading, headers, outfile);
             }
         }
@@ -306,7 +316,7 @@ void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>&
                 reading[csvHeaders[i]] = fields[i];
             }
             
-            if (!shouldIncludeReading(reading)) continue;
+            if (!shouldOutputReading(reading)) continue;
             
             if (!firstOutput) outfile << "\n";
             firstOutput = false;
@@ -330,9 +340,10 @@ void SensorDataTransformer::writeRow(const std::map<std::string, std::string>& r
 
 // ===== Constructor =====
 
-SensorDataTransformer::SensorDataTransformer(int argc, char* argv[]) 
+SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool rejectModeParam) 
     : outputFormat("")
     , removeWhitespace(false)
+    , rejectMode(rejectModeParam)
     , numThreads(4)
     , usePrototype(false) {
     
@@ -340,7 +351,11 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help" || arg == "-h") {
-            printTransformUsage(argv[0]);
+            if (rejectMode) {
+                printListRejectsUsage(argv[0]);
+            } else {
+                printTransformUsage(argv[0]);
+            }
             exit(0);
         }
     }
@@ -450,7 +465,7 @@ void SensorDataTransformer::transform() {
                     
                     for (const auto& reading : readings) {
                         if (reading.empty()) continue;
-                        if (shouldIncludeReading(reading)) {
+                        if (shouldOutputReading(reading)) {
                             filtered.push_back(reading);
                         }
                     }
@@ -713,4 +728,36 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  " << progName << " transform --not-empty unit --not-empty value -e .out -o output.csv /logs" << std::endl;
     std::cerr << "  " << progName << " transform --only-value type:temperature -r -e .out -o output.csv /logs" << std::endl;
     std::cerr << "  " << progName << " transform --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
+}
+
+void SensorDataTransformer::printListRejectsUsage(const char* progName) {
+    std::cerr << "Usage: " << progName << " list-rejects [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "List rejected sensor readings (inverse of transform)." << std::endl;
+    std::cerr << "Outputs readings that would be filtered OUT by the specified filters." << std::endl;
+    std::cerr << "Accepts the same options as 'transform'." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Options:" << std::endl;
+    std::cerr << "  -o, --output <file>       Output file (default: stdout)" << std::endl;
+    std::cerr << "  -if, --input-format <fmt>  Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -of, --output-format <fmt> Output format: json or csv (default: json)" << std::endl;
+    std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
+    std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
+    std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
+    std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
+    std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
+    std::cerr << "  --not-empty <column>      List rows where column IS empty" << std::endl;
+    std::cerr << "  --only-value <col:val>    List rows where column does NOT have this value" << std::endl;
+    std::cerr << "  --exclude-value <col:val> List rows where column HAS this value" << std::endl;
+    std::cerr << "  --allowed-values <col> <values|file>  List rows where column is NOT in allowed list" << std::endl;
+    std::cerr << "  --remove-errors           List error readings (DS18B20 value=85 or -127)" << std::endl;
+    std::cerr << "  --remove-empty-json       List empty JSON input lines" << std::endl;
+    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors" << std::endl;
+    std::cerr << "  --min-date <date>         List readings before this date" << std::endl;
+    std::cerr << "  --max-date <date>         List readings after this date" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Examples:" << std::endl;
+    std::cerr << "  " << progName << " list-rejects --remove-errors sensor1.out    # Show error readings" << std::endl;
+    std::cerr << "  " << progName << " list-rejects --clean sensor1.out            # Show filtered readings" << std::endl;
+    std::cerr << "  cat data.out | " << progName << " list-rejects --not-empty value  # Show rows with empty value" << std::endl;
 }

@@ -29,6 +29,7 @@ private:
     std::string outputFile;
     std::string outputFormat;  // "json" or "csv"
     bool removeWhitespace;
+    bool rejectMode;  // If true, output rejected readings instead of accepted
     
     // Column discovery
     std::set<std::string> allKeys;
@@ -40,6 +41,11 @@ private:
      * Check if any filtering is active (affects whether we can pass-through JSON lines)
      */
     bool hasActiveFilters() const;
+    
+    /**
+     * Check if a reading should be output (respects rejectMode)
+     */
+    bool shouldOutputReading(const std::map<std::string, std::string>& reading);
     
     /**
      * Execute sc-prototype command and parse columns from JSON output
@@ -86,8 +92,9 @@ private:
 public:
     /**
      * Construct transformer from command line arguments
+     * @param rejectMode If true, output rejected readings instead of accepted
      */
-    SensorDataTransformer(int argc, char* argv[]);
+    SensorDataTransformer(int argc, char* argv[], bool rejectMode = false);
     
     /**
      * Execute the transformation
@@ -98,6 +105,11 @@ public:
      * Print usage information
      */
     static void printTransformUsage(const char* progName);
+    
+    /**
+     * Print usage information for list-rejects command
+     */
+    static void printListRejectsUsage(const char* progName);
 };
 
 #endif // SENSOR_DATA_TRANSFORMER_H
