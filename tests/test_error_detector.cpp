@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <unistd.h>
 
 // Helper to create a directory
 bool createDir(const std::string& path) {
