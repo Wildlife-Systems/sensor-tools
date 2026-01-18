@@ -109,4 +109,4 @@ _sensor_data() {
     fi
 }
 
-complete -o default -o bashdefault -F _sensor_data sensor-data
+complete -F _sensor_data sensor-data
