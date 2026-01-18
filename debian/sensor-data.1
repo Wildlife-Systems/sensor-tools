@@ -1,0 +1,207 @@
+.TH SENSOR\-DATA 1 "January 2026" "sensor-tools" "User Commands"
+.SH NAME
+sensor\-data \- tools for managing and reading sensor data
+.SH SYNOPSIS
+.B sensor\-data
+.I command
+.RI [ options ]
+.RI [ files .\|.\|.]
+.SH DESCRIPTION
+.B sensor\-data
+provides command-line tools for working with sensor data files.
+It can convert between JSON and CSV formats, detect and filter error readings,
+and calculate statistics on numeric sensor data.
+.PP
+Input files can be JSON (.out format with one JSON array per line) or CSV.
+If no input files are specified, data is read from stdin.
+.SH COMMANDS
+.TP
+.B convert
+Convert JSON or CSV sensor data files to JSON or CSV format.
+Each sensor reading becomes a row in the output.
+.TP
+.B list\-errors
+List error readings in sensor data files.
+Detects DS18B20 sensors with temperature/value of 85 or \-127 (error conditions).
+.TP
+.B summarise\-errors
+Summarise error readings in sensor data files with counts.
+Groups errors by type and sensor.
+.TP
+.B stats
+Calculate statistics for numeric sensor data.
+Shows min, max, mean, median, and standard deviation for numeric columns.
+.SH GLOBAL OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.SH CONVERT OPTIONS
+.TP
+.BR \-o ", " \-\-output " " \fIfile\fR
+Output file (default: stdout).
+.TP
+.BR \-f ", " \-\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-F ", " \-\-output\-format " " \fIfmt\fR
+Output format: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output (show progress).
+.TP
+.B \-V
+Very verbose output (show detailed progress).
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension (e.g., .out or out).
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth (0 = current dir only).
+.TP
+.B \-\-use\-prototype
+Use sc\-prototype command to define columns.
+.TP
+.BI \-\-not\-empty " column"
+Skip rows where column is empty (can be used multiple times).
+.TP
+.BI \-\-only\-value " col:val"
+Only include rows where column has specific value (can be used multiple times).
+.TP
+.B \-\-remove\-errors
+Remove error readings (DS18B20 value=85 or \-127).
+.TP
+.B \-\-remove\-whitespace
+Remove extra whitespace from output (compact format).
+.TP
+.BI \-\-min\-date " date"
+Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY).
+.TP
+.BI \-\-max\-date " date"
+Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
+.SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
+.TP
+.BR \-f ", " \-\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output.
+.TP
+.B \-V
+Very verbose output.
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension (e.g., .out or out).
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth (0 = current dir only).
+.TP
+.BI \-\-min\-date " date"
+Filter readings after this date.
+.TP
+.BI \-\-max\-date " date"
+Filter readings before this date.
+.SH STATS OPTIONS
+.TP
+.BR \-c ", " \-\-column " " \fIname\fR
+Analyze only this column (default: value).
+.TP
+.BR \-f ", " \-\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output.
+.TP
+.B \-V
+Very verbose output.
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension (e.g., .out or out).
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth (0 = current dir only).
+.TP
+.BI \-\-min\-date " date"
+Filter readings after this date.
+.TP
+.BI \-\-max\-date " date"
+Filter readings before this date.
+.SH EXAMPLES
+Convert a JSON sensor file to CSV:
+.PP
+.RS
+sensor\-data convert \-F csv sensor1.out
+.RE
+.PP
+Convert multiple files with error filtering:
+.PP
+.RS
+sensor\-data convert \-\-remove\-errors \-o output.csv sensor1.out sensor2.out
+.RE
+.PP
+Convert all .out files in a directory recursively:
+.PP
+.RS
+sensor\-data convert \-r \-e .out \-o output.csv /path/to/logs/
+.RE
+.PP
+Read from stdin and filter by sensor type:
+.PP
+.RS
+cat sensor1.out | sensor\-data convert \-\-only\-value sensor:ds18b20
+.RE
+.PP
+List error readings in sensor files:
+.PP
+.RS
+sensor\-data list\-errors \-r \-e .out /path/to/logs/
+.RE
+.PP
+Get statistics for a specific column:
+.PP
+.RS
+sensor\-data stats \-c temperature sensor1.out
+.RE
+.PP
+Filter by date range:
+.PP
+.RS
+sensor\-data convert \-\-min\-date 2024\-01\-01 \-\-max\-date 2024\-12\-31 sensor.out
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Successful execution.
+.TP
+.B 1
+An error occurred.
+.SH FILES
+.TP
+.I *.out
+JSON sensor data files (one JSON array per line).
+.TP
+.I *.csv
+CSV sensor data files.
+.SH AUTHOR
+Ed Baker <ed@ebaker.me.uk>
+.SH REPORTING BUGS
+Report bugs at: https://github.com/edwbaker/sensors\-tools/issues
+.SH COPYRIGHT
+Copyright \(co 2026 Ed Baker.
+License GPLv2+: GNU GPL version 2 or later.
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+.SH SEE ALSO
+.BR sc\-prototype (1)
