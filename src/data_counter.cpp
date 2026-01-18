@@ -23,6 +23,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
     }
 
     long long count = 0;
+    long long lineCount = 0;  // DEBUG
     std::string line;
 
     if (FileUtils::isCsvFile(filename)) {
@@ -35,6 +36,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
 
         // Process data rows
         while (std::getline(infile, line)) {
+            lineCount++;  // DEBUG
             if (line.empty()) continue;
 
             bool needMore = false;
@@ -53,6 +55,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
     } else {
         // JSON format
         while (std::getline(infile, line)) {
+            lineCount++;  // DEBUG
             if (line.empty()) continue;
 
             auto readings = JsonParser::parseJsonLine(line);
@@ -73,6 +76,11 @@ long long DataCounter::countFromFile(const std::string& filename) {
                 }
             }
         }
+    }
+
+    // DEBUG output
+    if (verbosity >= 1) {
+        std::cerr << "  Lines read: " << lineCount << ", Readings counted: " << count << std::endl;
     }
 
     infile.close();
