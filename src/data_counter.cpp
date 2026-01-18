@@ -23,7 +23,6 @@ long long DataCounter::countFromFile(const std::string& filename) {
     }
 
     long long count = 0;
-    long long lineCount = 0;  // DEBUG
     std::string line;
 
     if (FileUtils::isCsvFile(filename)) {
@@ -36,7 +35,6 @@ long long DataCounter::countFromFile(const std::string& filename) {
 
         // Process data rows
         while (std::getline(infile, line)) {
-            lineCount++;  // DEBUG
             if (line.empty()) continue;
 
             bool needMore = false;
@@ -55,7 +53,6 @@ long long DataCounter::countFromFile(const std::string& filename) {
     } else {
         // JSON format
         while (std::getline(infile, line)) {
-            lineCount++;  // DEBUG
             if (line.empty()) continue;
 
             auto readings = JsonParser::parseJsonLine(line);
@@ -76,11 +73,6 @@ long long DataCounter::countFromFile(const std::string& filename) {
                 }
             }
         }
-    }
-
-    // DEBUG output
-    if (verbosity >= 1) {
-        std::cerr << "  Lines read: " << lineCount << ", Readings counted: " << count << std::endl;
     }
 
     infile.close();
@@ -369,18 +361,6 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
 // ===== Main count method =====
 
 void DataCounter::count() {
-    // Debug: Print filter state
-    if (verbosity >= 1) {
-        std::cerr << "removeErrors: " << (removeErrors ? "true" : "false") << std::endl;
-        std::cerr << "removeEmptyJson: " << (removeEmptyJson ? "true" : "false") << std::endl;
-        std::cerr << "notEmptyColumns: ";
-        for (const auto& col : notEmptyColumns) {
-            std::cerr << col << " ";
-        }
-        std::cerr << std::endl;
-        printFilterInfo();
-    }
-    
     if (!hasInputFiles && followMode) {
         // Follow mode with stdin
         countFromStdinFollow();
