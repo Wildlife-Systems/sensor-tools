@@ -361,6 +361,18 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
 // ===== Main count method =====
 
 void DataCounter::count() {
+    // Debug: Print filter state
+    if (verbosity >= 1) {
+        std::cerr << "removeErrors: " << (removeErrors ? "true" : "false") << std::endl;
+        std::cerr << "removeEmptyJson: " << (removeEmptyJson ? "true" : "false") << std::endl;
+        std::cerr << "notEmptyColumns: ";
+        for (const auto& col : notEmptyColumns) {
+            std::cerr << col << " ";
+        }
+        std::cerr << std::endl;
+        printFilterInfo();
+    }
+    
     if (!hasInputFiles && followMode) {
         // Follow mode with stdin
         countFromStdinFollow();
