@@ -20,11 +20,9 @@ private:
     std::string inputFormat;  // "json" or "csv"
     
     bool passesDateFilter(const std::map<std::string, std::string>& reading) const {
-        if (minDate > 0 || maxDate > 0) {
-            long long timestamp = DateUtils::getTimestamp(reading);
-            return DateUtils::isInDateRange(timestamp, minDate, maxDate);
-        }
-        return true;
+        if (minDate <= 0 && maxDate <= 0) return true;
+        long long timestamp = DateUtils::getTimestamp(reading);
+        return DateUtils::isInDateRange(timestamp, minDate, maxDate);
     }
     
 public:

@@ -13,6 +13,7 @@
 #include <mutex>
 #include <future>
 #include <cstdio>
+#include <cstdlib>
 #include <array>
 
 #include "date_utils.h"

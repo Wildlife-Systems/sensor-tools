@@ -7,6 +7,7 @@
 #include <map>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 #include "common_arg_parser.h"
 #include "data_reader.h"

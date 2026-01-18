@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <algorithm>
 #include "date_utils.h"
 #include "file_collector.h"

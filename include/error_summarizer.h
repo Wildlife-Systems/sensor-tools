@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cstdlib>
 
 #include "common_arg_parser.h"
 #include "data_reader.h"

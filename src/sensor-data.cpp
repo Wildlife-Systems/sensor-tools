@@ -34,6 +34,17 @@ void printUsage(const char* progName) {
     std::cerr << "  " << progName << " <command> --help" << std::endl;
 }
 
+// Helper to build argv for subcommands (skips the command name)
+std::vector<char*> buildSubcommandArgv(int argc, char* argv[]) {
+    int newArgc = argc - 1;
+    std::vector<char*> newArgv(newArgc);
+    newArgv[0] = argv[0];  // program name
+    for (int i = 2; i < argc; ++i) {
+        newArgv[i - 1] = argv[i];
+    }
+    return newArgv;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printUsage(argv[0]);
@@ -55,17 +66,9 @@ int main(int argc, char* argv[]) {
     
     if (command == "convert") {
         try {
-            // Create new argv for converter (skip "convert" command)
-            int newArgc = argc - 1;
-            std::vector<char*> newArgv(newArgc);
-            newArgv[0] = argv[0];  // program name
-            for (int i = 2; i < argc; ++i) {
-                newArgv[i - 1] = argv[i];
-            }
-            
-            SensorDataConverter converter(newArgc, newArgv.data());
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            SensorDataConverter converter(static_cast<int>(newArgv.size()), newArgv.data());
             converter.convert();
-            
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -73,17 +76,9 @@ int main(int argc, char* argv[]) {
         }
     } else if (command == "list-errors") {
         try {
-            // Create new argv for error lister (skip "list-errors" command)
-            int newArgc = argc - 1;
-            std::vector<char*> newArgv(newArgc);
-            newArgv[0] = argv[0];  // program name
-            for (int i = 2; i < argc; ++i) {
-                newArgv[i - 1] = argv[i];
-            }
-            
-            ErrorLister lister(newArgc, newArgv.data());
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            ErrorLister lister(static_cast<int>(newArgv.size()), newArgv.data());
             lister.listErrors();
-            
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -91,17 +86,9 @@ int main(int argc, char* argv[]) {
         }
     } else if (command == "summarise-errors") {
         try {
-            // Create new argv for error summarizer (skip "summarise-errors" command)
-            int newArgc = argc - 1;
-            std::vector<char*> newArgv(newArgc);
-            newArgv[0] = argv[0];  // program name
-            for (int i = 2; i < argc; ++i) {
-                newArgv[i - 1] = argv[i];
-            }
-            
-            ErrorSummarizer summarizer(newArgc, newArgv.data());
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            ErrorSummarizer summarizer(static_cast<int>(newArgv.size()), newArgv.data());
             summarizer.summariseErrors();
-            
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -109,17 +96,9 @@ int main(int argc, char* argv[]) {
         }
     } else if (command == "stats") {
         try {
-            // Create new argv for stats analyzer (skip "stats" command)
-            int newArgc = argc - 1;
-            std::vector<char*> newArgv(newArgc);
-            newArgv[0] = argv[0];  // program name
-            for (int i = 2; i < argc; ++i) {
-                newArgv[i - 1] = argv[i];
-            }
-            
-            StatsAnalyser analyser(newArgc, newArgv.data());
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            StatsAnalyser analyser(static_cast<int>(newArgv.size()), newArgv.data());
             analyser.analyze();
-            
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
