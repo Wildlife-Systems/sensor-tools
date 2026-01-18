@@ -126,10 +126,10 @@ fi
 # Test: Count with --remove-errors
 echo ""
 echo "Test: --remove-errors excludes DS18B20 error readings"
-input='[{"type": "ds18b20", "value": 85}]
-[{"type": "ds18b20", "value": -127}]
-[{"type": "ds18b20", "value": 22.5}]
-[{"type": "ds18b20", "value": 23.0}]'
+input='[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "ds18b20", "value": "-127"}]
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "23.0"}]'
 result=$(echo "$input" | ./sensor-data count --remove-errors)
 if [ "$result" = "2" ]; then
     echo "  ✓ PASS"
