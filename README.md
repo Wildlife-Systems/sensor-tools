@@ -175,15 +175,61 @@ sensor-data stats --clean input.out
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
-Output:
+**Statistics Output:**
+- **Basic stats:** Count, Min, Max, Range, Mean, StdDev
+- **Quartiles:** Q1 (25%), Median, Q3 (75%), IQR
+- **Outliers:** Count and percent using 1.5×IQR method
+- **Delta stats:** Min, Max, Mean of consecutive changes, Volatility (std dev of deltas)
+- **Max Jump:** Largest single value change with before/after values
+
+**Time-based stats** (when timestamp field is present):
+- **Time Range:** First and last timestamps with human-readable dates
+- **Duration:** Total time span in days/hours/minutes/seconds
+- **Rate:** Readings per hour and per day
+- **Sampling:** Typical interval between readings
+- **Gap Detection:** Number of gaps (>3× typical interval) and max gap size
+
+Example output:
 ```
+Statistics:
+
+Time Range:
+  First:     2023-11-14 22:13:20 (1700000000)
+  Last:      2023-11-15 01:13:20 (1700010800)
+  Duration:  3h 0m 0s (10800 seconds)
+  Rate:      1.33 readings/hour, 32.00 readings/day
+
+  Sampling:
+    Typical interval: 3600s
+    Gaps detected:    0
+
 value:
-  Count: 100
-  Min: 18.5
-  Max: 26.3
-  Mean: 22.1
-  Median: 22.0
-  Std Dev: 1.8
+  Count:    100
+  Min:      18.5
+  Max:      26.3
+  Range:    7.8
+  Mean:     22.1
+  StdDev:   1.8
+
+  Quartiles:
+    Q1 (25%):  20.5
+    Median:    22.0
+    Q3 (75%):  23.5
+    IQR:       3.0
+
+  Outliers (1.5*IQR):
+    Count:     2
+    Percent:   2.0%
+
+  Delta (consecutive changes):
+    Min:       0.1000
+    Max:       2.5000
+    Mean:      0.5000
+    Volatility:0.3000
+
+  Max Jump:
+    Size:      2.5000
+    From:      20.0 -> 22.5
 ```
 
 ## Date Formats

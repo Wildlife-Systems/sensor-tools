@@ -535,6 +535,161 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 27: Time range stats with timestamps
+echo ""
+echo "Test 27: Time range stats"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700003600}
+{"sensor":"ds18b20","value":"22.5","timestamp":1700007200}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700010800}
+EOF
+)
+if echo "$result" | grep -q "Time Range:" && echo "$result" | grep -q "First:" && echo "$result" | grep -q "Last:" && echo "$result" | grep -q "Duration:"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected time range stats"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 28: Duration calculation
+echo ""
+echo "Test 28: Duration calculation (3 hours)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700010800}
+EOF
+)
+if echo "$result" | grep -q "Duration:.*3h.*0m"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 3h duration"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 29: Readings rate
+echo ""
+echo "Test 29: Readings rate"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700003600}
+{"sensor":"ds18b20","value":"22.5","timestamp":1700007200}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700010800}
+EOF
+)
+# 4 readings over 3 hours = 1.33 readings/hour
+if echo "$result" | grep -q "Rate:.*readings/hour"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected readings rate"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 30: Gap detection
+echo ""
+echo "Test 30: Gap detection"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700000060}
+{"sensor":"ds18b20","value":"22.5","timestamp":1700000120}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700010000}
+EOF
+)
+# Last reading is 10000 seconds after previous - should detect gap
+if echo "$result" | grep -q "Gaps detected:.*1"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 1 gap detected"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 31: No gaps when evenly spaced
+echo ""
+echo "Test 31: No gaps when evenly spaced"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700000060}
+{"sensor":"ds18b20","value":"22.5","timestamp":1700000120}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700000180}
+EOF
+)
+if echo "$result" | grep -q "Gaps detected:.*0"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 0 gaps"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 32: Volatility calculation
+echo ""
+echo "Test 32: Volatility (std dev of deltas)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.0"}
+{"sensor":"ds18b20","value":"21.0"}
+{"sensor":"ds18b20","value":"22.0"}
+{"sensor":"ds18b20","value":"23.0"}
+EOF
+)
+# Constant delta of 1, so volatility should be 0
+if echo "$result" | grep -q "Volatility:0.0000"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected volatility ~0 for constant deltas"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 33: Max jump detection
+echo ""
+echo "Test 33: Max jump detection"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.0"}
+{"sensor":"ds18b20","value":"20.5"}
+{"sensor":"ds18b20","value":"25.0"}
+{"sensor":"ds18b20","value":"25.5"}
+EOF
+)
+# Max jump is 4.5 (from 20.5 to 25.0)
+if echo "$result" | grep -q "Max Jump:" && echo "$result" | grep -q "Size:.*4.5" && echo "$result" | grep -q "20.5.*->.*25"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected max jump of 4.5 from 20.5 to 25.0"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 34: Typical sampling interval
+echo ""
+echo "Test 34: Typical sampling interval"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.5","timestamp":1700000000}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700000060}
+{"sensor":"ds18b20","value":"22.5","timestamp":1700000120}
+{"sensor":"ds18b20","value":"21.0","timestamp":1700000180}
+EOF
+)
+# Should show 60s interval
+if echo "$result" | grep -q "Typical interval:.*60s"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 60s typical interval"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

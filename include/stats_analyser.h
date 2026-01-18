@@ -21,6 +21,7 @@ class StatsAnalyser : public CommandBase {
 private:
     std::string columnFilter;  // Specific column to analyze (empty = all, "value" = default)
     std::map<std::string, std::vector<double>> columnData;  // column name -> values
+    std::vector<long long> timestamps;  // All timestamps for time-based stats
     bool followMode;  // --follow flag for continuous monitoring
     
     /**
