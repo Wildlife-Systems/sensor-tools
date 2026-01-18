@@ -381,13 +381,22 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[])
             if (result >= 0) {
                 i = result;
             }
-            // Ignore unrecognized options here - CommonArgParser handles them
+            // CommonArgParser will handle remaining options
         }
     }
     
     // Second pass: parse common flags and collect files
     CommonArgParser commonParser;
     if (!commonParser.parse(argc, argv)) {
+        exit(1);
+    }
+    
+    // Check for unknown options (transform-specific: -o, --output, -of, --output-format, --use-prototype, --remove-whitespace)
+    std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv, 
+        {"-o", "--output", "-of", "--output-format", "--use-prototype", "--remove-whitespace"});
+    if (!unknownOpt.empty()) {
+        std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
+        printTransformUsage(argv[0]);
         exit(1);
     }
     

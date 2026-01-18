@@ -20,25 +20,12 @@ ErrorSummarizer::ErrorSummarizer(int argc, char* argv[]) {
         exit(1);
     }
     
-    // Check for unknown options
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
-            arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
-            arg != "--min-date" && arg != "--max-date" &&
-            arg != "-h" && arg != "--help") {
-            if (i > 1) {
-                std::string prev = argv[i-1];
-                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
-                    prev == "-d" || prev == "--depth" || prev == "--min-date" || prev == "--max-date") {
-                    continue;
-                }
-            }
-            std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
-            printSummariseErrorsUsage(argv[0]);
-            exit(1);
-        }
+    // Check for unknown options (no additional options for this command)
+    std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv);
+    if (!unknownOpt.empty()) {
+        std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
+        printSummariseErrorsUsage(argv[0]);
+        exit(1);
     }
     
     copyFromParser(parser);

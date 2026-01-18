@@ -110,32 +110,13 @@ StatsAnalyser::StatsAnalyser(int argc, char* argv[]) : columnFilter("value"), fo
         }
     }
     
-    // Check for unknown options
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
-            arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
-            arg != "-c" && arg != "--column" &&
-            arg != "--follow" && arg != "-f" &&
-            arg != "--only-value" && arg != "--exclude-value" &&
-            arg != "--min-date" && arg != "--max-date" &&
-            arg != "--clean" && arg != "--not-empty" && arg != "--remove-empty-json" &&
-            arg != "--remove-errors" &&
-            arg != "-h" && arg != "--help") {
-            if (i > 1) {
-                std::string prev = argv[i-1];
-                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
-                    prev == "-d" || prev == "--depth" || prev == "-c" || prev == "--column" ||
-                    prev == "--only-value" || prev == "--exclude-value" ||
-                    prev == "--min-date" || prev == "--max-date" || prev == "--not-empty") {
-                    continue;
-                }
-            }
-            std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
-            printStatsUsage(argv[0]);
-            exit(1);
-        }
+    // Check for unknown options (stats-specific: -c/--column, -f/--follow)
+    std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv, 
+        {"-c", "--column", "-f", "--follow"});
+    if (!unknownOpt.empty()) {
+        std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
+        printStatsUsage(argv[0]);
+        exit(1);
     }
     
     copyFromParser(parser);

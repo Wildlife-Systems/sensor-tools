@@ -211,6 +211,67 @@ public:
     const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
     bool getRemoveEmptyJson() const { return removeEmptyJson; }
     bool getRemoveErrors() const { return removeErrors; }
+    
+    /**
+     * Check for unknown options in command line arguments.
+     * Returns empty string if all options are valid, or the unknown option if found.
+     * 
+     * @param argc Argument count
+     * @param argv Argument values
+     * @param additionalAllowed Set of additional allowed options for this command
+     */
+    static std::string checkUnknownOptions(int argc, char* argv[], 
+                                           const std::set<std::string>& additionalAllowed = {}) {
+        // Common options allowed by all commands
+        static const std::set<std::string> commonOptions = {
+            "-r", "--recursive", "-v", "-V", "-if", "--input-format",
+            "-e", "--extension", "-d", "--depth", "--min-date", "--max-date",
+            "-h", "--help"
+        };
+        
+        // Common filtering options
+        static const std::set<std::string> filterOptions = {
+            "--not-empty", "--only-value", "--exclude-value",
+            "--remove-errors", "--remove-empty-json", "--clean"
+        };
+        
+        // Options that take arguments (need to skip the next arg)
+        static const std::set<std::string> optionsWithArgs = {
+            "-if", "--input-format", "-e", "--extension", "-d", "--depth",
+            "--min-date", "--max-date", "--not-empty", "--only-value", 
+            "--exclude-value", "-o", "--output", "-of", "--output-format",
+            "-c", "--column"
+        };
+        
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            
+            // Skip non-option arguments
+            if (arg.empty() || arg[0] != '-') {
+                continue;
+            }
+            
+            // Check if previous arg was an option that takes an argument
+            if (i > 1) {
+                std::string prev = argv[i-1];
+                if (optionsWithArgs.count(prev) > 0 || additionalAllowed.count(prev) > 0) {
+                    continue;  // This is an argument to the previous option
+                }
+            }
+            
+            // Check if this is an allowed option
+            if (commonOptions.count(arg) > 0 || 
+                filterOptions.count(arg) > 0 || 
+                additionalAllowed.count(arg) > 0) {
+                continue;
+            }
+            
+            // Unknown option found
+            return arg;
+        }
+        
+        return "";  // All options are valid
+    }
 };
 
 // Helper function to print common verbose information

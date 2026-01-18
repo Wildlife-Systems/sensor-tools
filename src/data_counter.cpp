@@ -348,30 +348,13 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
 
     copyFromParser(parser);
 
-    // Check for unknown options
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg[0] == '-' && arg != "-r" && arg != "--recursive" && 
-            arg != "-v" && arg != "-V" && arg != "-if" && arg != "--input-format" &&
-            arg != "-e" && arg != "--extension" && arg != "-d" && arg != "--depth" &&
-            arg != "--not-empty" && arg != "--only-value" && arg != "--exclude-value" &&
-            arg != "--remove-errors" && arg != "--remove-empty-json" && arg != "--clean" &&
-            arg != "--min-date" && arg != "--max-date" &&
-            arg != "--follow" && arg != "-f" &&
-            arg != "-h" && arg != "--help") {
-            if (i > 1) {
-                std::string prev = argv[i-1];
-                if (prev == "-if" || prev == "--input-format" || prev == "-e" || prev == "--extension" ||
-                    prev == "-d" || prev == "--depth" || prev == "--not-empty" ||
-                    prev == "--only-value" || prev == "--exclude-value" ||
-                    prev == "--min-date" || prev == "--max-date") {
-                    continue;
-                }
-            }
-            std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
-            printCountUsage(argv[0]);
-            exit(1);
-        }
+    // Check for unknown options (count-specific: -f/--follow)
+    std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv, 
+        {"-f", "--follow"});
+    if (!unknownOpt.empty()) {
+        std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
+        printCountUsage(argv[0]);
+        exit(1);
     }
 }
 
