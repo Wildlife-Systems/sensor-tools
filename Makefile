@@ -74,6 +74,9 @@ install: $(TARGET)
 clean:
 	rm -f $(TARGET) $(LIB_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
 
+# Force a clean rebuild
+rebuild: clean all
+
 # Generate coverage report (requires gcov)
 coverage:
 	@echo "=== Coverage files ==="
@@ -84,5 +87,5 @@ coverage:
 	@echo "=== Generated .gcov files ==="
 	@ls -la *.gcov 2>/dev/null || true
 
-.PHONY: all install clean test test-integration test-all coverage
+.PHONY: all install clean rebuild test test-integration test-all coverage
 
