@@ -113,7 +113,7 @@ fi
 # Test 2: JSON to CSV conversion
 echo ""
 echo "Test 2: JSON to CSV conversion"
-result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -if csv)
+result=$(echo '{"sensor":"ds18b20","value":"22.5"}' | ./sensor-data transform -of csv)
 if echo "$result" | grep -q "sensor,value" && echo "$result" | grep -q "ds18b20,22.5"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
