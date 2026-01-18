@@ -118,5 +118,11 @@ bash tests/test_error_handling.sh
 
 echo ""
 echo "================================"
+echo "Running Count Tests"
+echo "================================"
+bash tests/test_count.sh
+
+echo ""
+echo "================================"
 echo "All tests passed!"
 echo "================================"

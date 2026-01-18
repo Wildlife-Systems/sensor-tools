@@ -20,6 +20,10 @@ If no input files are specified, data is read from stdin.
 Transform JSON or CSV sensor data files to JSON or CSV format.
 Each sensor reading becomes a row in the output.
 .TP
+.B count
+Count sensor data readings that match the specified filters.
+Outputs a single number representing the count of matching readings.
+.TP
 .B list\-errors
 List error readings in sensor data files.
 Detects DS18B20 sensors with temperature/value of 85 or \-127 (error conditions).
@@ -82,11 +86,54 @@ Remove error readings (DS18B20 value=85 or \-127).
 .B \-\-remove\-whitespace
 Remove extra whitespace from output (compact format).
 .TP
+.B \-\-remove\-empty\-json
+Remove empty JSON input lines (e.g., [{}], []).
+.TP
 .BI \-\-min\-date " date"
 Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 .TP
 .BI \-\-max\-date " date"
 Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
+.SH COUNT OPTIONS
+.TP
+.BR \-f ", " \-\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output (show progress).
+.TP
+.B \-V
+Very verbose output (show detailed progress).
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension (e.g., .out or out).
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth (0 = current dir only).
+.TP
+.BI \-\-not\-empty " column"
+Skip rows where column is empty (can be used multiple times).
+.TP
+.BI \-\-only\-value " col:val"
+Only include rows where column has specific value (can be used multiple times).
+.TP
+.BI \-\-exclude\-value " col:val"
+Exclude rows where column has specific value (can be used multiple times).
+.TP
+.B \-\-remove\-errors
+Remove error readings (DS18B20 value=85 or \-127).
+.TP
+.B \-\-remove\-empty\-json
+Remove empty JSON input lines (e.g., [{}], []).
+.TP
+.BI \-\-min\-date " date"
+Filter readings after this date.
+.TP
+.BI \-\-max\-date " date"
+Filter readings before this date.
 .SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
 .TP
 .BR \-f ", " \-\-format " " \fIfmt\fR
@@ -181,6 +228,18 @@ Filter by date range:
 .PP
 .RS
 sensor\-data transform \-\-min\-date 2024\-01\-01 \-\-max\-date 2024\-12\-31 sensor.out
+.RE
+.PP
+Count readings in a file:
+.PP
+.RS
+sensor\-data count sensor1.out
+.RE
+.PP
+Count readings excluding errors:
+.PP
+.RS
+sensor\-data count \-\-remove\-errors \-r \-e .out /path/to/logs/
 .RE
 .SH EXIT STATUS
 .TP

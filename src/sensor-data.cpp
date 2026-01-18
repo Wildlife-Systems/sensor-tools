@@ -6,6 +6,7 @@
 #include "error_lister.h"
 #include "error_summarizer.h"
 #include "stats_analyser.h"
+#include "data_counter.h"
 
 #ifndef VERSION
 #define VERSION "unknown"
@@ -22,6 +23,7 @@ void printUsage(const char* progName) {
     std::cerr << std::endl;
     std::cerr << "Commands:" << std::endl;
     std::cerr << "  transform         Transform JSON or CSV sensor data files" << std::endl;
+    std::cerr << "  count             Count sensor data readings (with optional filters)" << std::endl;
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
@@ -69,6 +71,16 @@ int main(int argc, char* argv[]) {
             std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
             SensorDataTransformer transformer(static_cast<int>(newArgv.size()), newArgv.data());
             transformer.transform();
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if (command == "count") {
+        try {
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            DataCounter counter(static_cast<int>(newArgv.size()), newArgv.data());
+            counter.count();
             return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;

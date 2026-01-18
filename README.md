@@ -69,8 +69,43 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--max-date <date>` - Include only readings on or before this date
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
 - `--remove-whitespace` - Remove extra whitespace from output (compact format)
+- `--remove-empty-json` - Remove empty JSON input lines (e.g., `[{}]`, `[]`)
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
+- `-v` - Verbose output
+- `-V` - Very verbose output
+
+### count
+
+Count sensor data readings with optional filters.
+
+```bash
+# Count all readings in a file
+sensor-data count input.out
+
+# Count from stdin
+cat sensors.out | sensor-data count
+
+# Count with filters
+sensor-data count --remove-errors input.out
+sensor-data count --only-value type:temperature input.out
+
+# Count recursively
+sensor-data count -r -e .out /path/to/logs/
+```
+
+**Options:**
+- `-f, --format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-r, --recursive` - Recursively process subdirectories
+- `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)
+- `-d, --depth <n>` - Maximum recursion depth
+- `--min-date <date>` - Include only readings on or after this date
+- `--max-date <date>` - Include only readings on or before this date
+- `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
+- `--remove-empty-json` - Remove empty JSON input lines
+- `--not-empty <column>` - Skip rows where column is empty
+- `--only-value <col:val>` - Only include rows where column equals value
+- `--exclude-value <col:val>` - Exclude rows where column equals value
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
@@ -162,6 +197,7 @@ sensors-tools/
 ├── include/                  # Header files
 │   ├── common_arg_parser.h   # Shared argument parsing
 │   ├── csv_parser.h          # CSV parsing
+│   ├── data_counter.h        # count command
 │   ├── data_reader.h         # Unified data reading
 │   ├── date_utils.h          # Date parsing utilities
 │   ├── error_detector.h      # Error detection
