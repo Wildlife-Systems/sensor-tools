@@ -3,7 +3,17 @@
 
 _sensor_data() {
     local cur prev words cword
-    _init_completion || return
+    
+    # Use _init_completion if available, otherwise fall back to manual setup
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion || return
+    else
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    fi
 
     local commands="transform list-errors summarise-errors stats"
     
@@ -42,7 +52,7 @@ _sensor_data() {
     case "$prev" in
         -o|--output)
             # Complete file names
-            _filedir
+            _filedir 2>/dev/null || COMPREPLY=($(compgen -f -- "$cur"))
             return
             ;;
         -e|--extension)
@@ -95,8 +105,8 @@ _sensor_data() {
         esac
     else
         # Complete file/directory names
-        _filedir
+        _filedir 2>/dev/null || COMPREPLY=($(compgen -f -- "$cur"))
     fi
 }
 
-complete -F _sensor_data sensor-data
+complete -o default -o bashdefault -F _sensor_data sensor-data
