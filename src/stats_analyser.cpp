@@ -41,6 +41,22 @@ double StatsAnalyser::calculateStdDev(const std::vector<double>& values, double 
     return std::sqrt(sum / (values.size() - 1));
 }
 
+double StatsAnalyser::calculatePercentile(const std::vector<double>& sortedValues, double percentile) {
+    if (sortedValues.empty()) return 0.0;
+    if (sortedValues.size() == 1) return sortedValues[0];
+    
+    double index = (percentile / 100.0) * (sortedValues.size() - 1);
+    size_t lower = static_cast<size_t>(index);
+    size_t upper = lower + 1;
+    double fraction = index - lower;
+    
+    if (upper >= sortedValues.size()) {
+        return sortedValues[sortedValues.size() - 1];
+    }
+    
+    return sortedValues[lower] + fraction * (sortedValues[upper] - sortedValues[lower]);
+}
+
 // ===== Private methods =====
 
 void StatsAnalyser::collectDataFromReading(const std::map<std::string, std::string>& reading) {
@@ -138,21 +154,78 @@ void StatsAnalyser::printStats() {
         
         if (values.empty()) continue;
         
-        double min = *std::min_element(values.begin(), values.end());
-        double max = *std::max_element(values.begin(), values.end());
+        // Sort values for percentile calculations
+        std::vector<double> sorted = values;
+        std::sort(sorted.begin(), sorted.end());
+        
+        double min = sorted.front();
+        double max = sorted.back();
         double sum = 0.0;
         for (double v : values) sum += v;
         double mean = sum / values.size();
-        double median = calculateMedian(values);
         double stddev = calculateStdDev(values, mean);
         
+        // Quartiles
+        double q1 = calculatePercentile(sorted, 25);
+        double median = calculatePercentile(sorted, 50);
+        double q3 = calculatePercentile(sorted, 75);
+        double iqr = q3 - q1;
+        
+        // Outliers (using 1.5 * IQR method)
+        double lowerFence = q1 - 1.5 * iqr;
+        double upperFence = q3 + 1.5 * iqr;
+        size_t outlierCount = 0;
+        for (double v : values) {
+            if (v < lowerFence || v > upperFence) {
+                outlierCount++;
+            }
+        }
+        double outlierPercent = (values.size() > 0) ? (100.0 * outlierCount / values.size()) : 0.0;
+        
+        // Delta stats (differences between consecutive readings)
+        double deltaMin = 0, deltaMax = 0, deltaSum = 0;
+        size_t deltaCount = 0;
+        if (values.size() > 1) {
+            deltaMin = std::abs(values[1] - values[0]);
+            deltaMax = deltaMin;
+            for (size_t i = 1; i < values.size(); ++i) {
+                double delta = std::abs(values[i] - values[i-1]);
+                deltaSum += delta;
+                if (delta < deltaMin) deltaMin = delta;
+                if (delta > deltaMax) deltaMax = delta;
+            }
+            deltaCount = values.size() - 1;
+        }
+        double deltaMean = (deltaCount > 0) ? (deltaSum / deltaCount) : 0.0;
+        
         std::cout << colName << ":" << std::endl;
-        std::cout << "  Count:  " << values.size() << std::endl;
-        std::cout << "  Min:    " << min << std::endl;
-        std::cout << "  Max:    " << max << std::endl;
-        std::cout << "  Mean:   " << mean << std::endl;
-        std::cout << "  Median: " << median << std::endl;
-        std::cout << "  StdDev: " << stddev << std::endl;
+        std::cout << "  Count:    " << values.size() << std::endl;
+        std::cout << "  Min:      " << min << std::endl;
+        std::cout << "  Max:      " << max << std::endl;
+        std::cout << "  Range:    " << (max - min) << std::endl;
+        std::cout << "  Mean:     " << mean << std::endl;
+        std::cout << "  StdDev:   " << stddev << std::endl;
+        std::cout << std::endl;
+        std::cout << "  Quartiles:" << std::endl;
+        std::cout << "    Q1 (25%):  " << q1 << std::endl;
+        std::cout << "    Median:    " << median << std::endl;
+        std::cout << "    Q3 (75%):  " << q3 << std::endl;
+        std::cout << "    IQR:       " << iqr << std::endl;
+        std::cout << std::endl;
+        std::cout << "  Outliers (1.5*IQR):" << std::endl;
+        std::cout << "    Count:     " << outlierCount << std::endl;
+        std::cout << "    Percent:   " << std::fixed << std::setprecision(1) << outlierPercent << "%" << std::endl;
+        std::cout << std::defaultfloat;
+        
+        if (values.size() > 1) {
+            std::cout << std::endl;
+            std::cout << "  Delta (consecutive changes):" << std::endl;
+            std::cout << "    Min:       " << std::fixed << std::setprecision(4) << deltaMin << std::endl;
+            std::cout << "    Max:       " << deltaMax << std::endl;
+            std::cout << "    Mean:      " << deltaMean << std::endl;
+            std::cout << std::defaultfloat;
+        }
+        
         std::cout << std::endl;
     }
 }

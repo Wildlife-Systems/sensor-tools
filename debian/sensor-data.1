@@ -34,7 +34,9 @@ Groups errors by type and sensor.
 .TP
 .B stats
 Calculate statistics for numeric sensor data.
-Shows min, max, mean, median, and standard deviation for numeric columns.
+Shows count, min, max, range, mean, and standard deviation.
+Also shows quartiles (Q1, median, Q3, IQR), outlier detection (1.5*IQR method),
+and delta statistics for consecutive value changes.
 .SH GLOBAL OPTIONS
 .TP
 .BR \-h ", " \-\-help

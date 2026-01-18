@@ -44,6 +44,11 @@ private:
     static double calculateStdDev(const std::vector<double>& values, double mean);
     
     /**
+     * Calculate percentile of sorted values (0-100)
+     */
+    static double calculatePercentile(const std::vector<double>& sortedValues, double percentile);
+    
+    /**
      * Print current statistics to stdout
      */
     void printStats();

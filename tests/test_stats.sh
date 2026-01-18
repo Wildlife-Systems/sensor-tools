@@ -232,7 +232,186 @@ else
     echo "  Got: $result"
     FAILED=$((FAILED + 1))
 fi
+# Test 12: Quartiles output
+echo ""
+echo "Test 12: Quartiles (Q1, Median, Q3, IQR)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"10"}
+{"value":"20"}
+{"value":"30"}
+{"value":"40"}
+{"value":"50"}
+EOF
+)
+if echo "$result" | grep -q "Quartiles:" && echo "$result" | grep -q "Q1 (25%):" && echo "$result" | grep -q "Median:" && echo "$result" | grep -q "Q3 (75%):" && echo "$result" | grep -q "IQR:"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected Quartiles section"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
 
+# Test 13: Quartile values are correct
+echo ""
+echo "Test 13: Quartile values are correct"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"10"}
+{"value":"20"}
+{"value":"30"}
+{"value":"40"}
+{"value":"50"}
+EOF
+)
+# For values 10,20,30,40,50: Q1=20, Median=30, Q3=40, IQR=20
+if echo "$result" | grep -q "Q1 (25%):.*20" && echo "$result" | grep -q "Median:.*30" && echo "$result" | grep -q "Q3 (75%):.*40" && echo "$result" | grep -q "IQR:.*20"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Quartile values incorrect"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 14: Range calculation
+echo ""
+echo "Test 14: Range calculation"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"10"}
+{"value":"50"}
+EOF
+)
+if echo "$result" | grep -q "Range:.*40"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected Range: 40"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 15: Outlier detection (1.5*IQR method)
+echo ""
+echo "Test 15: Outlier detection"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"20"}
+{"value":"21"}
+{"value":"22"}
+{"value":"23"}
+{"value":"24"}
+{"value":"85"}
+EOF
+)
+# 85 should be detected as outlier (well beyond 1.5*IQR)
+if echo "$result" | grep -q "Outliers" && echo "$result" | grep -q "Count:.*1"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 1 outlier detected"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 16: Outlier percentage
+echo ""
+echo "Test 16: Outlier percentage"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"20"}
+{"value":"21"}
+{"value":"22"}
+{"value":"23"}
+{"value":"24"}
+{"value":"85"}
+{"value":"86"}
+{"value":"87"}
+{"value":"88"}
+{"value":"89"}
+EOF
+)
+# Multiple outliers should show percentage
+if echo "$result" | grep -q "Percent:.*[0-9]"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected outlier percentage"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 17: Delta stats section exists
+echo ""
+echo "Test 17: Delta stats section"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"10"}
+{"value":"15"}
+{"value":"25"}
+{"value":"30"}
+EOF
+)
+if echo "$result" | grep -q "Delta (consecutive changes):" && echo "$result" | grep -q "Min:" && echo "$result" | grep -q "Max:" && echo "$result" | grep -q "Mean:"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected Delta stats section"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 18: Delta stats values
+echo ""
+echo "Test 18: Delta stats values correct"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"10"}
+{"value":"15"}
+{"value":"25"}
+{"value":"30"}
+EOF
+)
+# Deltas: 5, 10, 5 -> Min=5, Max=10, Mean=6.67
+if echo "$result" | grep -q "Delta" && echo "$result" | grep "Min:" | tail -1 | grep -q "5"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Delta min should be 5"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 19: No delta section for single value
+echo ""
+echo "Test 19: No delta section for single value"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"42"}
+EOF
+)
+if ! echo "$result" | grep -q "Delta (consecutive changes):"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Should not show Delta section for single value"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 20: No outliers detected
+echo ""
+echo "Test 20: No outliers in uniform data"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"value":"20"}
+{"value":"21"}
+{"value":"22"}
+{"value":"23"}
+{"value":"24"}
+EOF
+)
+if echo "$result" | grep -q "Outliers" && echo "$result" | grep "Count:" | tail -1 | grep -q "0"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 0 outliers in uniform data"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
 # Summary
 echo ""
 echo "================================"
