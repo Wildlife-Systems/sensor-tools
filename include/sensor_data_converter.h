@@ -36,8 +36,8 @@ private:
     int numThreads;
     bool usePrototype;
     std::set<std::string> notEmptyColumns;  // Columns that must not be empty
-    std::map<std::string, std::string> onlyValueFilters;  // Column:value pairs for filtering (include)
-    std::map<std::string, std::string> excludeValueFilters;  // Column:value pairs for filtering (exclude)
+    std::map<std::string, std::set<std::string>> onlyValueFilters;  // Column:value pairs for filtering (include)
+    std::map<std::string, std::set<std::string>> excludeValueFilters;  // Column:value pairs for filtering (exclude)
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
     bool removeWhitespace;  // Remove extra whitespace from output (compact format)
@@ -430,13 +430,13 @@ private:
         // Check value filters (include)
         for (const auto& filter : onlyValueFilters) {
             auto it = reading.find(filter.first);
-            if (it == reading.end() || it->second != filter.second) {
+            if (it == reading.end() || filter.second.count(it->second) == 0) {
                 if (verbosity >= 2) {
                     if (it == reading.end()) {
                         std::cerr << "  Skipping row: missing column '" << filter.first << "'" << std::endl;
                     } else {
                         std::cerr << "  Skipping row: column '" << filter.first << "' has value '" 
-                                 << it->second << "' (expected '" << filter.second << "')" << std::endl;
+                                 << it->second << "' (not in allowed values)" << std::endl;
                     }
                 }
                 return false;
@@ -446,10 +446,10 @@ private:
         // Check value filters (exclude)
         for (const auto& filter : excludeValueFilters) {
             auto it = reading.find(filter.first);
-            if (it != reading.end() && it->second == filter.second) {
+            if (it != reading.end() && filter.second.count(it->second) > 0) {
                 if (verbosity >= 2) {
                     std::cerr << "  Skipping row: column '" << filter.first << "' has excluded value '" 
-                             << filter.second << "'" << std::endl;
+                             << it->second << "'" << std::endl;
                 }
                 return false;
             }
@@ -637,7 +637,7 @@ public:
                     }
                     std::string column = filter.substr(0, colonPos);
                     std::string value = filter.substr(colonPos + 1);
-                    onlyValueFilters[column] = value;
+                    onlyValueFilters[column].insert(value);
                 } else {
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     exit(1);
@@ -653,7 +653,7 @@ public:
                     }
                     std::string column = filter.substr(0, colonPos);
                     std::string value = filter.substr(colonPos + 1);
-                    excludeValueFilters[column] = value;
+                    excludeValueFilters[column].insert(value);
                 } else {
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     exit(1);
@@ -882,12 +882,26 @@ public:
                 std::cerr << std::endl;
             }
             if (!onlyValueFilters.empty()) {
-                std::cerr << "Value filters: ";
+                std::cerr << "Value filters (include): ";
                 bool first = true;
                 for (const auto& filter : onlyValueFilters) {
-                    if (!first) std::cerr << ", ";
-                    std::cerr << filter.first << "=" << filter.second;
-                    first = false;
+                    for (const auto& val : filter.second) {
+                        if (!first) std::cerr << ", ";
+                        std::cerr << filter.first << "=" << val;
+                        first = false;
+                    }
+                }
+                std::cerr << std::endl;
+            }
+            if (!excludeValueFilters.empty()) {
+                std::cerr << "Value filters (exclude): ";
+                bool first = true;
+                for (const auto& filter : excludeValueFilters) {
+                    for (const auto& val : filter.second) {
+                        if (!first) std::cerr << ", ";
+                        std::cerr << filter.first << "=" << val;
+                        first = false;
+                    }
                 }
                 std::cerr << std::endl;
             }
