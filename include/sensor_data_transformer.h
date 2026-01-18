@@ -41,6 +41,7 @@ private:
     int verbosity;  // 0 = normal, 1 = verbose (-v), 2 = very verbose (-V)
     bool removeErrors;  // Remove error readings (e.g., DS18B20 temperature = 85)
     bool removeWhitespace;  // Remove extra whitespace from output (compact format)
+    bool removeEmptyJson;  // Remove empty JSON input lines (e.g., "[{}]", "[]")
     std::string inputFormat;  // Input format: "json" or "csv" (default: json for stdin)
     std::string outputFormat;  // Output format: "json" or "csv" (default: json for stdout, csv for file)
     long long minDate;  // Minimum timestamp (Unix epoch)
@@ -49,7 +50,7 @@ private:
     // Check if any filtering is active (affects whether we can pass-through JSON lines)
     bool hasActiveFilters() const {
         return !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
-               !excludeValueFilters.empty() || removeErrors || removeWhitespace || minDate > 0 || maxDate > 0;
+               !excludeValueFilters.empty() || removeErrors || removeWhitespace || removeEmptyJson || minDate > 0 || maxDate > 0;
     }
     
     // Execute sc-prototype command and parse columns from JSON output
@@ -581,7 +582,7 @@ private:
     }
 
 public:
-    SensorDataTransformer(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), removeWhitespace(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
+    SensorDataTransformer(int argc, char* argv[]) : hasInputFiles(false), recursive(false), extensionFilter(""), maxDepth(-1), numThreads(4), usePrototype(false), verbosity(0), removeErrors(false), removeWhitespace(false), removeEmptyJson(false), inputFormat("json"), outputFormat(""), minDate(0), maxDate(0) {
         // Check for help flag first
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -610,6 +611,8 @@ public:
                 removeErrors = true;
             } else if (arg == "--remove-whitespace") {
                 removeWhitespace = true;
+            } else if (arg == "--remove-empty-json") {
+                removeEmptyJson = true;
             } else if (arg == "-o" || arg == "--output") {
                 if (i + 1 < argc) {
                     ++i;
@@ -1068,6 +1071,7 @@ public:
         std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
         std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
         std::cerr << "  --remove-whitespace       Remove extra whitespace from output (compact format)" << std::endl;
+        std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
         std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
         std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
         std::cerr << std::endl;

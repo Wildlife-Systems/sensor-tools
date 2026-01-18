@@ -86,7 +86,7 @@ public:
                 if (i + 1 < argc) {
                     ++i;
                 }
-            } else if (arg == "--use-prototype" || arg == "--remove-errors") {
+            } else if (arg == "--use-prototype" || arg == "--remove-errors" || arg == "--remove-whitespace" || arg == "--remove-empty-json") {
                 // Skip these flags - handled by SensorDataTransformer
             } else if (arg == "-d" || arg == "--depth") {
                 if (i + 1 < argc) {

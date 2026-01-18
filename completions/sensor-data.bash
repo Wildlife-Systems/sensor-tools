@@ -21,7 +21,7 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -f --format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -F --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace"
+    local transform_opts="-o --output -F --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
     local stats_opts="-o --output --column --group-by"
