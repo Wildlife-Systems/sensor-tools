@@ -1,13 +1,13 @@
 Source: sensor-tools
 Section: utils
 Priority: optional
-Maintainer: Your Name <your.email@example.com>
+Maintainer: Ed Baker <ed@ebaker.me.uk>
 Build-Depends: debhelper-compat (= 13),
                g++ (>= 4:9.0)
 Standards-Version: 4.6.0
-Homepage: https://github.com/yourusername/sensor-tools
-Vcs-Git: https://github.com/yourusername/sensor-tools.git
-Vcs-Browser: https://github.com/yourusername/sensor-tools
+Homepage: https://github.com/edwbaker/sensors-tools
+Vcs-Git: https://github.com/edwbaker/sensors-tools.git
+Vcs-Browser: https://github.com/edwbaker/sensors-tools
 
 Package: sensor-tools
 Architecture: any
