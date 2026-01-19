@@ -709,6 +709,75 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --tail with CSV file
+echo ""
+echo "Test: --tail with CSV input file"
+mkdir -p testdir
+cat > testdir/tail_test.csv << 'EOF'
+sensor,timestamp,value
+ds18b20,1000,22.5
+ds18b20,2000,23.0
+ds18b20,3000,23.5
+ds18b20,4000,24.0
+ds18b20,5000,24.5
+EOF
+# With --tail 2, should count only last 2 data rows (not header)
+result=$(./sensor-data count --tail 2 testdir/tail_test.csv)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+rm -rf testdir
+
+# Test: --tail with CSV file excludes header from count
+echo ""
+echo "Test: --tail with CSV file excludes header"
+mkdir -p testdir
+cat > testdir/tail_header.csv << 'EOF'
+sensor,timestamp,value
+ds18b20,1000,22.5
+EOF
+# With --tail 5, should still count only 1 row (header should not be counted)
+result=$(./sensor-data count --tail 5 testdir/tail_header.csv)
+if [ "$result" = "1" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 1 (header should be excluded)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+rm -rf testdir
+
+# Test: --tail with CSV and date filter
+echo ""
+echo "Test: --tail with CSV and date filter"
+mkdir -p testdir
+cat > testdir/tail_date.csv << 'EOF'
+sensor,timestamp,value
+ds18b20,1000,22.5
+ds18b20,2000,23.0
+ds18b20,3000,23.5
+EOF
+# With --tail 2 and --after 2500, should count only readings after timestamp 2500
+result=$(./sensor-data count --tail 2 --after 2500 testdir/tail_date.csv)
+if [ "$result" = "1" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 1 (only timestamp 3000 passes filter)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+rm -rf testdir
+
 # Summary
 echo ""
 echo "================================"
