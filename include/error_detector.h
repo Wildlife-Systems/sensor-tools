@@ -2,8 +2,8 @@
 #define ERROR_DETECTOR_H
 
 #include <string>
-#include <map>
 #include <vector>
+#include "types.h"
 
 // Structure to hold an error definition loaded from config
 struct ErrorDefinition {
@@ -21,10 +21,10 @@ public:
     static void loadErrorDefinitions(const std::string& configDir = "/etc/ws/sensor-errors");
     
     // Helper to detect if a reading contains an error
-    static bool isErrorReading(const std::map<std::string, std::string>& reading);
+    static bool isErrorReading(const Reading& reading);
     
     // Get a description of the error, or empty string if no error
-    static std::string getErrorDescription(const std::map<std::string, std::string>& reading);
+    static std::string getErrorDescription(const Reading& reading);
     
 private:
     static std::vector<ErrorDefinition> errorDefinitions;

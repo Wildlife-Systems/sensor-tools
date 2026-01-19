@@ -10,6 +10,7 @@
 #include <future>
 #include <mutex>
 
+#include "types.h"
 #include "date_utils.h"
 #include "common_arg_parser.h"
 #include "csv_parser.h"
@@ -70,7 +71,7 @@ protected:
     /**
      * Check if a reading passes the date filter
      */
-    bool passesDateFilter(const std::map<std::string, std::string>& reading) const {
+    bool passesDateFilter(const Reading& reading) const {
         if (minDate > 0 || maxDate > 0) {
             long long timestamp = DateUtils::getTimestamp(reading);
             return DateUtils::isInDateRange(timestamp, minDate, maxDate);
@@ -81,7 +82,7 @@ protected:
     /**
      * Check if all readings in a vector are empty (for removeEmptyJson filtering)
      */
-    static bool areAllReadingsEmpty(const std::vector<std::map<std::string, std::string>>& readings) {
+    static bool areAllReadingsEmpty(const ReadingList& readings) {
         for (const auto& r : readings) {
             if (!r.empty()) return false;
         }
@@ -92,7 +93,7 @@ protected:
      * Check if a reading should be included based on all active filters.
      * Subclasses can override for additional filtering.
      */
-    virtual bool shouldIncludeReading(const std::map<std::string, std::string>& reading) {
+    virtual bool shouldIncludeReading(const Reading& reading) {
         // Check date range
         if (!passesDateFilter(reading)) {
             if (verbosity >= 2) {
@@ -268,7 +269,7 @@ protected:
     /**
      * Write a single row to CSV output
      */
-    static void writeCsvRow(const std::map<std::string, std::string>& reading,
+    static void writeCsvRow(const Reading& reading,
                             const std::vector<std::string>& headers,
                             std::ostream& outfile) {
         for (size_t i = 0; i < headers.size(); ++i) {
@@ -349,7 +350,7 @@ protected:
     /**
      * Write a single reading as JSON object
      */
-    static void writeJsonObject(const std::map<std::string, std::string>& reading,
+    static void writeJsonObject(const Reading& reading,
                                 std::ostream& outfile, bool compact = false) {
         const char* sp = compact ? "" : " ";
         outfile << "{" << sp;

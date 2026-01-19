@@ -22,7 +22,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
     std::map<std::string, long long> localValueCounts;  // Local counts for thread safety
     DataReader reader(minDate, maxDate, verbosity, FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
     
-    reader.processFile(filename, [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+    reader.processFile(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
         // Skip empty JSON arrays/objects if removeEmptyJson is set
         if (reading.empty()) return;
         if (shouldIncludeReading(reading)) {
@@ -68,7 +68,7 @@ long long DataCounter::countFromStdin() {
             auto fields = CsvParser::parseCsvLine(line);
             if (fields.empty()) continue;
 
-            std::map<std::string, std::string> reading;
+            Reading reading;
             for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                 reading[csvHeaders[i]] = fields[i];
             }
@@ -143,7 +143,7 @@ void DataCounter::countFromStdinFollow() {
                 auto fields = CsvParser::parseCsvLine(line);
                 if (fields.empty()) continue;
 
-                std::map<std::string, std::string> reading;
+                Reading reading;
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                     reading[csvHeaders[i]] = fields[i];
                 }
@@ -206,7 +206,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
             auto fields = CsvParser::parseCsvLine(infile, line, needMore);
             if (fields.empty()) continue;
 
-            std::map<std::string, std::string> reading;
+            Reading reading;
             for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                 reading[csvHeaders[i]] = fields[i];
             }
@@ -243,7 +243,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
                 auto fields = CsvParser::parseCsvLine(infile, line, needMore);
                 if (fields.empty()) continue;
 
-                std::map<std::string, std::string> reading;
+                Reading reading;
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                     reading[csvHeaders[i]] = fields[i];
                 }

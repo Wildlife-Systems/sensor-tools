@@ -2,9 +2,9 @@
 #define DATE_UTILS_H
 
 #include <string>
-#include <map>
 #include <ctime>
 #include <cctype>
+#include "types.h"
 
 // Date/Time utility functions
 namespace DateUtils {
@@ -105,7 +105,7 @@ namespace DateUtils {
     }
     
     // Parse timestamp from reading (handles both string and numeric timestamps)
-    inline long long getTimestamp(const std::map<std::string, std::string>& reading) {
+    inline long long getTimestamp(const Reading& reading) {
         auto it = reading.find("timestamp");
         if (it == reading.end() || it->second.empty()) {
             return 0;

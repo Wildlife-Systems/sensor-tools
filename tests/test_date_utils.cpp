@@ -57,7 +57,7 @@ void test_parse_empty_string() {
 }
 
 void test_get_timestamp_from_reading() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["timestamp"] = "2026-01-17T10:00:00";
     reading["sensor"] = "ds18b20";
     reading["value"] = "22.5";
@@ -73,7 +73,7 @@ void test_get_timestamp_from_reading() {
 }
 
 void test_get_timestamp_missing() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "22.5";
     

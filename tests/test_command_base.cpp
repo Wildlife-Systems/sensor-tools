@@ -55,7 +55,7 @@ public:
 
 bool test_no_date_filter() {
     TestableCommand cmd;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459200"}
     };
@@ -65,7 +65,7 @@ bool test_no_date_filter() {
 bool test_min_date_filter_pass() {
     TestableCommand cmd;
     cmd.minDate = 1609459200; // 2021-01-01
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459300"} // After minDate
     };
@@ -75,7 +75,7 @@ bool test_min_date_filter_pass() {
 bool test_min_date_filter_fail() {
     TestableCommand cmd;
     cmd.minDate = 1609459200; // 2021-01-01
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459100"} // Before minDate
     };
@@ -85,7 +85,7 @@ bool test_min_date_filter_fail() {
 bool test_max_date_filter_pass() {
     TestableCommand cmd;
     cmd.maxDate = 1609459200; // 2021-01-01
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459100"} // Before maxDate
     };
@@ -95,7 +95,7 @@ bool test_max_date_filter_pass() {
 bool test_max_date_filter_fail() {
     TestableCommand cmd;
     cmd.maxDate = 1609459200; // 2021-01-01
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459300"} // After maxDate
     };
@@ -106,7 +106,7 @@ bool test_date_range_filter_pass() {
     TestableCommand cmd;
     cmd.minDate = 1609459100;
     cmd.maxDate = 1609459300;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459200"} // Within range
     };
@@ -117,7 +117,7 @@ bool test_date_range_filter_fail() {
     TestableCommand cmd;
     cmd.minDate = 1609459100;
     cmd.maxDate = 1609459200;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459300"} // Outside range
     };
@@ -127,7 +127,7 @@ bool test_date_range_filter_fail() {
 // ==================== areAllReadingsEmpty tests ====================
 
 bool test_all_readings_empty_true() {
-    std::vector<std::map<std::string, std::string>> readings = {
+    std::vector<Reading> readings = {
         {},
         {},
         {}
@@ -136,7 +136,7 @@ bool test_all_readings_empty_true() {
 }
 
 bool test_all_readings_empty_false() {
-    std::vector<std::map<std::string, std::string>> readings = {
+    std::vector<Reading> readings = {
         {},
         {{"key", "value"}},
         {}
@@ -145,7 +145,7 @@ bool test_all_readings_empty_false() {
 }
 
 bool test_all_readings_empty_empty_vector() {
-    std::vector<std::map<std::string, std::string>> readings;
+    std::vector<Reading> readings;
     ASSERT_TRUE(TestableCommand::areAllReadingsEmpty(readings));
 }
 
@@ -153,7 +153,7 @@ bool test_all_readings_empty_empty_vector() {
 
 bool test_include_basic_reading() {
     TestableCommand cmd;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"value", "25.5"}
     };
@@ -163,7 +163,7 @@ bool test_include_basic_reading() {
 bool test_exclude_by_date() {
     TestableCommand cmd;
     cmd.minDate = 1609459200;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"timestamp", "1609459100"}
     };
@@ -173,7 +173,7 @@ bool test_exclude_by_date() {
 bool test_not_empty_column_present() {
     TestableCommand cmd;
     cmd.notEmptyColumns.insert("value");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"value", "25.5"}
     };
@@ -183,7 +183,7 @@ bool test_not_empty_column_present() {
 bool test_not_empty_column_missing() {
     TestableCommand cmd;
     cmd.notEmptyColumns.insert("value");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"}
     };
     ASSERT_FALSE(cmd.shouldIncludeReading(reading));
@@ -192,7 +192,7 @@ bool test_not_empty_column_missing() {
 bool test_not_empty_column_empty_value() {
     TestableCommand cmd;
     cmd.notEmptyColumns.insert("value");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"value", ""}
     };
@@ -203,7 +203,7 @@ bool test_only_value_filter_pass() {
     TestableCommand cmd;
     cmd.onlyValueFilters["status"].insert("active");
     cmd.onlyValueFilters["status"].insert("pending");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"status", "active"}
     };
@@ -213,7 +213,7 @@ bool test_only_value_filter_pass() {
 bool test_only_value_filter_fail() {
     TestableCommand cmd;
     cmd.onlyValueFilters["status"].insert("active");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"status", "inactive"}
     };
@@ -223,7 +223,7 @@ bool test_only_value_filter_fail() {
 bool test_only_value_filter_missing_column() {
     TestableCommand cmd;
     cmd.onlyValueFilters["status"].insert("active");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"}
     };
     ASSERT_FALSE(cmd.shouldIncludeReading(reading));
@@ -232,7 +232,7 @@ bool test_only_value_filter_missing_column() {
 bool test_exclude_value_filter_pass() {
     TestableCommand cmd;
     cmd.excludeValueFilters["status"].insert("error");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"status", "active"}
     };
@@ -242,7 +242,7 @@ bool test_exclude_value_filter_pass() {
 bool test_exclude_value_filter_fail() {
     TestableCommand cmd;
     cmd.excludeValueFilters["status"].insert("error");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"status", "error"}
     };
@@ -252,7 +252,7 @@ bool test_exclude_value_filter_fail() {
 bool test_exclude_value_filter_missing_column() {
     TestableCommand cmd;
     cmd.excludeValueFilters["status"].insert("error");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"}
     };
     // Missing column should pass exclude filter
@@ -263,7 +263,7 @@ bool test_allowed_values_filter_pass() {
     TestableCommand cmd;
     cmd.allowedValues["type"].insert("temperature");
     cmd.allowedValues["type"].insert("humidity");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"type", "temperature"}
     };
@@ -273,7 +273,7 @@ bool test_allowed_values_filter_pass() {
 bool test_allowed_values_filter_fail() {
     TestableCommand cmd;
     cmd.allowedValues["type"].insert("temperature");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"type", "pressure"}
     };
@@ -283,7 +283,7 @@ bool test_allowed_values_filter_fail() {
 bool test_remove_errors_disabled() {
     TestableCommand cmd;
     cmd.removeErrors = false;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor", "ds18b20"},
         {"sensor_id", "28-000000000000"},
         {"value", "85"}
@@ -294,7 +294,7 @@ bool test_remove_errors_disabled() {
 bool test_remove_errors_enabled_with_error() {
     TestableCommand cmd;
     cmd.removeErrors = true;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor", "ds18b20"},
         {"sensor_id", "28-000000000000"},
         {"value", "85"}
@@ -305,7 +305,7 @@ bool test_remove_errors_enabled_with_error() {
 bool test_remove_errors_enabled_no_error() {
     TestableCommand cmd;
     cmd.removeErrors = true;
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor", "ds18b20"},
         {"sensor_id", "28-000000000000"},
         {"value", "25.500"}
@@ -318,7 +318,7 @@ bool test_multiple_filters_all_pass() {
     cmd.notEmptyColumns.insert("value");
     cmd.onlyValueFilters["type"].insert("temperature");
     cmd.excludeValueFilters["status"].insert("error");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"value", "25.5"},
         {"type", "temperature"},
@@ -332,7 +332,7 @@ bool test_multiple_filters_one_fails() {
     cmd.notEmptyColumns.insert("value");
     cmd.onlyValueFilters["type"].insert("temperature");
     cmd.excludeValueFilters["status"].insert("error");
-    std::map<std::string, std::string> reading = {
+    Reading reading = {
         {"sensor_id", "sensor1"},
         {"value", "25.5"},
         {"type", "temperature"},

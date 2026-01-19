@@ -12,7 +12,7 @@
  * In normal mode: output if passes filters
  * In reject mode: output if fails filters (but not for empty/whitespace-only readings)
  */
-bool SensorDataTransformer::shouldOutputReading(const std::map<std::string, std::string>& reading) {
+bool SensorDataTransformer::shouldOutputReading(const Reading& reading) {
     bool passesFilter = shouldIncludeReading(reading);
     return rejectMode ? !passesFilter : passesFilter;
 }
@@ -73,7 +73,7 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
     DataReader reader(minDate, maxDate, verbosity > 1 ? verbosity : 0, 
                       FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
     
-    reader.processFile(filename, [&](const std::map<std::string, std::string>& reading, 
+    reader.processFile(filename, [&](const Reading& reading, 
                                       int /*lineNum*/, const std::string& /*source*/) {
         for (const auto& pair : reading) {
             localKeys.insert(pair.first);
@@ -101,7 +101,7 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
     DataReader reader(minDate, maxDate, verbosity > 1 ? verbosity : 0,
                       FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
     
-    reader.processFile(filename, [&](const std::map<std::string, std::string>& reading,
+    reader.processFile(filename, [&](const Reading& reading,
                                       int /*lineNum*/, const std::string& /*source*/) {
         if (reading.empty()) return;
         if (!shouldOutputReading(reading)) return;
@@ -143,7 +143,7 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
     
     // For JSON output, we need to group readings by line for proper formatting
     // Since DataReader gives us individual readings, we output each as its own line
-    reader.processFile(filename, [&](const std::map<std::string, std::string>& reading,
+    reader.processFile(filename, [&](const Reading& reading,
                                       int /*lineNum*/, const std::string& /*source*/) {
         if (reading.empty()) return;
         if (!shouldOutputReading(reading)) return;
@@ -175,7 +175,7 @@ void SensorDataTransformer::processStdinData(const std::vector<std::string>& lin
             auto fields = CsvParser::parseCsvLine(line);
             if (fields.empty()) continue;
             
-            std::map<std::string, std::string> reading;
+            Reading reading;
             for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                 reading[csvHeaders[i]] = fields[i];
             }
@@ -218,7 +218,7 @@ void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>&
             auto fields = CsvParser::parseCsvLine(line);
             if (fields.empty()) continue;
             
-            std::map<std::string, std::string> reading;
+            Reading reading;
             for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                 reading[csvHeaders[i]] = fields[i];
             }
@@ -237,7 +237,7 @@ void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>&
             if (line.empty()) continue;
             
             auto readings = JsonParser::parseJsonLine(line);
-            std::vector<std::map<std::string, std::string>> filtered;
+            ReadingList filtered;
             
             for (const auto& reading : readings) {
                 if (reading.empty()) continue;
@@ -259,7 +259,7 @@ void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>&
     }
 }
 
-void SensorDataTransformer::writeRow(const std::map<std::string, std::string>& reading,
+void SensorDataTransformer::writeRow(const Reading& reading,
                                       const std::vector<std::string>& headers,
                                       std::ostream& outfile) {
     if (outputFormat == "json") {
@@ -387,7 +387,7 @@ void SensorDataTransformer::transform() {
                     *outStream << line;
                 } else {
                     auto readings = JsonParser::parseJsonLine(line);
-                    std::vector<std::map<std::string, std::string>> filtered;
+                    ReadingList filtered;
                     
                     for (const auto& reading : readings) {
                         if (reading.empty()) continue;

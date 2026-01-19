@@ -46,7 +46,7 @@ private:
     /**
      * Check if a reading should be output (respects rejectMode)
      */
-    bool shouldOutputReading(const std::map<std::string, std::string>& reading);
+    bool shouldOutputReading(const Reading& reading);
     
     /**
      * Execute sc-prototype command and parse columns from JSON output
@@ -86,7 +86,7 @@ private:
     /**
      * Write a single row (dispatches to CSV or JSON based on outputFormat)
      */
-    void writeRow(const std::map<std::string, std::string>& reading,
+    void writeRow(const Reading& reading,
                   const std::vector<std::string>& headers,
                   std::ostream& outfile);
 

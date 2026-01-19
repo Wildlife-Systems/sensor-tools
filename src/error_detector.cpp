@@ -128,11 +128,11 @@ void ErrorDetector::ensureLoaded() {
     });
 }
 
-bool ErrorDetector::isErrorReading(const std::map<std::string, std::string>& reading) {
+bool ErrorDetector::isErrorReading(const Reading& reading) {
     return !getErrorDescription(reading).empty();
 }
 
-std::string ErrorDetector::getErrorDescription(const std::map<std::string, std::string>& reading) {
+std::string ErrorDetector::getErrorDescription(const Reading& reading) {
     ensureLoaded();
     
     // Get the sensor type

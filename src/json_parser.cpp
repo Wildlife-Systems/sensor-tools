@@ -1,8 +1,8 @@
 #include "json_parser.h"
 #include <cctype>
 
-std::vector<std::map<std::string, std::string>> JsonParser::parseJsonLine(const std::string& line) {
-    std::vector<std::map<std::string, std::string>> readings;
+ReadingList JsonParser::parseJsonLine(const std::string& line) {
+    ReadingList readings;
     
     // Find the main object or array
     size_t start = line.find('{');
@@ -32,7 +32,7 @@ std::vector<std::map<std::string, std::string>> JsonParser::parseJsonLine(const 
         if (objStart == std::string::npos) break;
         
         pos = objStart + 1;
-        std::map<std::string, std::string> current;
+        Reading current;
         
         // Parse key-value pairs for this object
         while (pos < line.length()) {

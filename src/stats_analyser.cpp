@@ -60,7 +60,7 @@ double StatsAnalyser::calculatePercentile(const std::vector<double>& sortedValue
 
 // ===== Private methods =====
 
-void StatsAnalyser::collectDataFromReading(const std::map<std::string, std::string>& reading) {
+void StatsAnalyser::collectDataFromReading(const Reading& reading) {
     // Collect timestamp if present
     auto tsIt = reading.find("timestamp");
     if (tsIt != reading.end() && isNumeric(tsIt->second)) {
@@ -354,7 +354,7 @@ void StatsAnalyser::analyzeStdinFollow() {
                 auto fields = CsvParser::parseCsvLine(line);
                 if (fields.empty()) continue;
                 
-                std::map<std::string, std::string> reading;
+                Reading reading;
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                     reading[csvHeaders[i]] = fields[i];
                 }
@@ -419,7 +419,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
             auto fields = CsvParser::parseCsvLine(infile, line, needMore);
             if (fields.empty()) continue;
             
-            std::map<std::string, std::string> reading;
+            Reading reading;
             for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                 reading[csvHeaders[i]] = fields[i];
             }
@@ -461,7 +461,7 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
                 auto fields = CsvParser::parseCsvLine(infile, line, needMore);
                 if (fields.empty()) continue;
                 
-                std::map<std::string, std::string> reading;
+                Reading reading;
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                     reading[csvHeaders[i]] = fields[i];
                 }
@@ -523,7 +523,7 @@ void StatsAnalyser::analyze() {
     
     if (inputFiles.empty()) {
         DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
-        auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+        auto collectData = [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
             if (!shouldIncludeReading(reading)) return;
             collectDataFromReading(reading);
         };
@@ -536,7 +536,7 @@ void StatsAnalyser::analyze() {
             LocalStatsData local;
             DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
             
-            reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+            reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
                 if (!shouldIncludeReading(reading)) return;
                 
                 // Collect timestamp if present

@@ -6,7 +6,7 @@
 
 // ===== Static helper method =====
 
-void ErrorLister::printErrorLine(const std::map<std::string, std::string>& reading, 
+void ErrorLister::printErrorLine(const Reading& reading, 
                                   int lineNum, const std::string& source) {
     if (!ErrorDetector::isErrorReading(reading)) return;
     
@@ -73,7 +73,7 @@ void ErrorLister::listErrors() {
         std::vector<std::string> errorLines;
         DataReader reader(minDate, maxDate, verbosity, inputFormat);
         
-        reader.processFile(file, [&](const std::map<std::string, std::string>& reading, 
+        reader.processFile(file, [&](const Reading& reading, 
                                       int lineNum, const std::string& source) {
             if (!ErrorDetector::isErrorReading(reading)) return;
             

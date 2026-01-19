@@ -85,7 +85,7 @@ int LatestFinder::main() {
             std::cerr << "Processing: " << file << "\n";
         }
         
-        reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+        reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
             // Get sensor_id
             auto sensorIt = reading.find("sensor_id");
             if (sensorIt == reading.end() || sensorIt->second.empty()) {

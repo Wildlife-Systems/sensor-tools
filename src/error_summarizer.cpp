@@ -36,7 +36,7 @@ ErrorSummarizer::ErrorSummarizer(int argc, char* argv[]) {
 void ErrorSummarizer::summariseErrors() {
     if (inputFiles.empty()) {
         DataReader reader(minDate, maxDate, verbosity, inputFormat);
-        auto countError = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+        auto countError = [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
             if (ErrorDetector::isErrorReading(reading)) {
                 std::string errorDesc = ErrorDetector::getErrorDescription(reading);
                 errorCounts[errorDesc]++;
@@ -51,7 +51,7 @@ void ErrorSummarizer::summariseErrors() {
             std::map<std::string, int> localCounts;
             DataReader reader(minDate, maxDate, verbosity, inputFormat);
             
-            reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+            reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
                 if (ErrorDetector::isErrorReading(reading)) {
                     std::string errorDesc = ErrorDetector::getErrorDescription(reading);
                     localCounts[errorDesc]++;

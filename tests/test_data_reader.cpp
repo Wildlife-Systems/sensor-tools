@@ -31,7 +31,7 @@ void test_process_json_file_basic() {
     DataReader reader;
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
         count++;
         assert(!reading.empty());
     });
@@ -51,7 +51,7 @@ void test_process_csv_file_basic() {
     DataReader reader;  // Uses default "auto" format which detects from extension
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
         count++;
         assert(reading.count("sensor_id") > 0);
         assert(reading.count("value") > 0);
@@ -73,7 +73,7 @@ void test_process_json_with_date_filter() {
     int count = 0;
     std::string foundId;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
         count++;
         foundId = reading.at("sensor_id");
     });
@@ -93,7 +93,7 @@ void test_process_json_with_min_date_only() {
     DataReader reader(150, 0, 0, "json");
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
         count++;
     });
     
@@ -111,7 +111,7 @@ void test_process_json_with_max_date_only() {
     DataReader reader(0, 150, 0, "json");
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
         count++;
     });
     
@@ -131,7 +131,7 @@ void test_process_with_tail_lines() {
     DataReader reader(0, 0, 0, "json", 2);
     std::vector<std::string> ids;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
         ids.push_back(reading.at("sensor_id"));
     });
     
@@ -147,7 +147,7 @@ void test_process_empty_file() {
     DataReader reader;
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
         count++;
     });
     
@@ -164,7 +164,7 @@ void test_process_json_array_format() {
     DataReader reader;
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
         count++;
     });
     
@@ -180,7 +180,7 @@ void test_process_stdin() {
     DataReader reader;
     int count = 0;
     
-    reader.processStdin([&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processStdin([&](const Reading& reading, int, const std::string&) {
         count++;
         assert(reading.at("sensor_id") == "s1");
     });
@@ -199,7 +199,7 @@ void test_process_csv_stdin() {
     DataReader reader(0, 0, 0, "csv");
     int count = 0;
     
-    reader.processStdin([&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+    reader.processStdin([&](const Reading& reading, int, const std::string&) {
         count++;
         assert(reading.at("sensor_id") == "s1");
         assert(reading.at("value") == "22.5");
@@ -218,7 +218,7 @@ void test_reading_values_correct() {
     
     DataReader reader;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int lineNum, const std::string& source) {
+    reader.processFile(file.path, [&](const Reading& reading, int lineNum, const std::string& source) {
         assert(reading.at("sensor_id") == "test");
         assert(reading.at("value") == "123.456");
         assert(reading.at("extra") == "data");
@@ -239,7 +239,7 @@ void test_line_numbers_correct() {
     DataReader reader;
     std::vector<int> lineNums;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int lineNum, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int lineNum, const std::string&) {
         lineNums.push_back(lineNum);
     });
     
@@ -263,7 +263,7 @@ void test_skips_empty_lines() {
     DataReader reader;
     int count = 0;
     
-    reader.processFile(file.path, [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
         count++;
     });
     
@@ -276,7 +276,7 @@ void test_nonexistent_file() {
     int count = 0;
     
     // Should handle gracefully without crashing
-    reader.processFile("nonexistent_file_12345.json", [&](const std::map<std::string, std::string>&, int, const std::string&) {
+    reader.processFile("nonexistent_file_12345.json", [&](const Reading&, int, const std::string&) {
         count++;
     });
     

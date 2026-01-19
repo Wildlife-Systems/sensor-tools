@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <map>
+#include "types.h"
 #include "date_utils.h"
 #include "csv_parser.h"
 #include "json_parser.h"
@@ -21,7 +21,7 @@ private:
     std::string inputFormat;  // "json" or "csv"
     int tailLines;  // 0 = read all, >0 = read only last n lines
     
-    bool passesDateFilter(const std::map<std::string, std::string>& reading) const {
+    bool passesDateFilter(const Reading& reading) const {
         if (minDate <= 0 && maxDate <= 0) return true;
         long long timestamp = DateUtils::getTimestamp(reading);
         return DateUtils::isInDateRange(timestamp, minDate, maxDate);
@@ -55,7 +55,7 @@ public:
                 if (fields.empty()) continue;
                 
                 // Create a map from CSV headers to values
-                std::map<std::string, std::string> reading;
+                Reading reading;
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                     reading[csvHeaders[i]] = fields[i];
                 }
@@ -143,7 +143,7 @@ public:
                     auto fields = CsvParser::parseCsvLine(line);
                     if (fields.empty()) continue;
                     
-                    std::map<std::string, std::string> reading;
+                    Reading reading;
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                         reading[csvHeaders[i]] = fields[i];
                     }
@@ -172,7 +172,14 @@ public:
                 }
             }
         } else {
-            std::ifstream infile(filename);
+            // Use larger buffer for better I/O performance
+            static constexpr size_t BUFFER_SIZE = 256 * 1024;  // 256KB buffer
+            static thread_local char buffer[BUFFER_SIZE];
+            
+            std::ifstream infile;
+            infile.rdbuf()->pubsetbuf(buffer, BUFFER_SIZE);
+            infile.open(filename);
+            
             if (!infile) {
                 std::cerr << "ERROR: Failed to open file: " << filename << std::endl;
                 return;

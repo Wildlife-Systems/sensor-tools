@@ -32,7 +32,7 @@ private:
     /**
      * Collect numeric data from a reading
      */
-    void collectDataFromReading(const std::map<std::string, std::string>& reading);
+    void collectDataFromReading(const Reading& reading);
     
     /**
      * Calculate median of a vector of values

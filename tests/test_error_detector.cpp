@@ -23,7 +23,7 @@ void removeDir(const std::string& path) {
 }
 
 void test_ds18b20_error_detection() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
@@ -33,7 +33,7 @@ void test_ds18b20_error_detection() {
 }
 
 void test_ds18b20_error_minus_127() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "-127";
     reading["sensor_id"] = "sensor001";
@@ -43,7 +43,7 @@ void test_ds18b20_error_minus_127() {
 }
 
 void test_ds18b20_error_minus_127_temperature() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["temperature"] = "-127";
     reading["sensor_id"] = "sensor001";
@@ -53,7 +53,7 @@ void test_ds18b20_error_minus_127_temperature() {
 }
 
 void test_error_description_85() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
@@ -64,7 +64,7 @@ void test_error_description_85() {
 }
 
 void test_error_description_minus_127() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "-127";
     reading["sensor_id"] = "sensor001";
@@ -75,7 +75,7 @@ void test_error_description_minus_127() {
 }
 
 void test_error_description_no_error() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "22.5";
     reading["sensor_id"] = "sensor001";
@@ -86,7 +86,7 @@ void test_error_description_no_error() {
 }
 
 void test_ds18b20_valid_reading() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "22.5";
     reading["sensor_id"] = "sensor001";
@@ -96,7 +96,7 @@ void test_ds18b20_valid_reading() {
 }
 
 void test_ds18b20_case_insensitive() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "DS18B20";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
@@ -106,7 +106,7 @@ void test_ds18b20_case_insensitive() {
 }
 
 void test_temperature_field() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["temperature"] = "85";
     reading["sensor_id"] = "sensor001";
@@ -116,7 +116,7 @@ void test_temperature_field() {
 }
 
 void test_non_ds18b20_sensor() {
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "dht22";
     reading["value"] = "85";
     reading["sensor_id"] = "sensor001";
@@ -142,7 +142,7 @@ void test_custom_error_file() {
     ErrorDetector::loadErrorDefinitions(testDir);
     
     // Test that custom error is detected
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "dummy_sensor";
     reading["reading"] = "999";
     
@@ -189,14 +189,14 @@ void test_multiple_sensor_error_files() {
     ErrorDetector::loadErrorDefinitions(testDir);
     
     // Test sensor_a error
-    std::map<std::string, std::string> readingA;
+    Reading readingA;
     readingA["sensor"] = "sensor_a";
     readingA["value"] = "100";
     assert(ErrorDetector::isErrorReading(readingA) == true);
     assert(ErrorDetector::getErrorDescription(readingA) == "Sensor A high error");
     
     // Test sensor_b error
-    std::map<std::string, std::string> readingB;
+    Reading readingB;
     readingB["sensor"] = "sensor_b";
     readingB["temp"] = "-50";
     assert(ErrorDetector::isErrorReading(readingB) == true);
@@ -223,7 +223,7 @@ void test_fallback_to_builtin() {
     ErrorDetector::loadErrorDefinitions("/this/path/does/not/exist");
     
     // Should still detect DS18B20 errors via builtin definitions
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["sensor"] = "ds18b20";
     reading["value"] = "85";
     
@@ -245,7 +245,7 @@ void test_case_insensitive_custom_sensor() {
     ErrorDetector::loadErrorDefinitions(testDir);
     
     // Test with various case combinations
-    std::map<std::string, std::string> reading;
+    Reading reading;
     reading["code"] = "ERR01";
     
     reading["sensor"] = "TestSensor";

@@ -25,7 +25,7 @@ public:
     /**
      * Helper to print a single error line
      */
-    static void printErrorLine(const std::map<std::string, std::string>& reading, 
+    static void printErrorLine(const Reading& reading, 
                                int lineNum, const std::string& source);
     
     /**
