@@ -10,6 +10,5 @@ public:
     // Parse a line of JSON - handles single objects, arrays, or line-delimited objects
     static ReadingList parseJsonLine(const std::string& line);
 };
-};
 
 #endif // JSON_PARSER_H
