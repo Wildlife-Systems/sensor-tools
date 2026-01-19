@@ -3,6 +3,9 @@
 
 set -e  # Exit on error
 
+# Detect OS for platform-specific tests
+OS_TYPE=$(uname -s)
+
 echo "================================"
 echo "Testing transform functionality"
 echo "================================"
@@ -558,60 +561,79 @@ else
 fi
 
 # Test 22a: --use-prototype uses sc-prototype for column definitions
-echo ""
-echo "Test 22a: --use-prototype uses sc-prototype for column definitions"
-# Create test data
-mkdir -p testdir
-echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-# Run with --use-prototype (sc-prototype should be available from sensor-control package)
-output=$(./sensor-data transform --use-prototype testdir/test.out 2>&1)
-rm -rf testdir
-# Check that it mentions loading columns from sc-prototype
-if echo "$output" | grep -q "sc-prototype\|columns"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+# Note: sc-prototype is only available on Linux (from sensor-control package)
+if [ "$OS_TYPE" = "Linux" ]; then
+    echo ""
+    echo "Test 22a: --use-prototype uses sc-prototype for column definitions"
+    # Create test data
+    mkdir -p testdir
+    echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
+    # Run with --use-prototype (sc-prototype should be available from sensor-control package)
+    output=$(./sensor-data transform --use-prototype testdir/test.out 2>&1)
+    rm -rf testdir
+    # Check that it mentions loading columns from sc-prototype
+    if echo "$output" | grep -q "sc-prototype\|columns"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL - Expected sc-prototype to be used for column definitions"
+        echo "  Got: $output"
+        FAILED=$((FAILED + 1))
+    fi
 else
-    echo "  ✗ FAIL - Expected sc-prototype to be used for column definitions"
-    echo "  Got: $output"
-    FAILED=$((FAILED + 1))
+    echo ""
+    echo "Test 22a: --use-prototype uses sc-prototype for column definitions"
+    echo "  ⊘ SKIP (sc-prototype only available on Linux)"
 fi
 
 # Test 22b: --use-prototype with CSV output
-echo ""
-echo "Test 22b: --use-prototype produces valid CSV output"
-mkdir -p testdir
-echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-output=$(./sensor-data transform --use-prototype -if csv testdir/test.out 2>&1)
-rm -rf testdir
-# Check that output contains data rows (not just errors)
-if echo "$output" | grep -q "22.5\|ds18b20\|1234567890"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+if [ "$OS_TYPE" = "Linux" ]; then
+    echo ""
+    echo "Test 22b: --use-prototype produces valid CSV output"
+    mkdir -p testdir
+    echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
+    output=$(./sensor-data transform --use-prototype -if csv testdir/test.out 2>&1)
+    rm -rf testdir
+    # Check that output contains data rows (not just errors)
+    if echo "$output" | grep -q "22.5\|ds18b20\|1234567890"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL - Expected CSV output with sensor data"
+        echo "  Got: $output"
+        FAILED=$((FAILED + 1))
+    fi
 else
-    echo "  ✗ FAIL - Expected CSV output with sensor data"
-    echo "  Got: $output"
-    FAILED=$((FAILED + 1))
+    echo ""
+    echo "Test 22b: --use-prototype produces valid CSV output"
+    echo "  ⊘ SKIP (sc-prototype only available on Linux)"
 fi
 
 # Test 22c: --use-prototype with file output
-echo ""
-echo "Test 22c: --use-prototype with file output"
-mkdir -p testdir
-echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-./sensor-data transform --use-prototype -if csv -o output.csv testdir/test.out 2>/dev/null
-if [ -f output.csv ] && grep -q "22.5\|ds18b20" output.csv; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
-else
-    echo "  ✗ FAIL - Expected output.csv with sensor data"
-    if [ -f output.csv ]; then
-        echo "  File contents: $(cat output.csv)"
+if [ "$OS_TYPE" = "Linux" ]; then
+    echo ""
+    echo "Test 22c: --use-prototype with file output"
+    mkdir -p testdir
+    echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
+    ./sensor-data transform --use-prototype -if csv -o output.csv testdir/test.out 2>/dev/null
+    if [ -f output.csv ] && grep -q "22.5\|ds18b20" output.csv; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
     else
-        echo "  File not created"
+        echo "  ✗ FAIL - Expected output.csv with sensor data"
+        if [ -f output.csv ]; then
+            echo "  File contents: $(cat output.csv)"
+        else
+            echo "  File not created"
+        fi
+        FAILED=$((FAILED + 1))
     fi
-    FAILED=$((FAILED + 1))
+    rm -rf testdir output.csv
+else
+    echo ""
+    echo "Test 22c: --use-prototype with file output"
+    echo "  ⊘ SKIP (sc-prototype only available on Linux)"
 fi
-rm -rf testdir output.csv
 
 # Test 23: JSON file to JSON output with filtering (exercises writeRowsFromFileJson filter path)
 echo ""
