@@ -48,8 +48,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install lcov
-      run: brew install lcov
+    - name: Install dependencies
+      run: brew install lcov coreutils
     
     - name: Build with coverage
       run: make clean all COVERAGE=1

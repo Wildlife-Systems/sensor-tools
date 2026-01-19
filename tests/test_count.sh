@@ -3,6 +3,15 @@
 
 set -e  # Exit on error
 
+# Use gtimeout on macOS (from coreutils), timeout on Linux
+if command -v gtimeout &> /dev/null; then
+    TIMEOUT_CMD="gtimeout"
+elif command -v timeout &> /dev/null; then
+    TIMEOUT_CMD="timeout"
+else
+    TIMEOUT_CMD=""
+fi
+
 echo "================================"
 echo "Testing count functionality"
 echo "================================"
@@ -781,94 +790,114 @@ rm -rf testdir
 # Test: --follow with stdin (JSON)
 echo ""
 echo "Test: --follow with stdin JSON input"
-# Use timeout to kill the infinite loop after getting output
-# Feed 3 JSON lines and check that count updates
-result=$(echo -e '{"sensor":"a","value":1}\n{"sensor":"b","value":2}\n{"sensor":"c","value":3}' | timeout 1 ./sensor-data count --follow 2>/dev/null || true)
-# Should output: 0, 1, 2, 3 (initial 0 then increment for each reading)
-if echo "$result" | grep -q "^0$" && echo "$result" | grep -q "^3$"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+if [ -n "$TIMEOUT_CMD" ]; then
+    # Use timeout to kill the infinite loop after getting output
+    # Feed 3 JSON lines and check that count updates
+    result=$(echo -e '{"sensor":"a","value":1}\n{"sensor":"b","value":2}\n{"sensor":"c","value":3}' | $TIMEOUT_CMD 1 ./sensor-data count --follow 2>/dev/null || true)
+    # Should output: 0, 1, 2, 3 (initial 0 then increment for each reading)
+    if echo "$result" | grep -q "^0$" && echo "$result" | grep -q "^3$"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL"
+        echo "  Expected output containing 0 and 3"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
 else
-    echo "  ✗ FAIL"
-    echo "  Expected output containing 0 and 3"
-    echo "  Got: $result"
-    FAILED=$((FAILED + 1))
+    echo "  ⊘ SKIP (timeout command not available)"
 fi
 
 # Test: --follow with stdin (CSV)
 echo ""
 echo "Test: --follow with stdin CSV input"
-csv_input="sensor,value
+if [ -n "$TIMEOUT_CMD" ]; then
+    csv_input="sensor,value
 a,1
 b,2"
-result=$(echo "$csv_input" | timeout 1 ./sensor-data count --follow -if csv 2>/dev/null || true)
-# Should output: 0, 1, 2 (initial 0, then increment for each data row, header skipped)
-if echo "$result" | grep -q "^0$" && echo "$result" | grep -q "^2$"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+    result=$(echo "$csv_input" | $TIMEOUT_CMD 1 ./sensor-data count --follow -if csv 2>/dev/null || true)
+    # Should output: 0, 1, 2 (initial 0, then increment for each data row, header skipped)
+    if echo "$result" | grep -q "^0$" && echo "$result" | grep -q "^2$"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL"
+        echo "  Expected output containing 0 and 2"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
 else
-    echo "  ✗ FAIL"
-    echo "  Expected output containing 0 and 2"
-    echo "  Got: $result"
-    FAILED=$((FAILED + 1))
+    echo "  ⊘ SKIP (timeout command not available)"
 fi
 
 # Test: --follow with file (JSON)
 echo ""
 echo "Test: --follow with JSON file"
-mkdir -p testdir
-echo '{"sensor":"a","value":1}' > testdir/follow.out
-echo '{"sensor":"b","value":2}' >> testdir/follow.out
-# Follow mode reads existing content then waits - timeout kills it
-result=$(timeout 1 ./sensor-data count --follow testdir/follow.out 2>/dev/null || true)
-# Should output: 2 (count of existing readings)
-if echo "$result" | grep -q "^2$"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+if [ -n "$TIMEOUT_CMD" ]; then
+    mkdir -p testdir
+    echo '{"sensor":"a","value":1}' > testdir/follow.out
+    echo '{"sensor":"b","value":2}' >> testdir/follow.out
+    # Follow mode reads existing content then waits - timeout kills it
+    result=$($TIMEOUT_CMD 1 ./sensor-data count --follow testdir/follow.out 2>/dev/null || true)
+    # Should output: 2 (count of existing readings)
+    if echo "$result" | grep -q "^2$"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL"
+        echo "  Expected output containing 2"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
+    rm -rf testdir
 else
-    echo "  ✗ FAIL"
-    echo "  Expected output containing 2"
-    echo "  Got: $result"
-    FAILED=$((FAILED + 1))
+    echo "  ⊘ SKIP (timeout command not available)"
 fi
-rm -rf testdir
 
 # Test: --follow with file (CSV)
 echo ""
 echo "Test: --follow with CSV file"
-mkdir -p testdir
-cat > testdir/follow.csv << 'EOF'
+if [ -n "$TIMEOUT_CMD" ]; then
+    mkdir -p testdir
+    cat > testdir/follow.csv << 'EOF'
 sensor,timestamp,value
 ds18b20,1000,22.5
 ds18b20,2000,23.0
 ds18b20,3000,23.5
 EOF
-result=$(timeout 1 ./sensor-data count --follow testdir/follow.csv 2>/dev/null || true)
-# Should output: 3 (count of existing data rows, header excluded)
-if echo "$result" | grep -q "^3$"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+    result=$($TIMEOUT_CMD 1 ./sensor-data count --follow testdir/follow.csv 2>/dev/null || true)
+    # Should output: 3 (count of existing data rows, header excluded)
+    if echo "$result" | grep -q "^3$"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL"
+        echo "  Expected output containing 3"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
+    rm -rf testdir
 else
-    echo "  ✗ FAIL"
-    echo "  Expected output containing 3"
-    echo "  Got: $result"
-    FAILED=$((FAILED + 1))
+    echo "  ⊘ SKIP (timeout command not available)"
 fi
-rm -rf testdir
 
 # Test: --follow with stdin JSON and filter
 echo ""
 echo "Test: --follow with stdin JSON and --only-value filter"
-result=$(echo -e '{"sensor":"a","value":1}\n{"sensor":"b","value":2}\n{"sensor":"a","value":3}' | timeout 1 ./sensor-data count --follow --only-value sensor:a 2>/dev/null || true)
-# Should count only sensor:a readings (2 of them)
-if echo "$result" | grep -q "^2$"; then
-    echo "  ✓ PASS"
-    PASSED=$((PASSED + 1))
+if [ -n "$TIMEOUT_CMD" ]; then
+    result=$(echo -e '{"sensor":"a","value":1}\n{"sensor":"b","value":2}\n{"sensor":"a","value":3}' | $TIMEOUT_CMD 1 ./sensor-data count --follow --only-value sensor:a 2>/dev/null || true)
+    # Should count only sensor:a readings (2 of them)
+    if echo "$result" | grep -q "^2$"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL"
+        echo "  Expected output containing 2 (only sensor:a readings)"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
 else
-    echo "  ✗ FAIL"
-    echo "  Expected output containing 2 (only sensor:a readings)"
-    echo "  Got: $result"
-    FAILED=$((FAILED + 1))
+    echo "  ⊘ SKIP (timeout command not available)"
 fi
 
 # Summary
