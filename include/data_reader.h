@@ -136,7 +136,6 @@ public:
                 // If the header happens to be in the tail (small file), we'll skip it
                 auto lines = FileUtils::readTailLines(filename, tailLines);
                 int lineNum = 0;
-                int dataRowsProcessed = 0;
                 
                 for (auto& line : lines) {
                     lineNum++;
