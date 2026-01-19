@@ -19,11 +19,11 @@ endif
 # Source files
 SOURCES = src/sensor-data.cpp
 LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp
-TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp
+TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp
 
 # Object files
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
-TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils
+TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader
 
 TARGET = sensor-data
 
@@ -45,6 +45,8 @@ test: $(LIB_OBJECTS)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_error_detector.cpp src/error_detector.o -o test_error_detector $(LDFLAGS) && ./test_error_detector
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_file_utils.cpp src/file_utils.o -o test_file_utils $(LDFLAGS) && ./test_file_utils
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_date_utils.cpp -o test_date_utils $(LDFLAGS) && ./test_date_utils
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_common_arg_parser.cpp src/file_utils.o -o test_common_arg_parser $(LDFLAGS) && ./test_common_arg_parser
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_data_reader.cpp src/csv_parser.o src/json_parser.o src/file_utils.o -o test_data_reader $(LDFLAGS) && ./test_data_reader
 	@echo "All unit tests passed!"
 
 # Run integration tests (requires bash)
@@ -58,6 +60,7 @@ test-integration: $(TARGET)
 	@bash tests/test_stats.sh
 	@bash tests/test_csv_input.sh
 	@bash tests/test_error_handling.sh
+	@bash tests/test_latest.sh
 	@echo "All integration tests passed!"
 
 # Run all tests

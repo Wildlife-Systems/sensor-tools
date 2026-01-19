@@ -101,7 +101,8 @@ public:
             }
         }
         
-        bool isCSV = FileUtils::isCsvFile(filename);
+        // Determine format: explicit inputFormat takes precedence, otherwise detect from extension
+        bool isCSV = (inputFormat == "csv") || (inputFormat == "json" ? false : FileUtils::isCsvFile(filename));
         
         if (tailLines > 0) {
             // Use tail mode
