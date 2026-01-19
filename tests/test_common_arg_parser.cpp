@@ -22,7 +22,7 @@ void test_default_values() {
     assert(result == true);
     assert(parser.getRecursive() == false);
     assert(parser.getVerbosity() == 0);
-    assert(parser.getInputFormat() == "json");
+    assert(parser.getInputFormat() == "auto");
     assert(parser.getMaxDepth() == -1);
     assert(parser.getMinDate() == 0);
     assert(parser.getMaxDate() == 0);
