@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <dirent.h>
 #include "file_utils.h"
 
@@ -36,27 +37,36 @@ private:
         }
         
         struct dirent* entry;
+        std::vector<std::string> dirEntries; // Collect entries first
         while ((entry = readdir(dir)) != nullptr) {
             std::string filename = entry->d_name;
             if (filename != "." && filename != "..") {
-                std::string fullPath = dirPath + "/" + filename;
-                if (FileUtils::isDirectory(fullPath)) {
-                    if (recursive) {
-                        collectFromDirectory(fullPath, currentDepth + 1);
-                    }
-                } else {
-                    if (FileUtils::matchesExtension(filename, extensionFilter)) {
-                        if (verbosity >= 2) {
-                            std::cout << "  Found file: " << fullPath << std::endl;
-                        }
-                        files.push_back(fullPath);
-                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
-                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
-                    }
-                }
+                dirEntries.push_back(filename);
             }
         }
         closedir(dir);
+        
+        // Sort entries for deterministic processing order
+        std::sort(dirEntries.begin(), dirEntries.end());
+        
+        // Process sorted entries
+        for (const std::string& filename : dirEntries) {
+            std::string fullPath = dirPath + "/" + filename;
+            if (FileUtils::isDirectory(fullPath)) {
+                if (recursive) {
+                    collectFromDirectory(fullPath, currentDepth + 1);
+                }
+            } else {
+                if (FileUtils::matchesExtension(filename, extensionFilter)) {
+                    if (verbosity >= 2) {
+                        std::cout << "  Found file: " << fullPath << std::endl;
+                    }
+                    files.push_back(fullPath);
+                } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                    std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                }
+            }
+        }
     }
     
 public:
@@ -73,6 +83,13 @@ public:
     
     const std::vector<std::string>& getFiles() const {
         return files;
+    }
+    
+    // Get sorted files for deterministic processing
+    std::vector<std::string> getSortedFiles() {
+        std::vector<std::string> sortedFiles = files;
+        std::sort(sortedFiles.begin(), sortedFiles.end());
+        return sortedFiles;
     }
 };
 

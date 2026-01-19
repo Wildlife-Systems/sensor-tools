@@ -426,6 +426,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --not-null <column>       Skip rows where column is 'null' (can be used multiple times)" << std::endl;
     std::cerr << "  --only-value <col:val>    Only include rows where column has specific value" << std::endl;
     std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value" << std::endl;
+    std::cerr << "  --allowed-values <column> <values|file> Only include rows where column is in allowed values" << std::endl;
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
@@ -439,6 +440,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count -r -e .out /path/to/logs" << std::endl;
     std::cerr << "  " << progName << " count --remove-errors sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --only-value type:temperature sensor1.out" << std::endl;
+    std::cerr << "  " << progName << " count --allowed-values sensor_id allowed_sensors.txt sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --clean sensor.out  # exclude empty values" << std::endl;
     std::cerr << "  " << progName << " count --by-column sensor sensor1.out  # count per sensor" << std::endl;
     std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;

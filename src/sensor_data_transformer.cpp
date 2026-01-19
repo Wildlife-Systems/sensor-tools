@@ -672,7 +672,7 @@ void SensorDataTransformer::printListRejectsUsage(const char* progName) {
     std::cerr << "  --not-empty <column>      List rows where column IS empty" << std::endl;
     std::cerr << "  --only-value <col:val>    List rows where column does NOT have this value" << std::endl;
     std::cerr << "  --exclude-value <col:val> List rows where column HAS this value" << std::endl;
-    std::cerr << "  --allowed-values <col> <values|file>  List rows where column is NOT in allowed list" << std::endl;
+    std::cerr << "  --allowed-values <col> <values|file>  Only include rows where column is in allowed values" << std::endl;
     std::cerr << "  --remove-errors           List error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-empty-json       List empty JSON input lines" << std::endl;
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;

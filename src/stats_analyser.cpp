@@ -598,6 +598,7 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  -f, --follow              Follow mode: continuously read input and update stats (stdin or single file)" << std::endl;
     std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
     std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
+    std::cerr << "  --allowed-values <col> <values|file>  Only include rows where column is in allowed values" << std::endl;
     std::cerr << "  --not-empty <col>         Only include rows where column is not empty" << std::endl;
     std::cerr << "  --remove-empty-json       Remove rows with empty JSON objects" << std::endl;
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;

@@ -180,14 +180,19 @@ public:
                     if (file.good()) {
                         // It's a file - read values line by line
                         std::string line;
+                        line.reserve(256); // Reserve space to avoid frequent reallocations
                         while (std::getline(file, line)) {
                             // Trim whitespace
                             size_t start = line.find_first_not_of(" \t\r\n");
-                            size_t end = line.find_last_not_of(" \t\r\n");
-                            if (start != std::string::npos && end != std::string::npos) {
-                                allowedValues[column].insert(line.substr(start, end - start + 1));
+                            if (start != std::string::npos) {
+                                size_t end = line.find_last_not_of(" \t\r\n");
+                                if (end != std::string::npos && end >= start) {
+                                    allowedValues[column].insert(line.substr(start, end - start + 1));
+                                }
                             }
+                            line.clear(); // Explicitly clear for next iteration
                         }
+                        file.close(); // Explicitly close the file
                     } else {
                         // Treat as comma-separated values
                         size_t pos = 0;
@@ -273,7 +278,7 @@ public:
             // Unknown flags are ignored here - let each class handle their specific flags
         }
         
-        inputFiles = collector.getFiles();
+        inputFiles = collector.getSortedFiles();
         return true;
     }
     

@@ -120,7 +120,14 @@ protected:
             if (it != reading.end()) {
                 const std::string& val = it->second;
                 // Check for literal "null" string or ASCII null character
-                if (val == "null" || val.find('\0') != std::string::npos) {
+                bool hasNullChar = false;
+                for (size_t i = 0; i < val.length(); ++i) {
+                    if (val[i] == '\0') {
+                        hasNullChar = true;
+                        break;
+                    }
+                }
+                if (val == "null" || hasNullChar) {
                     if (verbosity >= 2) {
                         std::cerr << "  Skipping row: null value in column '" << reqCol << "'" << std::endl;
                     }
