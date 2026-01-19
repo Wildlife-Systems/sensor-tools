@@ -53,57 +53,22 @@ long long DataCounter::countFromStdin() {
 
     long long count = 0;
     std::unordered_map<std::string, long long> localValueCounts;  // Local counts for thread safety
-    std::string line;
-
-    if (inputFormat == "csv") {
-        // CSV format - first line is header
-        std::vector<std::string> csvHeaders;
-        if (std::getline(std::cin, line) && !line.empty()) {
-            csvHeaders = CsvParser::parseCsvLine(line);
-        }
-
-        while (std::getline(std::cin, line)) {
-            if (line.empty()) continue;
-
-            auto fields = CsvParser::parseCsvLine(line);
-            if (fields.empty()) continue;
-
-            Reading reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-
-            if (shouldIncludeReading(reading)) {
-                count++;
-                if (!byColumn.empty()) {
-                    auto it = reading.find(byColumn);
-                    std::string value = (it != reading.end()) ? it->second : "(missing)";
-                    localValueCounts[value]++;
-                }
+    
+    DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+    
+    reader.processStdin([&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+        if (reading.empty()) return;
+        if (removeEmptyJson && reading.empty()) return;
+        
+        if (shouldIncludeReading(reading)) {
+            count++;
+            if (!byColumn.empty()) {
+                auto it = reading.find(byColumn);
+                std::string value = (it != reading.end()) ? it->second : "(missing)";
+                localValueCounts[value]++;
             }
         }
-    } else {
-        // JSON format
-        while (std::getline(std::cin, line)) {
-            if (line.empty()) continue;
-
-            auto readings = JsonParser::parseJsonLine(line);
-            
-            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
-
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                if (shouldIncludeReading(reading)) {
-                    count++;
-                    if (!byColumn.empty()) {
-                        auto it = reading.find(byColumn);
-                        std::string value = (it != reading.end()) ? it->second : "(missing)";
-                        localValueCounts[value]++;
-                    }
-                }
-            }
-        }
-    }
+    });
 
     // Merge local counts into shared valueCounts with mutex
     if (!byColumn.empty() && !localValueCounts.empty()) {

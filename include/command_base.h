@@ -92,9 +92,8 @@ protected:
     
     /**
      * Check if a reading should be included based on all active filters.
-     * Subclasses can override for additional filtering.
      */
-    virtual bool shouldIncludeReading(const Reading& reading) {
+    bool shouldIncludeReading(const Reading& reading) {
         // Check date range
         if (!passesDateFilter(reading)) {
             if (verbosity >= 2) {

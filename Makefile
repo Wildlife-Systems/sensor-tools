@@ -83,6 +83,10 @@ clean:
 # Force a clean rebuild
 rebuild: clean all
 
+# Release build with maximum optimizations
+release: clean
+	$(CXX) $(CPPFLAGS) -std=c++11 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) -pthread
+
 # Generate coverage report (requires gcov)
 coverage:
 	@echo "=== Coverage files ==="
@@ -93,5 +97,5 @@ coverage:
 	@echo "=== Generated .gcov files ==="
 	@ls -la *.gcov 2>/dev/null || true
 
-.PHONY: all install clean rebuild test test-integration test-all coverage
+.PHONY: all install clean rebuild test test-integration test-all coverage release
 

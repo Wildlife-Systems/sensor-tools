@@ -283,22 +283,22 @@ public:
     }
     
     // Getters
-    bool getRecursive() const { return recursive; }
-    const std::string& getExtensionFilter() const { return extensionFilter; }
-    int getMaxDepth() const { return maxDepth; }
-    int getVerbosity() const { return verbosity; }
-    const std::string& getInputFormat() const { return inputFormat; }
-    long long getMinDate() const { return minDate; }
-    long long getMaxDate() const { return maxDate; }
-    const std::vector<std::string>& getInputFiles() const { return inputFiles; }
-    const std::map<std::string, std::set<std::string>>& getOnlyValueFilters() const { return onlyValueFilters; }
-    const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const { return excludeValueFilters; }
-    const std::map<std::string, std::set<std::string>>& getAllowedValues() const { return allowedValues; }
-    const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
-    const std::set<std::string>& getNotNullColumns() const { return notNullColumns; }
-    bool getRemoveEmptyJson() const { return removeEmptyJson; }
-    bool getRemoveErrors() const { return removeErrors; }
-    int getTailLines() const { return tailLines; }
+    bool getRecursive() const noexcept { return recursive; }
+    const std::string& getExtensionFilter() const noexcept { return extensionFilter; }
+    int getMaxDepth() const noexcept { return maxDepth; }
+    int getVerbosity() const noexcept { return verbosity; }
+    const std::string& getInputFormat() const noexcept { return inputFormat; }
+    long long getMinDate() const noexcept { return minDate; }
+    long long getMaxDate() const noexcept { return maxDate; }
+    const std::vector<std::string>& getInputFiles() const noexcept { return inputFiles; }
+    const std::map<std::string, std::set<std::string>>& getOnlyValueFilters() const noexcept { return onlyValueFilters; }
+    const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const noexcept { return excludeValueFilters; }
+    const std::map<std::string, std::set<std::string>>& getAllowedValues() const noexcept { return allowedValues; }
+    const std::set<std::string>& getNotEmptyColumns() const noexcept { return notEmptyColumns; }
+    const std::set<std::string>& getNotNullColumns() const noexcept { return notNullColumns; }
+    bool getRemoveEmptyJson() const noexcept { return removeEmptyJson; }
+    bool getRemoveErrors() const noexcept { return removeErrors; }
+    int getTailLines() const noexcept { return tailLines; }
     
     /**
      * Check for unknown options in command line arguments.
