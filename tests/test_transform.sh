@@ -549,11 +549,11 @@ echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
 output=$(./sensor-data transform -r -d 0 -V -e .out testdir/ -o output.csv 2>&1)
 rm -rf testdir output.csv
-if echo "$output" | grep -q "Skipping directory (depth limit)"; then
+if echo "$output" | grep -q "Skipping subdirectory (depth limit)"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
-    echo "  ✗ FAIL - Expected 'Skipping directory (depth limit)' in output"
+    echo "  ✗ FAIL - Expected 'Skipping subdirectory (depth limit)' in output"
     FAILED=$((FAILED + 1))
 fi
 
