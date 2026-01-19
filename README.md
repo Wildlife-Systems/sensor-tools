@@ -256,6 +256,43 @@ value:
     From:      20.0 -> 22.5
 ```
 
+### latest
+
+Find the latest timestamp for each sensor.
+
+```bash
+# Get latest timestamp per sensor
+sensor-data latest input.out
+
+# Limit to first n sensors (alphabetically by sensor_id)
+sensor-data latest -n 5 input.out
+
+# Limit to last n sensors
+sensor-data latest -n -5 input.out
+
+# With date filtering
+sensor-data latest --min-date 2026-01-01 input.out
+```
+
+**Options:**
+- `-n <num>` - Limit output rows (positive = first n, negative = last n)
+- `-of, --output-format <fmt>` - Output format: `human` (default), `csv`, or `json`
+- `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
+- `--min-date <date>` - Include only readings on or after this date
+- `--max-date <date>` - Include only readings on or before this date
+- `--tail <n>` - Only read the last n lines from each file
+- `-r, --recursive` - Recursively process subdirectories
+- `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)
+- `-v` - Verbose output
+
+**Output columns:** `sensor_id`, `unix_timestamp`, `iso_date`
+
+Example output:
+```
+sensor001,1737315700,2025-01-19 19:41:40
+sensor002,1737315650,2025-01-19 19:40:50
+```
+
 ## Date Formats
 
 The `--min-date` and `--max-date` options accept:

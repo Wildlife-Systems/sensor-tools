@@ -15,7 +15,7 @@ _sensor_data() {
         cword=$COMP_CWORD
     fi
 
-    local commands="transform count list-errors summarise-errors stats"
+    local commands="transform count list-errors summarise-errors stats latest"
     
     # Common options for all commands
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
@@ -26,13 +26,14 @@ _sensor_data() {
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
     local stats_opts="-f --follow --tail -o --output --column --group-by"
+    local latest_opts="-n -of --output-format --tail"
 
     # Determine which command we're completing for
     local cmd=""
     local i
     for ((i=1; i < cword; i++)); do
         case "${words[i]}" in
-            transform|count|list-errors|summarise-errors|stats)
+            transform|count|list-errors|summarise-errors|stats|latest)
                 cmd="${words[i]}"
                 break
                 ;;
@@ -91,6 +92,11 @@ _sensor_data() {
             # Can't complete dates, leave empty
             return
             ;;
+        -n)
+            # Suggest some common values for -n
+            COMPREPLY=($(compgen -W "1 5 10 -1 -5 -10" -- "$cur"))
+            return
+            ;;
     esac
 
     # Complete based on command
@@ -110,6 +116,9 @@ _sensor_data() {
                 ;;
             stats)
                 COMPREPLY=($(compgen -W "$common_opts $stats_opts" -- "$cur"))
+                ;;
+            latest)
+                COMPREPLY=($(compgen -W "$common_opts $latest_opts" -- "$cur"))
                 ;;
         esac
     else

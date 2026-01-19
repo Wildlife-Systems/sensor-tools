@@ -44,6 +44,10 @@ Also shows quartiles (Q1, median, Q3, IQR), outlier detection (1.5*IQR method),
 delta statistics for consecutive value changes, and volatility.
 If timestamps are present, shows time range, duration, readings rate, 
 typical sampling interval, and gap detection.
+.TP
+.B latest
+Show the latest timestamp for each sensor_id.
+Outputs sensor_id, unix_timestamp, and ISO date for each sensor's most recent reading.
 .SH GLOBAL OPTIONS
 .TP
 .BR \-h ", " \-\-help
@@ -235,6 +239,37 @@ Verbose output.
 .TP
 .B \-V
 Very verbose output.
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension (e.g., .out or out).
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth (0 = current dir only).
+.TP
+.BI \-\-min\-date " date"
+Filter readings after this date.
+.TP
+.BI \-\-max\-date " date"
+Filter readings before this date.
+.TP
+.BI \-\-tail " n"
+Only read the last n lines from each file (useful for quick checks on large files).
+.SH LATEST OPTIONS
+.TP
+.BI \-n " num"
+Limit output rows (positive = first n sensors, negative = last n sensors).
+.TP
+.BR \-of ", " \-\-output\-format " " \fIfmt\fR
+Output format: human (default), csv, or json.
+.TP
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output.
 .TP
 .BR \-e ", " \-\-extension " " \fIext\fR
 Filter files by extension (e.g., .out or out).

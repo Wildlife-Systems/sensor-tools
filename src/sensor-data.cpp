@@ -7,6 +7,7 @@
 #include "error_summarizer.h"
 #include "stats_analyser.h"
 #include "data_counter.h"
+#include "latest_finder.h"
 
 #ifndef VERSION
 #define VERSION "unknown"
@@ -28,6 +29,7 @@ void printUsage(const char* progName) {
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
+    std::cerr << "  latest            Show latest timestamp for each sensor_id" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "  --help, -h        Show this help message" << std::endl;
@@ -123,6 +125,15 @@ int main(int argc, char* argv[]) {
             StatsAnalyser analyser(static_cast<int>(newArgv.size()), newArgv.data());
             analyser.analyze();
             return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if (command == "latest") {
+        try {
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            LatestFinder finder(static_cast<int>(newArgv.size()), newArgv.data());
+            return finder.main();
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
             return 1;
