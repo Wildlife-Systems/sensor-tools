@@ -5,10 +5,12 @@
 #include <sstream>
 #include <dirent.h>
 #include <cstring>
+#include <mutex>
 
 // Static member initialization
 std::vector<ErrorDefinition> ErrorDetector::errorDefinitions;
 bool ErrorDetector::definitionsLoaded = false;
+static std::once_flag initFlag;
 
 namespace {
     // Case-insensitive string comparison
@@ -121,9 +123,9 @@ void ErrorDetector::loadErrorDefinitions(const std::string& configDir) {
 }
 
 void ErrorDetector::ensureLoaded() {
-    if (!definitionsLoaded) {
+    std::call_once(initFlag, []() {
         loadErrorDefinitions();
-    }
+    });
 }
 
 bool ErrorDetector::isErrorReading(const std::map<std::string, std::string>& reading) {
