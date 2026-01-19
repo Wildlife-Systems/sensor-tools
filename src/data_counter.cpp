@@ -26,6 +26,11 @@ long long DataCounter::countFromFile(const std::string& filename) {
         if (reading.empty()) return;
         if (shouldIncludeReading(reading)) {
             count++;
+            if (!byColumn.empty()) {
+                auto it = reading.find(byColumn);
+                std::string value = (it != reading.end()) ? it->second : "(missing)";
+                valueCounts[value]++;
+            }
         }
     });
 
@@ -60,6 +65,11 @@ long long DataCounter::countFromStdin() {
 
             if (shouldIncludeReading(reading)) {
                 count++;
+                if (!byColumn.empty()) {
+                    auto it = reading.find(byColumn);
+                    std::string value = (it != reading.end()) ? it->second : "(missing)";
+                    valueCounts[value]++;
+                }
             }
         }
     } else {
@@ -75,6 +85,11 @@ long long DataCounter::countFromStdin() {
                 if (reading.empty()) continue;
                 if (shouldIncludeReading(reading)) {
                     count++;
+                    if (!byColumn.empty()) {
+                        auto it = reading.find(byColumn);
+                        std::string value = (it != reading.end()) ? it->second : "(missing)";
+                        valueCounts[value]++;
+                    }
                 }
             }
         }
@@ -242,7 +257,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
 
 // ===== Constructor =====
 
-DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
+DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), outputFormat("human") {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -252,25 +267,40 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false) {
         }
     }
 
-    // Parse --follow flag
-    for (int i = 1; i < argc; ++i) {
+    // Parse count-specific arguments and build filtered argv for CommonArgParser
+    std::vector<char*> filteredArgv;
+    for (int i = 0; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--follow" || arg == "-f") {
             followMode = true;
+            continue;
+        } else if ((arg == "--by-column" || arg == "-b") && i + 1 < argc) {
+            byColumn = argv[i + 1];
+            i++; // Skip the value
+            continue;
+        } else if ((arg == "--output-format" || arg == "-of") && i + 1 < argc) {
+            outputFormat = argv[i + 1];
+            if (outputFormat != "human" && outputFormat != "csv" && outputFormat != "json") {
+                std::cerr << "Error: --output-format must be 'human', 'csv', or 'json'" << std::endl;
+                exit(1);
+            }
+            i++; // Skip the value
+            continue;
         }
+        filteredArgv.push_back(argv[i]);
     }
 
-    // Parse common flags and collect files
+    // Parse common flags and collect files using filtered argv
     CommonArgParser parser;
-    if (!parser.parse(argc, argv)) {
+    if (!parser.parse(static_cast<int>(filteredArgv.size()), filteredArgv.data())) {
         exit(1);
     }
 
     copyFromParser(parser);
 
-    // Check for unknown options (count-specific: -f/--follow)
-    std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv, 
-        {"-f", "--follow"});
+    // Check for unknown options using filtered argv
+    std::string unknownOpt = CommonArgParser::checkUnknownOptions(
+        static_cast<int>(filteredArgv.size()), filteredArgv.data());
     if (!unknownOpt.empty()) {
         std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
         printCountUsage(argv[0]);
@@ -309,7 +339,55 @@ void DataCounter::count() {
         }
     }
 
-    std::cout << totalCount << std::endl;
+    if (!byColumn.empty()) {
+        // Convert to vector and sort by count descending
+        std::vector<std::pair<std::string, long long>> results(valueCounts.begin(), valueCounts.end());
+        std::sort(results.begin(), results.end(), 
+            [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) {
+                return a.second > b.second;  // Sort by count descending
+            });
+        
+        if (outputFormat == "json") {
+            std::cout << "[";
+            bool first = true;
+            for (const auto& pair : results) {
+                if (!first) std::cout << ",";
+                first = false;
+                std::cout << "{\"" << byColumn << "\":\"" << pair.first 
+                          << "\",\"count\":" << pair.second << "}";
+            }
+            std::cout << "]\n";
+        } else if (outputFormat == "csv") {
+            std::cout << byColumn << ",count\n";
+            for (const auto& pair : results) {
+                std::cout << pair.first << "," << pair.second << "\n";
+            }
+        } else {
+            // Human-readable format (default)
+            // Find max value width for alignment
+            size_t maxValueWidth = byColumn.length();
+            for (const auto& pair : results) {
+                maxValueWidth = std::max(maxValueWidth, pair.first.length());
+            }
+            
+            std::cout << "Counts by " << byColumn << ":\n\n";
+            std::cout << std::left;
+            std::cout.width(maxValueWidth + 2);
+            std::cout << byColumn;
+            std::cout << "Count\n";
+            std::cout << std::string(maxValueWidth + 2 + 10, '-') << "\n";
+            
+            for (const auto& pair : results) {
+                std::cout.width(maxValueWidth + 2);
+                std::cout << pair.first;
+                std::cout << pair.second << "\n";
+            }
+            
+            std::cout << "\nTotal: " << totalCount << " reading(s)\n";
+        }
+    } else {
+        std::cout << totalCount << std::endl;
+    }
 }
 
 // ===== Usage printing =====
@@ -322,7 +400,9 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
+    std::cerr << "  -of, --output-format <fmt> Output format: human (default), csv, or json" << std::endl;
     std::cerr << "  -f, --follow              Follow mode: continuously monitor file/stdin for new data" << std::endl;
+    std::cerr << "  -b, --by-column <col>     Show counts per value in the specified column" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -345,6 +425,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count --remove-errors sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --only-value type:temperature sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --clean sensor.out  # exclude empty values" << std::endl;
+    std::cerr << "  " << progName << " count --by-column sensor sensor1.out  # count per sensor" << std::endl;
     std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " count --follow" << std::endl;
 }

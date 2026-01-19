@@ -123,6 +123,12 @@ Only read the last n lines from each file (useful for quick checks on large file
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR
 Input format for stdin: json or csv (default: json).
 .TP
+.BR \-of ", " \-\-output\-format " " \fIfmt\fR
+Output format: human (default), csv, or json. Only applies when using \-\-by\-column.
+.TP
+.BR \-b ", " \-\-by\-column " " \fIcolumn\fR
+Show counts per value in the specified column instead of total count.
+.TP
 .BR \-f ", " \-\-follow
 Follow mode: continuously read input and update count (stdin or single file).
 .TP

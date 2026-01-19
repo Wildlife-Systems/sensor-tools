@@ -111,12 +111,19 @@ cat sensors.out | sensor-data count
 sensor-data count --remove-errors input.out
 sensor-data count --only-value type:temperature input.out
 
+# Count by column value
+sensor-data count --by-column sensor_id input.out
+sensor-data count -b sensor_id -of csv input.out
+sensor-data count -b sensor_id -of json input.out
+
 # Count recursively
 sensor-data count -r -e .out /path/to/logs/
 ```
 
 **Options:**
 - `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-of, --output-format <format>` - Output format: `human`, `csv`, or `json` (for --by-column)
+- `-b, --by-column <column>` - Show counts per value in the specified column
 - `-f, --follow` - Follow mode: continuously read stdin and update count
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)

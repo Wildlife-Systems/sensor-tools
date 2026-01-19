@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "command_base.h"
 
@@ -16,10 +17,14 @@
  * - Error reading removal
  * - Recursive directory processing
  * - Follow mode for files and stdin (like tail -f)
+ * - Count by column value (--by-column)
  */
 class DataCounter : public CommandBase {
 private:
     bool followMode;  // --follow flag for continuous monitoring
+    std::string byColumn;  // --by-column for counts per value
+    std::string outputFormat;  // --output-format: human, csv, json
+    std::map<std::string, long long> valueCounts;  // counts per column value
     
     /**
      * Count readings from a single file

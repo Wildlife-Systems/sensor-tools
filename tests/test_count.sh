@@ -518,6 +518,100 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --by-column with human output (default)
+echo ""
+echo "Test: --by-column with human output"
+result=$(cat <<'EOF' | ./sensor-data count --by-column sensor
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+if echo "$result" | grep -q "Counts by sensor" && echo "$result" | grep -q "ds18b20" && echo "$result" | grep -q "dht22" && echo "$result" | grep -q "Total: 3"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: Human-readable counts by sensor"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-column with csv output
+echo ""
+echo "Test: --by-column with csv output"
+result=$(cat <<'EOF' | ./sensor-data count -b sensor -of csv
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+if echo "$result" | head -1 | grep -q "sensor,count" && echo "$result" | grep -q "ds18b20,2" && echo "$result" | grep -q "dht22,1"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: CSV with sensor,count header and data rows"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-column with json output
+echo ""
+echo "Test: --by-column with json output"
+result=$(cat <<'EOF' | ./sensor-data count -b sensor -of json
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "dht22", "value": "45"}]
+[{"sensor": "ds18b20", "value": "23.0"}]
+EOF
+)
+# Sorted by count descending: ds18b20 (2) before dht22 (1)
+if echo "$result" | grep -q '\[{"sensor":"ds18b20","count":2},{"sensor":"dht22","count":1}\]'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: JSON array with sensor/count objects (sorted by count descending)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-column with filters
+echo ""
+echo "Test: --by-column with --remove-errors filter"
+result=$(cat <<'EOF' | ./sensor-data count -b sensor --remove-errors -of csv
+[{"sensor": "ds18b20", "value": "22.5"}]
+[{"sensor": "ds18b20", "value": "85"}]
+[{"sensor": "dht22", "value": "45"}]
+EOF
+)
+if echo "$result" | grep -q "ds18b20,1" && echo "$result" | grep -q "dht22,1"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: ds18b20,1 and dht22,1 (error reading excluded)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-column with non-existent column
+echo ""
+echo "Test: --by-column with non-existent column returns empty values"
+result=$(cat <<'EOF' | ./sensor-data count -b missing_column -of csv
+[{"sensor": "ds18b20", "value": "22.5"}]
+EOF
+)
+if echo "$result" | grep -q "missing_column,count" && echo "$result" | grep -q ",1"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: Count with empty column value"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
