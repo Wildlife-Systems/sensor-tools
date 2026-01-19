@@ -358,7 +358,7 @@ void DataCounter::count() {
             [this](const std::string& file) { return countFromFile(file); },
             [](long long& acc, long long val) { acc += val; },
             0LL,
-            1  // numThreads - temporarily set to 1 for debugging
+            4  // numThreads
         );
     }
 
