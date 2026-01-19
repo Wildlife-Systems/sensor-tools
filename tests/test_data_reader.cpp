@@ -10,8 +10,8 @@ class TempFile {
 public:
     std::string path;
     
-    TempFile(const std::string& content) {
-        path = "test_data_reader_temp.txt";
+    TempFile(const std::string& content, const std::string& extension = ".txt") {
+        path = "test_data_reader_temp" + extension;
         std::ofstream f(path);
         f << content;
         f.close();
@@ -44,10 +44,11 @@ void test_process_csv_file_basic() {
     TempFile file(
         "sensor_id,value\n"
         "s1,22.5\n"
-        "s2,23.0\n"
+        "s2,23.0\n",
+        ".csv"
     );
     
-    DataReader reader(0, 0, 0, "csv");
+    DataReader reader(0, 0, 0, "json");  // inputFormat ignored for files
     int count = 0;
     
     reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
