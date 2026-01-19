@@ -48,14 +48,27 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Build
-      run: make clean all
+    - name: Install lcov
+      run: brew install lcov
+    
+    - name: Build with coverage
+      run: make clean all COVERAGE=1
     
     - name: Run unit tests
-      run: make test
+      run: make test COVERAGE=1
     
     - name: Run integration tests
       run: make test-integration
+    
+    - name: Generate coverage report
+      run: make coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        verbose: true
 
   test-windows:
     runs-on: windows-latest
@@ -68,19 +81,30 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: mingw-w64-x86_64-gcc make
+        install: mingw-w64-x86_64-gcc make mingw-w64-x86_64-lcov
     
-    - name: Build
+    - name: Build with coverage
       shell: msys2 {0}
-      run: make clean all
+      run: make clean all COVERAGE=1
     
     - name: Run unit tests
       shell: msys2 {0}
-      run: make test
+      run: make test COVERAGE=1
     
     - name: Run integration tests
       shell: msys2 {0}
       run: make test-integration
+    
+    - name: Generate coverage report
+      shell: msys2 {0}
+      run: make coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        verbose: true
 
   build-deb:
     runs-on: ubuntu-latest
