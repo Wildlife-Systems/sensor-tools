@@ -101,8 +101,8 @@ public:
             }
         }
         
-        // Determine format: explicit inputFormat takes precedence, otherwise detect from extension
-        bool isCSV = (inputFormat == "csv") || (inputFormat == "json" ? false : FileUtils::isCsvFile(filename));
+        // Determine format: detect from file extension (inputFormat is only for stdin)
+        bool isCSV = FileUtils::isCsvFile(filename);
         
         if (tailLines > 0) {
             // Use tail mode

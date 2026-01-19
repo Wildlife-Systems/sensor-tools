@@ -3,15 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
-
-#ifdef _WIN32
-#include <direct.h>
-#define mkdir(path, mode) _mkdir(path)
-#define rmdir _rmdir
-#else
 #include <sys/stat.h>
 #include <unistd.h>
-#endif
 
 // Helper to create temp directory structure
 class TempTestDir {

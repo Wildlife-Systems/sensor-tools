@@ -5,20 +5,11 @@
 #include <cstdlib>
 #include <sys/stat.h>
 #include <cerrno>
-
-#ifdef _WIN32
-#include <direct.h>
-#define MKDIR(path) _mkdir(path)
-#define RMDIR(path) _rmdir(path)
-#else
 #include <unistd.h>
-#define MKDIR(path) mkdir(path, 0755)
-#define RMDIR(path) rmdir(path)
-#endif
 
 // Helper to create a directory
 bool createDir(const std::string& path) {
-    return MKDIR(path.c_str()) == 0 || errno == EEXIST;
+    return mkdir(path.c_str(), 0755) == 0 || errno == EEXIST;
 }
 
 // Helper to remove a file
@@ -28,7 +19,7 @@ void removeFile(const std::string& path) {
 
 // Helper to remove a directory
 void removeDir(const std::string& path) {
-    RMDIR(path.c_str());
+    rmdir(path.c_str());
 }
 
 void test_ds18b20_error_detection() {
