@@ -258,7 +258,7 @@ void StatsAnalyser::printStats() {
         double deltaMin = 0, deltaMax = 0, deltaSum = 0;
         std::vector<double> deltas;
         size_t deltaCount = 0;
-        size_t maxJumpIndex = 0;
+        size_t maxJumpIndex = 1;  // Start at 1 (first valid index for a jump)
         if (values.size() > 1) {
             deltaMin = std::abs(values[1] - values[0]);
             deltaMax = deltaMin;
@@ -515,7 +515,7 @@ void StatsAnalyser::analyze() {
         return;
     }
     
-    DataReader reader(minDate, maxDate, verbosity, inputFormat);
+    DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
     
     auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
         if (!shouldIncludeReading(reading)) return;
@@ -561,6 +561,7 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
+    std::cerr << "  --tail <n>                Only read the last n lines from each file" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " stats sensor1.out" << std::endl;

@@ -690,6 +690,57 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test 36: Single data row (edge case)
+echo ""
+echo "Test 36: Single data row (no delta stats)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"22.5"}
+EOF
+)
+if echo "$result" | grep -q "Count:.*1" && ! echo "$result" | grep -q "Max Jump"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Single row should show count=1 and no Max Jump"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 37: Two data rows (minimal delta stats)
+echo ""
+echo "Test 37: Two data rows (minimal delta stats)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"20.0"}
+{"sensor":"ds18b20","value":"25.0"}
+EOF
+)
+if echo "$result" | grep -q "Count:.*2" && echo "$result" | grep -q "Max Jump" && echo "$result" | grep -q "20.*->.*25"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Two rows should show count=2 and Max Jump from 20 to 25"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 38: All equal values (edge case for Max Jump)
+echo ""
+echo "Test 38: All equal values (Max Jump with zero delta)"
+result=$(cat <<'EOF' | ./sensor-data stats
+{"sensor":"ds18b20","value":"22.0"}
+{"sensor":"ds18b20","value":"22.0"}
+{"sensor":"ds18b20","value":"22.0"}
+EOF
+)
+if echo "$result" | grep -q "Count:.*3" && echo "$result" | grep -q "Max Jump" && echo "$result" | grep -q "Size:.*0"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Equal values should show Max Jump with size 0"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
