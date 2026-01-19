@@ -172,77 +172,14 @@ public:
                 }
             }
         } else {
-            // Get file size BEFORE opening to avoid race with appending
-            long long fileSize = FileUtils::getFileSize(filename);
-            if (fileSize < 0) {
-                std::cerr << "ERROR: Cannot stat file: " << filename << std::endl;
-                return;
-            }
-            
             std::ifstream infile(filename);
             if (!infile) {
                 std::cerr << "ERROR: Failed to open file: " << filename << std::endl;
                 return;
             }
             
-            processStreamLimited(infile, isCSV, callback, filename, fileSize);
+            processStream(infile, isCSV, callback, filename);
             infile.close();
-        }
-    }
-    
-    // Process stream with a byte limit (to handle files being appended during read)
-    template<typename Callback>
-    void processStreamLimited(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName, long long maxBytes) {
-        std::string line;
-        int lineNum = 0;
-        long long bytesRead = 0;
-        
-        if (isCSV) {
-            // CSV format - first line is header
-            std::vector<std::string> csvHeaders;
-            if (std::getline(input, line)) {
-                bytesRead += static_cast<long long>(line.size()) + 1;  // +1 for newline
-                if (!line.empty()) {
-                    lineNum++;
-                    bool needMore = false;
-                    csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
-                }
-            }
-            
-            while (bytesRead < maxBytes && std::getline(input, line)) {
-                bytesRead += static_cast<long long>(line.size()) + 1;
-                lineNum++;
-                if (line.empty()) continue;
-                
-                bool needMore = false;
-                auto fields = CsvParser::parseCsvLine(input, line, needMore);
-                if (fields.empty()) continue;
-                
-                std::map<std::string, std::string> reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-                
-                if (!passesDateFilter(reading)) continue;
-                
-                callback(reading, lineNum, sourceName);
-            }
-        } else {
-            // JSON format
-            while (bytesRead < maxBytes && std::getline(input, line)) {
-                bytesRead += static_cast<long long>(line.size()) + 1;
-                lineNum++;
-                if (line.empty()) continue;
-                
-                auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    
-                    if (!passesDateFilter(reading)) continue;
-                    
-                    callback(reading, lineNum, sourceName);
-                }
-            }
         }
     }
 };
