@@ -172,51 +172,40 @@ public:
                 }
             }
         } else {
-            std::ifstream infile(filename, std::ios::binary | std::ios::ate);
+            // Get file size BEFORE opening to avoid race with appending
+            long long fileSize = FileUtils::getFileSize(filename);
+            if (fileSize < 0) {
+                std::cerr << "ERROR: Cannot stat file: " << filename << std::endl;
+                return;
+            }
+            
+            std::ifstream infile(filename);
             if (!infile) {
                 std::cerr << "ERROR: Failed to open file: " << filename << std::endl;
                 return;
             }
             
-            // Capture file size at open time to avoid reading data appended during processing
-            std::streamsize fileSize = infile.tellg();
-            infile.seekg(0, std::ios::beg);
-            infile.clear();  // Clear any flags from binary mode
-            
-            // Re-open in text mode for proper line reading
+            processStreamLimited(infile, isCSV, callback, filename, fileSize);
             infile.close();
-            std::ifstream textFile(filename);
-            if (!textFile) {
-                std::cerr << "ERROR: Failed to reopen file: " << filename << std::endl;
-                return;
-            }
-            
-            processStreamLimited(textFile, isCSV, callback, filename, fileSize);
-            textFile.close();
         }
     }
     
     // Process stream with a byte limit (to handle files being appended during read)
     template<typename Callback>
-    void processStreamLimited(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName, std::streamsize maxBytes) {
+    void processStreamLimited(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName, long long maxBytes) {
         std::string line;
         int lineNum = 0;
-        std::streamsize bytesRead = 0;
         
         if (isCSV) {
             // CSV format - first line is header
             std::vector<std::string> csvHeaders;
-            if (std::getline(input, line)) {
-                bytesRead += line.size() + 1;  // +1 for newline
-                if (!line.empty()) {
-                    lineNum++;
-                    bool needMore = false;
-                    csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
-                }
+            if (std::getline(input, line) && !line.empty()) {
+                lineNum++;
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
             }
             
-            while (bytesRead < maxBytes && std::getline(input, line)) {
-                bytesRead += line.size() + 1;
+            while (input.tellg() < maxBytes && std::getline(input, line)) {
                 lineNum++;
                 if (line.empty()) continue;
                 
@@ -235,8 +224,7 @@ public:
             }
         } else {
             // JSON format
-            while (bytesRead < maxBytes && std::getline(input, line)) {
-                bytesRead += line.size() + 1;
+            while (input.tellg() < maxBytes && std::getline(input, line)) {
                 lineNum++;
                 if (line.empty()) continue;
                 

@@ -12,6 +12,14 @@ bool FileUtils::isDirectory(const std::string& path) {
     return (info.st_mode & S_IFDIR) != 0;
 }
 
+long long FileUtils::getFileSize(const std::string& filename) {
+    struct stat info;
+    if (stat(filename.c_str(), &info) != 0) {
+        return -1;
+    }
+    return static_cast<long long>(info.st_size);
+}
+
 bool FileUtils::isCsvFile(const std::string& filename) {
     size_t dotPos = filename.find_last_of('.');
     if (dotPos == std::string::npos) {

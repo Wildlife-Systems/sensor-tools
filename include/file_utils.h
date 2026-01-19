@@ -11,6 +11,12 @@ public:
     static bool matchesExtension(const std::string& filename, const std::string& extensionFilter);
     
     /**
+     * Get the size of a file in bytes.
+     * Returns -1 if the file doesn't exist or can't be accessed.
+     */
+    static long long getFileSize(const std::string& filename);
+    
+    /**
      * Read the last n lines from a file.
      * Returns the lines in order (first to last).
      * If the file has fewer than n lines, returns all lines.
