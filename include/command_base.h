@@ -55,7 +55,7 @@ protected:
         , extensionFilter("")
         , maxDepth(-1)
         , verbosity(0)
-        , inputFormat("json")
+        , inputFormat(DEFAULT_INPUT_FORMAT)
         , minDate(0)
         , maxDate(0)
         , removeErrors(false)

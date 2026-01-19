@@ -10,6 +10,9 @@
 #include "date_utils.h"
 #include "file_collector.h"
 
+// Default input format: "auto" detects from file extension, "json"/"csv" override
+const std::string DEFAULT_INPUT_FORMAT = "auto";
+
 // Centralized argument parser for common flags
 class CommonArgParser {
 private:
@@ -32,7 +35,7 @@ private:
 public:
     CommonArgParser() 
         : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), 
-          inputFormat("json"), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false),
+          inputFormat(DEFAULT_INPUT_FORMAT), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false),
           tailLines(0) {}
     
     // Parse common arguments and collect files
