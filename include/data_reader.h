@@ -174,6 +174,7 @@ public:
         } else {
             std::ifstream infile(filename);
             if (!infile) {
+                std::cerr << "ERROR: Failed to open file: " << filename << std::endl;
                 return;
             }
             
