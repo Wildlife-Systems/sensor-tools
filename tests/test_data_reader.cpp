@@ -48,7 +48,7 @@ void test_process_csv_file_basic() {
         ".csv"
     );
     
-    DataReader reader(0, 0, 0, "json");  // inputFormat ignored for files
+    DataReader reader;  // Uses default "auto" format which detects from extension
     int count = 0;
     
     reader.processFile(file.path, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {

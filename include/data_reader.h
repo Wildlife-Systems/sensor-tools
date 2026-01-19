@@ -28,7 +28,7 @@ private:
     }
     
 public:
-    DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "json", int tailLines = 0)
+    DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
         : minDate(minDate), maxDate(maxDate), verbosity(verbosity), inputFormat(format), tailLines(tailLines) {}
     
     // Internal helper to process a stream (CSV or JSON format)
@@ -88,6 +88,7 @@ public:
         if (verbosity >= 1) {
             std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
         }
+        // For stdin: "csv" means CSV, anything else (including "auto" and "json") means JSON
         processStream(std::cin, inputFormat == "csv", callback, "stdin");
     }
     
@@ -101,8 +102,16 @@ public:
             }
         }
         
-        // Determine format: detect from file extension (inputFormat is only for stdin)
-        bool isCSV = FileUtils::isCsvFile(filename);
+        // Determine format: explicit "csv"/"json" overrides, "auto" detects from extension
+        bool isCSV;
+        if (inputFormat == "csv") {
+            isCSV = true;
+        } else if (inputFormat == "json") {
+            isCSV = false;
+        } else {
+            // "auto" or any other value: detect from file extension
+            isCSV = FileUtils::isCsvFile(filename);
+        }
         
         if (tailLines > 0) {
             // Use tail mode
