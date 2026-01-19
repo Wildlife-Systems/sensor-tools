@@ -150,6 +150,9 @@ Maximum recursion depth (0 = current dir only).
 .BI \-\-not\-empty " column"
 Skip rows where column is empty (can be used multiple times).
 .TP
+.BI \-\-not\-null " column"
+Skip rows where column contains the literal string "null" (can be used multiple times).
+.TP
 .BI \-\-only\-value " col:val"
 Only include rows where column has specific value (can be used multiple times).
 .TP
@@ -168,7 +171,7 @@ Remove error readings (DS18B20 value=85 or \-127).
 Remove empty JSON input lines (e.g., [{}], []).
 .TP
 .B \-\-clean
-Shorthand for \-\-remove\-empty\-json \-\-not\-empty value \-\-remove\-errors.
+Shorthand for \-\-remove\-empty\-json \-\-not\-empty value \-\-remove\-errors \-\-not\-null value \-\-not\-null sensor_id.
 .TP
 .BI \-\-min\-date " date"
 Filter readings after this date.
@@ -228,6 +231,9 @@ or a file path with one value per line.
 .BI \-\-not\-empty " column"
 Skip rows where column is empty (can be used multiple times).
 .TP
+.BI \-\-not\-null " column"
+Skip rows where column contains the literal string "null" (can be used multiple times).
+.TP
 .B \-\-remove\-empty\-json
 Remove empty JSON input lines (e.g., [{}], []).
 .TP
@@ -235,7 +241,7 @@ Remove empty JSON input lines (e.g., [{}], []).
 Remove error readings (DS18B20 value=85 or \-127).
 .TP
 .B \-\-clean
-Shorthand for \-\-remove\-empty\-json \-\-not\-empty value \-\-remove\-errors.
+Shorthand for \-\-remove\-empty\-json \-\-not\-empty value \-\-remove\-errors \-\-not\-null value \-\-not\-null sensor_id.
 .TP
 .BR \-r ", " \-\-recursive
 Recursively process subdirectories.

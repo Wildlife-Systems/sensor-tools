@@ -89,9 +89,10 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--remove-whitespace` - Remove extra whitespace from output (compact format)
 - `--remove-empty-json` - Remove empty JSON input lines (e.g., `[{}]`, `[]`)
 - `--not-empty <column>` - Skip rows where column is empty
+- `--not-null <column>` - Skip rows where column contains the literal string "null" or ASCII null characters
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id`
 - `--tail <n>` - Only read the last n lines from each file
 - `-v` - Verbose output
 - `-V` - Very verbose output
@@ -198,9 +199,10 @@ sensor-data stats --clean input.out
 - `--exclude-value <col:val>` - Exclude rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--not-empty <column>` - Skip rows where column is empty
+- `--not-null <column>` - Skip rows where column contains the literal string "null" or ASCII null characters
 - `--remove-empty-json` - Remove empty JSON input lines
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --not-null value --remove-errors`
 - `--tail <n>` - Only read the last n lines from each file
 - `-r, --recursive` - Recursively process subdirectories
 - `-v` - Verbose output

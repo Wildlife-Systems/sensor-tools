@@ -601,7 +601,7 @@ void StatsAnalyser::printStatsUsage(const char* progName) {
     std::cerr << "  --not-empty <col>         Only include rows where column is not empty" << std::endl;
     std::cerr << "  --remove-empty-json       Remove rows with empty JSON objects" << std::endl;
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
-    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors" << std::endl;
+    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output" << std::endl;
     std::cerr << "  -V                        Very verbose output" << std::endl;

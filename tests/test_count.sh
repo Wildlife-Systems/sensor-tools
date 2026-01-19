@@ -612,6 +612,103 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --not-null filters out "null" string values
+echo ""
+echo "Test: --not-null filters out literal 'null' string"
+result=$(cat <<'EOF' | ./sensor-data count --not-null value
+[{"sensor_id": "s1", "value": "10"}]
+[{"sensor_id": "s2", "value": "null"}]
+[{"sensor_id": "s3", "value": "20"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --not-null on sensor_id column
+echo ""
+echo "Test: --not-null filters null sensor_id"
+result=$(cat <<'EOF' | ./sensor-data count --not-null sensor_id
+[{"sensor_id": "s1", "value": "10"}]
+[{"sensor_id": "null", "value": "20"}]
+[{"sensor_id": "s3", "value": "30"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --not-null can be used multiple times
+echo ""
+echo "Test: --not-null can filter multiple columns"
+result=$(cat <<'EOF' | ./sensor-data count --not-null value --not-null sensor_id
+[{"sensor_id": "s1", "value": "10"}]
+[{"sensor_id": "null", "value": "20"}]
+[{"sensor_id": "s3", "value": "null"}]
+[{"sensor_id": "s4", "value": "40"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --clean now includes --not-null for value and sensor_id
+echo ""
+echo "Test: --clean filters null values in value and sensor_id"
+result=$(cat <<'EOF' | ./sensor-data count --clean
+[{"sensor_id": "s1", "value": "10"}]
+[{"sensor_id": "null", "value": "20"}]
+[{"sensor_id": "s3", "value": "null"}]
+[{"sensor_id": "s4", "value": ""}]
+EOF
+)
+if [ "$result" = "1" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 1"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --not-null does not filter missing columns (only filters if column exists with null value)
+echo ""
+echo "Test: --not-null does not filter rows with missing column"
+result=$(cat <<'EOF' | ./sensor-data count --not-null value
+[{"sensor_id": "s1", "value": "10"}]
+[{"sensor_id": "s2"}]
+[{"sensor_id": "s3", "value": "null"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2 (missing column is not filtered, only 'null' value is)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

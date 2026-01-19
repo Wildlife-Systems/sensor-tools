@@ -28,6 +28,7 @@ private:
     std::map<std::string, std::set<std::string>> excludeValueFilters;
     std::map<std::string, std::set<std::string>> allowedValues;
     std::set<std::string> notEmptyColumns;
+    std::set<std::string> notNullColumns;
     bool removeEmptyJson;
     bool removeErrors;
     int tailLines;  // --tail <n>: only read last n lines from each file
@@ -117,15 +118,25 @@ public:
                     std::cerr << "Error: --not-empty requires an argument" << std::endl;
                     return false;
                 }
+            } else if (arg == "--not-null") {
+                if (i + 1 < argc) {
+                    ++i;
+                    notNullColumns.insert(argv[i]);
+                } else {
+                    std::cerr << "Error: --not-null requires an argument" << std::endl;
+                    return false;
+                }
             } else if (arg == "--remove-empty-json") {
                 removeEmptyJson = true;
             } else if (arg == "--remove-errors") {
                 removeErrors = true;
             } else if (arg == "--clean") {
-                // --clean expands to --remove-empty-json --not-empty value --remove-errors
+                // --clean expands to --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id
                 removeEmptyJson = true;
                 notEmptyColumns.insert("value");
                 removeErrors = true;
+                notNullColumns.insert("value");
+                notNullColumns.insert("sensor_id");
             } else if (arg == "--only-value") {
                 if (i + 1 < argc) {
                     ++i;
@@ -279,6 +290,7 @@ public:
     const std::map<std::string, std::set<std::string>>& getExcludeValueFilters() const { return excludeValueFilters; }
     const std::map<std::string, std::set<std::string>>& getAllowedValues() const { return allowedValues; }
     const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
+    const std::set<std::string>& getNotNullColumns() const { return notNullColumns; }
     bool getRemoveEmptyJson() const { return removeEmptyJson; }
     bool getRemoveErrors() const { return removeErrors; }
     int getTailLines() const { return tailLines; }
@@ -302,7 +314,7 @@ public:
         
         // Common filtering options
         static const std::set<std::string> filterOptions = {
-            "--not-empty", "--only-value", "--exclude-value", "--allowed-values",
+            "--not-empty", "--not-null", "--only-value", "--exclude-value", "--allowed-values",
             "--remove-errors", "--remove-empty-json", "--clean"
         };
         
@@ -310,7 +322,7 @@ public:
         // Note: --allowed-values takes TWO args but we handle that specially
         static const std::set<std::string> optionsWithArgs = {
             "-if", "--input-format", "-e", "--extension", "-d", "--depth",
-            "--min-date", "--max-date", "--not-empty", "--only-value", 
+            "--min-date", "--max-date", "--not-empty", "--not-null", "--only-value", 
             "--exclude-value", "--allowed-values", "-o", "--output", "-of", "--output-format",
             "-c", "--column", "--tail"
         };

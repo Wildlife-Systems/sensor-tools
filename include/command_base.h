@@ -43,6 +43,7 @@ protected:
     bool removeErrors;
     bool removeEmptyJson;
     std::set<std::string> notEmptyColumns;
+    std::set<std::string> notNullColumns;
     std::map<std::string, std::set<std::string>> onlyValueFilters;
     std::map<std::string, std::set<std::string>> excludeValueFilters;
     std::map<std::string, std::set<std::string>> allowedValues;
@@ -110,6 +111,21 @@ protected:
                              << reqCol << "'" << std::endl;
                 }
                 return false;
+            }
+        }
+        
+        // Check if any required columns contain null values
+        for (const auto& reqCol : notNullColumns) {
+            auto it = reading.find(reqCol);
+            if (it != reading.end()) {
+                const std::string& val = it->second;
+                // Check for literal "null" string or ASCII null character
+                if (val == "null" || val.find('\0') != std::string::npos) {
+                    if (verbosity >= 2) {
+                        std::cerr << "  Skipping row: null value in column '" << reqCol << "'" << std::endl;
+                    }
+                    return false;
+                }
             }
         }
         
@@ -186,6 +202,7 @@ protected:
         excludeValueFilters = parser.getExcludeValueFilters();
         allowedValues = parser.getAllowedValues();
         notEmptyColumns = parser.getNotEmptyColumns();
+        notNullColumns = parser.getNotNullColumns();
         removeEmptyJson = parser.getRemoveEmptyJson();
         removeErrors = parser.getRemoveErrors();
         tailLines = parser.getTailLines();
