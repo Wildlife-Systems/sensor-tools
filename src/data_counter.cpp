@@ -19,7 +19,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
     }
 
     long long count = 0;
-    std::map<std::string, long long> localValueCounts;  // Local counts for thread safety
+    std::unordered_map<std::string, long long> localValueCounts;  // Local counts for thread safety
     DataReader reader(minDate, maxDate, verbosity, FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
     
     reader.processFile(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
@@ -52,7 +52,7 @@ long long DataCounter::countFromStdin() {
     }
 
     long long count = 0;
-    std::map<std::string, long long> localValueCounts;  // Local counts for thread safety
+    std::unordered_map<std::string, long long> localValueCounts;  // Local counts for thread safety
     std::string line;
 
     if (inputFormat == "csv") {

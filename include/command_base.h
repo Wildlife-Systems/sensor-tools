@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <vector>
 #include <map>
 #include <set>
@@ -121,13 +122,7 @@ protected:
             if (it != reading.end()) {
                 const std::string& val = it->second;
                 // Check for literal "null" string or ASCII null character
-                bool hasNullChar = false;
-                for (size_t i = 0; i < val.length(); ++i) {
-                    if (val[i] == '\0') {
-                        hasNullChar = true;
-                        break;
-                    }
-                }
+                bool hasNullChar = (memchr(val.data(), '\0', val.size()) != nullptr);
                 if (val == "null" || hasNullChar) {
                     if (verbosity >= 2) {
                         std::cerr << "  Skipping row: null value in column '" << reqCol << "'" << std::endl;

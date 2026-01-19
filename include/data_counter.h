@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <mutex>
 
 #include "command_base.h"
@@ -26,7 +26,7 @@ private:
     bool followMode;  // --follow flag for continuous monitoring
     std::string byColumn;  // --by-column for counts per value
     std::string outputFormat;  // --output-format: human, csv, json
-    std::map<std::string, long long> valueCounts;  // counts per column value
+    std::unordered_map<std::string, long long> valueCounts;  // counts per column value
     std::mutex valueCountsMutex;  // mutex for thread-safe access to valueCounts
     
     /**
