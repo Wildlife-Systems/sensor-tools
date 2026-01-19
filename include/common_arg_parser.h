@@ -27,11 +27,13 @@ private:
     std::set<std::string> notEmptyColumns;
     bool removeEmptyJson;
     bool removeErrors;
+    int tailLines;  // --tail <n>: only read last n lines from each file
     
 public:
     CommonArgParser() 
         : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), 
-          inputFormat("json"), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false) {}
+          inputFormat("json"), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false),
+          tailLines(0) {}
     
     // Parse common arguments and collect files
     // Returns true if parsing should continue, false if help was shown or error occurred
@@ -82,6 +84,23 @@ public:
                 }
             } else if (arg == "-f" || arg == "--follow") {
                 // Skip this flag - handled by DataCounter and StatsAnalyser
+            } else if (arg == "--tail") {
+                if (i + 1 < argc) {
+                    ++i;
+                    try {
+                        tailLines = std::stoi(argv[i]);
+                        if (tailLines <= 0) {
+                            std::cerr << "Error: --tail requires a positive number" << std::endl;
+                            return false;
+                        }
+                    } catch (...) {
+                        std::cerr << "Error: invalid value for --tail: " << argv[i] << std::endl;
+                        return false;
+                    }
+                } else {
+                    std::cerr << "Error: --tail requires a number argument" << std::endl;
+                    return false;
+                }
             } else if (arg == "-o" || arg == "--output") {
                 // Skip this flag and its argument - handled by SensorDataTransformer
                 if (i + 1 < argc) {
@@ -259,6 +278,7 @@ public:
     const std::set<std::string>& getNotEmptyColumns() const { return notEmptyColumns; }
     bool getRemoveEmptyJson() const { return removeEmptyJson; }
     bool getRemoveErrors() const { return removeErrors; }
+    int getTailLines() const { return tailLines; }
     
     /**
      * Check for unknown options in command line arguments.
@@ -274,7 +294,7 @@ public:
         static const std::set<std::string> commonOptions = {
             "-r", "--recursive", "-v", "-V", "-if", "--input-format",
             "-e", "--extension", "-d", "--depth", "--min-date", "--max-date",
-            "-h", "--help"
+            "--tail", "-h", "--help"
         };
         
         // Common filtering options
@@ -289,7 +309,7 @@ public:
             "-if", "--input-format", "-e", "--extension", "-d", "--depth",
             "--min-date", "--max-date", "--not-empty", "--only-value", 
             "--exclude-value", "--allowed-values", "-o", "--output", "-of", "--output-format",
-            "-c", "--column"
+            "-c", "--column", "--tail"
         };
         
         for (int i = 1; i < argc; ++i) {

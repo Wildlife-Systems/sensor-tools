@@ -21,11 +21,11 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -of --output-format --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
-    local count_opts="-f --follow --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local transform_opts="-o --output -of --output-format --tail --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
+    local count_opts="-f --follow --tail --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
-    local stats_opts="-f --follow -o --output --column --group-by"
+    local stats_opts="-f --follow --tail -o --output --column --group-by"
 
     # Determine which command we're completing for
     local cmd=""
@@ -64,6 +64,11 @@ _sensor_data() {
         -d|--depth)
             # Suggest some common depth values
             COMPREPLY=($(compgen -W "0 1 2 3 5 10" -- "$cur"))
+            return
+            ;;
+        --tail)
+            # Suggest some common tail values
+            COMPREPLY=($(compgen -W "10 50 100 500 1000" -- "$cur"))
             return
             ;;
         -if|--input-format)

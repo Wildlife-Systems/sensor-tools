@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <map>
@@ -18,6 +19,7 @@ private:
     long long maxDate;
     int verbosity;
     std::string inputFormat;  // "json" or "csv"
+    int tailLines;  // 0 = read all, >0 = read only last n lines
     
     bool passesDateFilter(const std::map<std::string, std::string>& reading) const {
         if (minDate <= 0 && maxDate <= 0) return true;
@@ -26,8 +28,8 @@ private:
     }
     
 public:
-    DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "json")
-        : minDate(minDate), maxDate(maxDate), verbosity(verbosity), inputFormat(format) {}
+    DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "json", int tailLines = 0)
+        : minDate(minDate), maxDate(maxDate), verbosity(verbosity), inputFormat(format), tailLines(tailLines) {}
     
     // Internal helper to process a stream (CSV or JSON format)
     template<typename Callback>
@@ -94,16 +96,81 @@ public:
     void processFile(const std::string& filename, Callback callback) {
         if (verbosity >= 1) {
             std::cout << "Processing file: " << filename << std::endl;
+            if (tailLines > 0) {
+                std::cout << "  (reading last " << tailLines << " lines only)" << std::endl;
+            }
         }
         
-        std::ifstream infile(filename);
-        if (!infile) {
-            std::cerr << "Warning: Cannot open file: " << filename << std::endl;
-            return;
-        }
+        bool isCSV = FileUtils::isCsvFile(filename);
         
-        processStream(infile, FileUtils::isCsvFile(filename), callback, filename);
-        infile.close();
+        if (tailLines > 0) {
+            // Use tail mode
+            if (isCSV) {
+                // CSV: read header from file, then process tail lines
+                std::ifstream headerFile(filename);
+                if (!headerFile) {
+                    std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+                    return;
+                }
+                std::string headerLine;
+                std::vector<std::string> csvHeaders;
+                if (std::getline(headerFile, headerLine) && !headerLine.empty()) {
+                    bool needMore = false;
+                    csvHeaders = CsvParser::parseCsvLine(headerFile, headerLine, needMore);
+                }
+                headerFile.close();
+                
+                // Read tail lines (+1 to account for header potentially being in tail)
+                auto lines = FileUtils::readTailLines(filename, tailLines + 1);
+                int lineNum = 0;
+                
+                for (const auto& line : lines) {
+                    lineNum++;
+                    if (line.empty()) continue;
+                    // Skip if this is the header line
+                    if (line == headerLine) continue;
+                    
+                    auto fields = CsvParser::parseCsvLine(line);
+                    if (fields.empty()) continue;
+                    
+                    std::map<std::string, std::string> reading;
+                    for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                        reading[csvHeaders[i]] = fields[i];
+                    }
+                    
+                    if (!passesDateFilter(reading)) continue;
+                    
+                    callback(reading, lineNum, filename);
+                }
+            } else {
+                // JSON: just process tail lines
+                auto lines = FileUtils::readTailLines(filename, tailLines);
+                int lineNum = 0;
+                
+                for (const auto& line : lines) {
+                    lineNum++;
+                    if (line.empty()) continue;
+                    
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (const auto& reading : readings) {
+                        if (reading.empty()) continue;
+                        
+                        if (!passesDateFilter(reading)) continue;
+                        
+                        callback(reading, lineNum, filename);
+                    }
+                }
+            }
+        } else {
+            std::ifstream infile(filename);
+            if (!infile) {
+                std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+                return;
+            }
+            
+            processStream(infile, isCSV, callback, filename);
+            infile.close();
+        }
     }
 };
 

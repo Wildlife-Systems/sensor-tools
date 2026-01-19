@@ -92,6 +92,7 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--tail <n>` - Only read the last n lines from each file
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
@@ -129,6 +130,7 @@ sensor-data count -r -e .out /path/to/logs/
 - `--exclude-value <col:val>` - Exclude rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--tail <n>` - Only read the last n lines from each file
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
@@ -192,6 +194,7 @@ sensor-data stats --clean input.out
 - `--remove-empty-json` - Remove empty JSON input lines
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--tail <n>` - Only read the last n lines from each file
 - `-r, --recursive` - Recursively process subdirectories
 - `-v` - Verbose output
 - `-V` - Very verbose output

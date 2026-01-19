@@ -1,5 +1,6 @@
 #include "data_counter.h"
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -8,6 +9,7 @@
 #include "json_parser.h"
 #include "file_utils.h"
 #include "file_collector.h"
+#include "data_reader.h"
 
 // ===== Private methods =====
 
@@ -16,60 +18,17 @@ long long DataCounter::countFromFile(const std::string& filename) {
         std::cerr << "Counting: " << filename << std::endl;
     }
 
-    std::ifstream infile(filename);
-    if (!infile) {
-        std::cerr << "Warning: Cannot open file: " << filename << std::endl;
-        return 0;
-    }
-
     long long count = 0;
-    std::string line;
-
-    if (FileUtils::isCsvFile(filename)) {
-        // CSV format - first line is header
-        std::vector<std::string> csvHeaders;
-        if (std::getline(infile, line) && !line.empty()) {
-            bool needMore = false;
-            csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+    DataReader reader(minDate, maxDate, verbosity, FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
+    
+    reader.processFile(filename, [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+        // Skip empty JSON arrays/objects if removeEmptyJson is set
+        if (reading.empty()) return;
+        if (shouldIncludeReading(reading)) {
+            count++;
         }
+    });
 
-        // Process data rows
-        while (std::getline(infile, line)) {
-            if (line.empty()) continue;
-
-            bool needMore = false;
-            auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-            if (fields.empty()) continue;
-
-            std::map<std::string, std::string> reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-
-            if (shouldIncludeReading(reading)) {
-                count++;
-            }
-        }
-    } else {
-        // JSON format
-        while (std::getline(infile, line)) {
-            if (line.empty()) continue;
-
-            auto readings = JsonParser::parseJsonLine(line);
-            
-            // Skip empty JSON arrays/objects if removeEmptyJson is set
-            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
-
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                if (shouldIncludeReading(reading)) {
-                    count++;
-                }
-            }
-        }
-    }
-
-    infile.close();
     return count;
 }
 
@@ -377,6 +336,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date" << std::endl;
+    std::cerr << "  --tail <n>                Only read the last n lines from each file" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " count sensor1.out" << std::endl;

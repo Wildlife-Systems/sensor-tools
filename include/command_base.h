@@ -45,6 +45,9 @@ protected:
     std::map<std::string, std::set<std::string>> excludeValueFilters;
     std::map<std::string, std::set<std::string>> allowedValues;
     
+    // Performance options
+    int tailLines;  // --tail <n>: only read last n lines from each file (0 = read all)
+    
     // Constructor with default values
     CommandBase() 
         : hasInputFiles(false)
@@ -56,7 +59,8 @@ protected:
         , minDate(0)
         , maxDate(0)
         , removeErrors(false)
-        , removeEmptyJson(false) {}
+        , removeEmptyJson(false)
+        , tailLines(0) {}
     
     virtual ~CommandBase() = default;
     
@@ -182,6 +186,7 @@ protected:
         notEmptyColumns = parser.getNotEmptyColumns();
         removeEmptyJson = parser.getRemoveEmptyJson();
         removeErrors = parser.getRemoveErrors();
+        tailLines = parser.getTailLines();
     }
     
     /**

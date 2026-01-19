@@ -111,6 +111,9 @@ Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 .TP
 .BI \-\-max\-date " date"
 Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
+.TP
+.BI \-\-tail " n"
+Only read the last n lines from each file (useful for quick checks on large files).
 .SH COUNT OPTIONS
 .TP
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR
@@ -162,6 +165,9 @@ Filter readings after this date.
 .TP
 .BI \-\-max\-date " date"
 Filter readings before this date.
+.TP
+.BI \-\-tail " n"
+Only read the last n lines from each file (useful for quick checks on large files).
 .SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
 .TP
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR
@@ -241,6 +247,9 @@ Filter readings after this date.
 .TP
 .BI \-\-max\-date " date"
 Filter readings before this date.
+.TP
+.BI \-\-tail " n"
+Only read the last n lines from each file (useful for quick checks on large files).
 .SH EXAMPLES
 Transform a JSON sensor file to CSV:
 .PP
