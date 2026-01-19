@@ -132,14 +132,16 @@ public:
                 }
                 headerFile.close();
                 
-                // Read tail lines (+1 to account for header potentially being in tail)
-                auto lines = FileUtils::readTailLines(filename, tailLines + 1);
+                // Read tail lines - we want exactly tailLines data rows
+                // If the header happens to be in the tail (small file), we'll skip it
+                auto lines = FileUtils::readTailLines(filename, tailLines);
                 int lineNum = 0;
+                int dataRowsProcessed = 0;
                 
                 for (auto& line : lines) {
                     lineNum++;
                     if (line.empty()) continue;
-                    // Skip if this is the header line
+                    // Skip if this is the header line (can happen with small files)
                     if (line == headerLine) continue;
                     
                     auto fields = CsvParser::parseCsvLine(line);
