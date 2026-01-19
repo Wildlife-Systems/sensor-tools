@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential g++
+    
+    - name: Build release
+      run: make release
+    
+    - name: Package
+      run: |
+        mkdir -p dist
+        cp sensor-data dist/sensor-data-linux-x64
+        chmod +x dist/sensor-data-linux-x64
+        tar -czvf dist/sensor-data-linux-x64.tar.gz -C dist sensor-data-linux-x64
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-x64
+        path: dist/sensor-data-linux-x64.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build release
+      run: make release
+    
+    - name: Package
+      run: |
+        mkdir -p dist
+        cp sensor-data dist/sensor-data-macos-x64
+        chmod +x dist/sensor-data-macos-x64
+        tar -czvf dist/sensor-data-macos-x64.tar.gz -C dist sensor-data-macos-x64
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-x64
+        path: dist/sensor-data-macos-x64.tar.gz
+
+  build-macos-arm:
+    runs-on: macos-14  # M1/ARM runner
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build release
+      run: make release
+    
+    - name: Package
+      run: |
+        mkdir -p dist
+        cp sensor-data dist/sensor-data-macos-arm64
+        chmod +x dist/sensor-data-macos-arm64
+        tar -czvf dist/sensor-data-macos-arm64.tar.gz -C dist sensor-data-macos-arm64
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-arm64
+        path: dist/sensor-data-macos-arm64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: mingw-w64-x86_64-gcc make
+    
+    - name: Build release
+      shell: msys2 {0}
+      run: make release
+    
+    - name: Package
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path dist
+        Copy-Item sensor-data.exe dist/sensor-data-windows-x64.exe
+        Compress-Archive -Path dist/sensor-data-windows-x64.exe -DestinationPath dist/sensor-data-windows-x64.zip
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-x64
+        path: dist/sensor-data-windows-x64.zip
+
+  build-deb:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential debhelper devscripts fakeroot
+    
+    - name: Build Debian package
+      run: |
+        dpkg-buildpackage -us -uc -b
+        mkdir -p dist
+        cp ../sensor-tools_*.deb dist/
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: debian-package
+        path: dist/*.deb
+
+  upload-release-assets:
+    needs: [build-linux, build-macos, build-macos-arm, build-windows, build-deb]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Display structure
+      run: ls -R artifacts
+    
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/linux-x64/sensor-data-linux-x64.tar.gz
+          artifacts/macos-x64/sensor-data-macos-x64.tar.gz
+          artifacts/macos-arm64/sensor-data-macos-arm64.tar.gz
+          artifacts/windows-x64/sensor-data-windows-x64.zip
+          artifacts/debian-package/*.deb

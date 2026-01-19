@@ -7,11 +7,11 @@ on:
     branches: [ main, master, develop ]
 
 jobs:
-  test:
+  test-linux:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Add WildlifeSystems apt repository
       run: |
@@ -42,11 +42,51 @@ jobs:
         fail_ci_if_error: false
         verbose: true
 
+  test-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build
+      run: make clean all
+    
+    - name: Run unit tests
+      run: make test
+    
+    - name: Run integration tests
+      run: make test-integration
+
+  test-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: mingw-w64-x86_64-gcc make
+    
+    - name: Build
+      shell: msys2 {0}
+      run: make clean all
+    
+    - name: Run unit tests
+      shell: msys2 {0}
+      run: make test
+    
+    - name: Run integration tests
+      shell: msys2 {0}
+      run: make test-integration
+
   build-deb:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install build dependencies
       run: |

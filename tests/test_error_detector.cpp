@@ -3,9 +3,9 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-#include <sys/stat.h>
+#include "../include/compat/stat.h"
 #include <cerrno>
-#include <unistd.h>
+#include "../include/compat/unistd.h"
 
 // Helper to create a directory
 bool createDir(const std::string& path) {

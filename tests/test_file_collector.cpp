@@ -3,8 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
-#include <sys/stat.h>
-#include <unistd.h>
+#include "../include/compat/stat.h"
+#include "../include/compat/unistd.h"
 
 // Helper to create temp directory structure
 class TempTestDir {

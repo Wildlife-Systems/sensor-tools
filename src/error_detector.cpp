@@ -3,7 +3,7 @@
 #include <cctype>
 #include <fstream>
 #include <sstream>
-#include <dirent.h>
+#include "compat/dirent.h"
 #include <cstring>
 #include <mutex>
 

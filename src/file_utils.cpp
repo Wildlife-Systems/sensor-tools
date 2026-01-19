@@ -1,5 +1,5 @@
 #include "file_utils.h"
-#include <sys/stat.h>
+#include "compat/stat.h"
 #include <algorithm>
 #include <fstream>
 #include <deque>

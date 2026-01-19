@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <dirent.h>
+#include "compat/dirent.h"
 #include "file_utils.h"
 
 // Centralized file collector that handles directory traversal and extension filtering
