@@ -195,17 +195,22 @@ public:
     void processStreamLimited(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName, long long maxBytes) {
         std::string line;
         int lineNum = 0;
+        long long bytesRead = 0;
         
         if (isCSV) {
             // CSV format - first line is header
             std::vector<std::string> csvHeaders;
-            if (std::getline(input, line) && !line.empty()) {
-                lineNum++;
-                bool needMore = false;
-                csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
+            if (std::getline(input, line)) {
+                bytesRead += static_cast<long long>(line.size()) + 1;  // +1 for newline
+                if (!line.empty()) {
+                    lineNum++;
+                    bool needMore = false;
+                    csvHeaders = CsvParser::parseCsvLine(input, line, needMore);
+                }
             }
             
-            while (input.tellg() < maxBytes && std::getline(input, line)) {
+            while (bytesRead < maxBytes && std::getline(input, line)) {
+                bytesRead += static_cast<long long>(line.size()) + 1;
                 lineNum++;
                 if (line.empty()) continue;
                 
@@ -224,7 +229,8 @@ public:
             }
         } else {
             // JSON format
-            while (input.tellg() < maxBytes && std::getline(input, line)) {
+            while (bytesRead < maxBytes && std::getline(input, line)) {
+                bytesRead += static_cast<long long>(line.size()) + 1;
                 lineNum++;
                 if (line.empty()) continue;
                 
