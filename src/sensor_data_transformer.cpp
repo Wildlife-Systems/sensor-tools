@@ -228,6 +228,23 @@ void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>&
             writeJsonObject(reading, outfile, removeWhitespace);
             outfile << sp << "]";
         }
+    } else {
+        // JSON input format (including "auto" which defaults to JSON for stdin)
+        for (const auto& line : lines) {
+            if (line.empty()) continue;
+            
+            auto readings = JsonParser::parseJsonLine(line);
+            for (const auto& reading : readings) {
+                if (reading.empty()) continue;
+                if (!shouldOutputReading(reading)) continue;
+                
+                if (!firstOutput) outfile << "\n";
+                firstOutput = false;
+                outfile << "[" << sp;
+                writeJsonObject(reading, outfile, removeWhitespace);
+                outfile << sp << "]";
+            }
+        }
     }
 }
 
