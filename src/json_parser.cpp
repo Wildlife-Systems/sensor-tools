@@ -1,8 +1,10 @@
 #include "json_parser.h"
 #include <cctype>
+#include <utility>
 
 ReadingList JsonParser::parseJsonLine(const std::string& line) {
     ReadingList readings;
+    readings.reserve(4);  // Most lines have 1-4 readings
     
     // Find the main object or array
     size_t start = line.find('{');
@@ -33,6 +35,7 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
         
         pos = objStart + 1;
         Reading current;
+        current.reserve(8);  // Most readings have ~5-8 fields
         
         // Parse key-value pairs for this object
         while (pos < line.length()) {
@@ -86,11 +89,11 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
                 pos = valueEnd;
             }
             
-            current[key] = value;
+            current.emplace(std::move(key), std::move(value));
         }
         
         if (!current.empty()) {
-            readings.push_back(current);
+            readings.push_back(std::move(current));
         }
         
         // Skip whitespace and commas after the object

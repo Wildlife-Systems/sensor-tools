@@ -1,8 +1,11 @@
 #include "csv_parser.h"
+#include <utility>
 
 std::vector<std::string> CsvParser::parseCsvLine(std::istream& input, std::string& line, bool& needMoreLines) {
     std::vector<std::string> fields;
+    fields.reserve(16);  // Typical CSV has 10-20 columns
     std::string current;
+    current.reserve(64);  // Pre-allocate for typical field length
     bool inQuotes = false;
     needMoreLines = false;
     
@@ -26,8 +29,9 @@ std::vector<std::string> CsvParser::parseCsvLine(std::istream& input, std::strin
                 if (c == '"') {
                     inQuotes = true;
                 } else if (c == ',') {
-                    fields.push_back(current);
+                    fields.emplace_back(std::move(current));
                     current.clear();
+                    current.reserve(64);
                 } else if (c != '\r') {  // Ignore CR in CRLF
                     current += c;
                 }
@@ -49,14 +53,16 @@ std::vector<std::string> CsvParser::parseCsvLine(std::istream& input, std::strin
         }
     }
     
-    fields.push_back(current);
+    fields.emplace_back(std::move(current));
     needMoreLines = false;
     return fields;
 }
 
 std::vector<std::string> CsvParser::parseCsvLine(const std::string& line) {
     std::vector<std::string> fields;
+    fields.reserve(16);  // Typical CSV has 10-20 columns
     std::string current;
+    current.reserve(64);  // Pre-allocate for typical field length
     bool inQuotes = false;
     
     for (size_t i = 0; i < line.length(); ++i) {
@@ -78,14 +84,15 @@ std::vector<std::string> CsvParser::parseCsvLine(const std::string& line) {
             if (c == '"') {
                 inQuotes = true;
             } else if (c == ',') {
-                fields.push_back(current);
+                fields.emplace_back(std::move(current));
                 current.clear();
+                current.reserve(64);
             } else if (c != '\r') {  // Ignore CR in CRLF
                 current += c;
             }
         }
     }
     
-    fields.push_back(current);
+    fields.emplace_back(std::move(current));
     return fields;
 }

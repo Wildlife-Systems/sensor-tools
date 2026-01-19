@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <utility>
 #include "types.h"
 #include "date_utils.h"
 #include "csv_parser.h"
@@ -21,7 +22,7 @@ private:
     std::string inputFormat;  // "json" or "csv"
     int tailLines;  // 0 = read all, >0 = read only last n lines
     
-    bool passesDateFilter(const Reading& reading) const {
+    inline bool passesDateFilter(const Reading& reading) const {
         if (minDate <= 0 && maxDate <= 0) return true;
         long long timestamp = DateUtils::getTimestamp(reading);
         return DateUtils::isInDateRange(timestamp, minDate, maxDate);
@@ -56,8 +57,9 @@ public:
                 
                 // Create a map from CSV headers to values
                 Reading reading;
+                reading.reserve(csvHeaders.size());
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
+                    reading.emplace(csvHeaders[i], std::move(fields[i]));
                 }
                 
                 if (!passesDateFilter(reading)) continue;
@@ -134,7 +136,7 @@ public:
                 auto lines = FileUtils::readTailLines(filename, tailLines + 1);
                 int lineNum = 0;
                 
-                for (const auto& line : lines) {
+                for (auto& line : lines) {
                     lineNum++;
                     if (line.empty()) continue;
                     // Skip if this is the header line
@@ -144,8 +146,9 @@ public:
                     if (fields.empty()) continue;
                     
                     Reading reading;
+                    reading.reserve(csvHeaders.size());
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading[csvHeaders[i]] = fields[i];
+                        reading.emplace(csvHeaders[i], std::move(fields[i]));
                     }
                     
                     if (!passesDateFilter(reading)) continue;
