@@ -34,6 +34,7 @@ private:
     // Column discovery
     std::set<std::string> allKeys;
     std::mutex keysMutex;
+    std::mutex outputMutex;  // Protect console output in multi-threaded operations
     int numThreads;
     bool usePrototype;
     

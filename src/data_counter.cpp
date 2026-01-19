@@ -52,6 +52,7 @@ long long DataCounter::countFromStdin() {
     }
 
     long long count = 0;
+    std::map<std::string, long long> localValueCounts;  // Local counts for thread safety
     std::string line;
 
     if (inputFormat == "csv") {
@@ -77,7 +78,7 @@ long long DataCounter::countFromStdin() {
                 if (!byColumn.empty()) {
                     auto it = reading.find(byColumn);
                     std::string value = (it != reading.end()) ? it->second : "(missing)";
-                    valueCounts[value]++;
+                    localValueCounts[value]++;
                 }
             }
         }
@@ -97,10 +98,18 @@ long long DataCounter::countFromStdin() {
                     if (!byColumn.empty()) {
                         auto it = reading.find(byColumn);
                         std::string value = (it != reading.end()) ? it->second : "(missing)";
-                        valueCounts[value]++;
+                        localValueCounts[value]++;
                     }
                 }
             }
+        }
+    }
+
+    // Merge local counts into shared valueCounts with mutex
+    if (!byColumn.empty() && !localValueCounts.empty()) {
+        std::lock_guard<std::mutex> lock(valueCountsMutex);
+        for (const auto& pair : localValueCounts) {
+            valueCounts[pair.first] += pair.second;
         }
     }
 

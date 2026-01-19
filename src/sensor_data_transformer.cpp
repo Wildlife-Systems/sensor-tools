@@ -85,6 +85,7 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
         std::lock_guard<std::mutex> lock(keysMutex);
         allKeys.insert(localKeys.begin(), localKeys.end());
         if (verbosity >= 2) {
+            std::lock_guard<std::mutex> outputLock(outputMutex);
             std::cout << "  Collected " << allKeys.size() << " unique keys so far" << std::endl;
         }
     }
@@ -93,6 +94,7 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
 void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::ostream& outfile, 
                                                const std::vector<std::string>& headers) {
     if (verbosity >= 1) {
+        std::lock_guard<std::mutex> lock(outputMutex);
         std::cout << "Processing file: " << filename << std::endl;
     }
     
@@ -110,6 +112,7 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
 void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, std::ostream& outfile, 
                                                    bool& firstOutput) {
     if (verbosity >= 1) {
+        std::lock_guard<std::mutex> lock(outputMutex);
         std::cerr << "Processing file: " << filename << std::endl;
     }
     
