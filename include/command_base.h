@@ -344,19 +344,29 @@ protected:
     
     /**
      * Write a single reading as JSON object
+     * Keys are sorted alphabetically for consistent output
      */
     static void writeJsonObject(const Reading& reading,
                                 std::ostream& outfile, bool compact = false) {
         const char* sp = compact ? "" : " ";
         outfile << "{" << sp;
-        bool first = true;
+        
+        // Sort keys for consistent output order
+        std::vector<std::string> keys;
+        keys.reserve(reading.size());
         for (const auto& pair : reading) {
+            keys.push_back(pair.first);
+        }
+        std::sort(keys.begin(), keys.end());
+        
+        bool first = true;
+        for (const auto& key : keys) {
             if (!first) outfile << "," << sp;
             first = false;
-            outfile << "\"" << escapeJsonString(pair.first) << "\":" << sp;
+            outfile << "\"" << escapeJsonString(key) << "\":" << sp;
             
             // Check if value is a number, boolean, or null
-            const std::string& val = pair.second;
+            const std::string& val = reading.at(key);
             if (val == "null" || val.empty()) {
                 outfile << "null";
             } else if (val == "true" || val == "false") {
