@@ -765,8 +765,8 @@ ds18b20,1000,22.5
 ds18b20,2000,23.0
 ds18b20,3000,23.5
 EOF
-# With --tail 2 and --after 2500, should count only readings after timestamp 2500
-result=$(./sensor-data count --tail 2 --after 2500 testdir/tail_date.csv)
+# With --tail 2 and --min-date 2500, should count only readings after timestamp 2500
+result=$(./sensor-data count --tail 2 --min-date 2500 testdir/tail_date.csv)
 if [ "$result" = "1" ]; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
