@@ -3,6 +3,12 @@
 
 #include "command_base.h"
 #include <string>
+#include <map>
+
+struct SensorLatest {
+    std::string sensorId;
+    long long timestamp = 0;
+};
 
 class LatestFinder : public CommandBase {
 public:

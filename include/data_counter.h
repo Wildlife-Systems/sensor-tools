@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <mutex>
 
 #include "command_base.h"
 
@@ -18,6 +19,7 @@
  * - Recursive directory processing
  * - Follow mode for files and stdin (like tail -f)
  * - Count by column value (--by-column)
+ * - Multi-threaded file processing
  */
 class DataCounter : public CommandBase {
 private:
@@ -25,9 +27,10 @@ private:
     std::string byColumn;  // --by-column for counts per value
     std::string outputFormat;  // --output-format: human, csv, json
     std::map<std::string, long long> valueCounts;  // counts per column value
+    std::mutex valueCountsMutex;  // mutex for thread-safe access to valueCounts
     
     /**
-     * Count readings from a single file
+     * Count readings from a single file (returns count, updates valueCounts thread-safely)
      */
     long long countFromFile(const std::string& filename);
     

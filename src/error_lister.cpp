@@ -2,6 +2,7 @@
 
 #include "data_reader.h"
 #include "error_detector.h"
+#include <sstream>
 
 // ===== Static helper method =====
 
@@ -59,17 +60,59 @@ ErrorLister::ErrorLister(int argc, char* argv[]) {
 // ===== Main listErrors method =====
 
 void ErrorLister::listErrors() {
-    DataReader reader(minDate, maxDate, verbosity, inputFormat);
-    
     if (inputFiles.empty()) {
+        DataReader reader(minDate, maxDate, verbosity, inputFormat);
         reader.processStdin(printErrorLine);
         return;
     }
     
     printCommonVerboseInfo("Listing errors", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
     
-    for (const auto& file : inputFiles) {
-        reader.processFile(file, printErrorLine);
+    // Process files in parallel, collecting error output strings
+    auto processFile = [this](const std::string& file) -> std::vector<std::string> {
+        std::vector<std::string> errorLines;
+        DataReader reader(minDate, maxDate, verbosity, inputFormat);
+        
+        reader.processFile(file, [&](const std::map<std::string, std::string>& reading, 
+                                      int lineNum, const std::string& source) {
+            if (!ErrorDetector::isErrorReading(reading)) return;
+            
+            std::ostringstream oss;
+            oss << source << ":" << lineNum;
+            
+            // Print relevant fields
+            auto sensorIt = reading.find("sensor");
+            auto valueIt = reading.find("value");
+            auto tempIt = reading.find("temperature");
+            auto idIt = reading.find("sensor_id");
+            auto nameIt = reading.find("name");
+            
+            if (sensorIt != reading.end()) oss << " sensor=" << sensorIt->second;
+            if (idIt != reading.end()) oss << " sensor_id=" << idIt->second;
+            if (nameIt != reading.end()) oss << " name=" << nameIt->second;
+            if (valueIt != reading.end()) oss << " value=" << valueIt->second;
+            if (tempIt != reading.end()) oss << " temperature=" << tempIt->second;
+            
+            std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+            oss << " [" << errorDesc << "]";
+            
+            errorLines.push_back(oss.str());
+        });
+        
+        return errorLines;
+    };
+    
+    // Combine function: concatenate error lines
+    auto combineErrors = [](std::vector<std::string>& combined, const std::vector<std::string>& local) {
+        combined.insert(combined.end(), local.begin(), local.end());
+    };
+    
+    std::vector<std::string> allErrors = processFilesParallel(inputFiles, processFile, combineErrors, 
+                                                               std::vector<std::string>());
+    
+    // Output all collected errors
+    for (const auto& line : allErrors) {
+        std::cout << line << std::endl;
     }
 }
 

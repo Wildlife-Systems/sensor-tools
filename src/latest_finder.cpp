@@ -3,19 +3,10 @@
 #include "data_reader.h"
 #include <iostream>
 #include <iomanip>
-#include <map>
 #include <vector>
 #include <algorithm>
 #include <ctime>
 #include <cstring>
-
-// Structure to hold latest reading info per sensor
-struct SensorLatest {
-    std::string sensorId;
-    long long timestamp;
-    
-    SensorLatest() : timestamp(0) {}
-};
 
 LatestFinder::LatestFinder(int argc, char* argv[]) : limitRows(0), outputFormat("human") {
     // Check for help flag first
@@ -85,14 +76,11 @@ int LatestFinder::main() {
     
     printCommonVerboseInfo("latest", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
     
-    // Map to store latest timestamp per sensor_id
-    std::map<std::string, SensorLatest> latestBySensor;
-    
-    // Create data reader with date filters
-    DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
-    
-    // Process all files
-    for (const std::string& file : inputFiles) {
+    // Process files in parallel, each thread builds its own local map
+    auto processFile = [this](const std::string& file) -> std::map<std::string, SensorLatest> {
+        std::map<std::string, SensorLatest> localLatest;
+        DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+        
         if (verbosity > 0) {
             std::cerr << "Processing: " << file << "\n";
         }
@@ -110,13 +98,30 @@ int LatestFinder::main() {
             if (ts <= 0) return;
             
             // Update if this is the latest for this sensor
-            auto& entry = latestBySensor[sensorId];
+            auto& entry = localLatest[sensorId];
             if (ts > entry.timestamp) {
                 entry.sensorId = sensorId;
                 entry.timestamp = ts;
             }
         });
-    }
+        
+        return localLatest;
+    };
+    
+    // Combine function: merge maps keeping latest timestamp per sensor
+    auto combineLatest = [](std::map<std::string, SensorLatest>& combined, 
+                            const std::map<std::string, SensorLatest>& local) {
+        for (const auto& pair : local) {
+            auto& existing = combined[pair.first];
+            if (pair.second.timestamp > existing.timestamp) {
+                existing = pair.second;
+            }
+        }
+    };
+    
+    std::map<std::string, SensorLatest> latestBySensor = 
+        processFilesParallel(inputFiles, processFile, combineLatest, 
+                             std::map<std::string, SensorLatest>());
     
     // Convert to vector for sorting and limiting
     std::vector<SensorLatest> results;

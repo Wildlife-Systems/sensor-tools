@@ -19,6 +19,7 @@ long long DataCounter::countFromFile(const std::string& filename) {
     }
 
     long long count = 0;
+    std::map<std::string, long long> localValueCounts;  // Local counts for thread safety
     DataReader reader(minDate, maxDate, verbosity, FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
     
     reader.processFile(filename, [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
@@ -29,10 +30,18 @@ long long DataCounter::countFromFile(const std::string& filename) {
             if (!byColumn.empty()) {
                 auto it = reading.find(byColumn);
                 std::string value = (it != reading.end()) ? it->second : "(missing)";
-                valueCounts[value]++;
+                localValueCounts[value]++;
             }
         }
     });
+
+    // Merge local counts into shared valueCounts with mutex
+    if (!byColumn.empty() && !localValueCounts.empty()) {
+        std::lock_guard<std::mutex> lock(valueCountsMutex);
+        for (const auto& pair : localValueCounts) {
+            valueCounts[pair.first] += pair.second;
+        }
+    }
 
     return count;
 }
@@ -334,9 +343,14 @@ void DataCounter::count() {
     if (!hasInputFiles) {
         totalCount = countFromStdin();
     } else {
-        for (const auto& file : inputFiles) {
-            totalCount += countFromFile(file);
-        }
+        // Use parallel processing for multiple files
+        totalCount = processFilesParallel<long long>(
+            inputFiles,
+            [this](const std::string& file) { return countFromFile(file); },
+            [](long long& acc, long long val) { acc += val; },
+            0LL,
+            4  // numThreads
+        );
     }
 
     if (!byColumn.empty()) {

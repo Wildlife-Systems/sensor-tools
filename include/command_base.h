@@ -7,6 +7,8 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <future>
+#include <mutex>
 
 #include "date_utils.h"
 #include "common_arg_parser.h"
@@ -346,6 +348,103 @@ protected:
             }
         }
         outfile << sp << "}";
+    }
+    
+    /**
+     * Process files in parallel using multiple threads.
+     * @param files Vector of file paths to process
+     * @param processFunc Function to call for each file (takes filename, returns result of type T)
+     * @param combineFunc Function to combine results (takes accumulator ref and result, modifies accumulator in-place)
+     * @param initialValue Initial value for the accumulator
+     * @param numThreads Number of threads to use (default: 4)
+     * @return Combined result
+     */
+    template<typename T, typename ProcessFunc, typename CombineFunc>
+    static T processFilesParallel(const std::vector<std::string>& files,
+                                   ProcessFunc processFunc,
+                                   CombineFunc combineFunc,
+                                   T initialValue,
+                                   size_t numThreads = 4) {
+        if (files.empty()) {
+            return initialValue;
+        }
+        
+        // For small number of files, process sequentially
+        if (files.size() <= 2 || numThreads <= 1) {
+            T result = initialValue;
+            for (const auto& file : files) {
+                combineFunc(result, processFunc(file));
+            }
+            return result;
+        }
+        
+        std::mutex resultMutex;
+        T combinedResult = initialValue;
+        
+        size_t filesPerThread = std::max(size_t(1), files.size() / numThreads);
+        std::vector<std::future<void>> futures;
+        futures.reserve(numThreads);
+        
+        for (size_t i = 0; i < files.size(); i += filesPerThread) {
+            size_t end = std::min(i + filesPerThread, files.size());
+            
+            futures.push_back(std::async(std::launch::async, [&, i, end]() {
+                T localResult = initialValue;
+                for (size_t j = i; j < end; ++j) {
+                    combineFunc(localResult, processFunc(files[j]));
+                }
+                
+                std::lock_guard<std::mutex> lock(resultMutex);
+                combineFunc(combinedResult, localResult);
+            }));
+        }
+        
+        for (auto& f : futures) {
+            f.wait();
+        }
+        
+        return combinedResult;
+    }
+    
+    /**
+     * Process files in parallel, calling a void function for each file.
+     * @param files Vector of file paths to process
+     * @param processFunc Function to call for each file (takes filename)
+     * @param numThreads Number of threads to use (default: 4)
+     */
+    template<typename ProcessFunc>
+    static void processFilesParallelVoid(const std::vector<std::string>& files,
+                                          ProcessFunc processFunc,
+                                          size_t numThreads = 4) {
+        if (files.empty()) {
+            return;
+        }
+        
+        // For small number of files, process sequentially
+        if (files.size() <= 2 || numThreads <= 1) {
+            for (const auto& file : files) {
+                processFunc(file);
+            }
+            return;
+        }
+        
+        size_t filesPerThread = std::max(size_t(1), files.size() / numThreads);
+        std::vector<std::future<void>> futures;
+        futures.reserve(numThreads);
+        
+        for (size_t i = 0; i < files.size(); i += filesPerThread) {
+            size_t end = std::min(i + filesPerThread, files.size());
+            
+            futures.push_back(std::async(std::launch::async, [&, i, end]() {
+                for (size_t j = i; j < end; ++j) {
+                    processFunc(files[j]);
+                }
+            }));
+        }
+        
+        for (auto& f : futures) {
+            f.wait();
+        }
     }
 };
 

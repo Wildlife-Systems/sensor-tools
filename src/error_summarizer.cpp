@@ -34,23 +34,42 @@ ErrorSummarizer::ErrorSummarizer(int argc, char* argv[]) {
 // ===== Main summariseErrors method =====
 
 void ErrorSummarizer::summariseErrors() {
-    DataReader reader(minDate, maxDate, verbosity, inputFormat);
-    
-    auto countError = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
-        if (ErrorDetector::isErrorReading(reading)) {
-            std::string errorDesc = ErrorDetector::getErrorDescription(reading);
-            errorCounts[errorDesc]++;
-        }
-    };
-    
     if (inputFiles.empty()) {
+        DataReader reader(minDate, maxDate, verbosity, inputFormat);
+        auto countError = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+            if (ErrorDetector::isErrorReading(reading)) {
+                std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                errorCounts[errorDesc]++;
+            }
+        };
         reader.processStdin(countError);
     } else {
         printCommonVerboseInfo("Summarising errors", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         
-        for (const auto& file : inputFiles) {
-            reader.processFile(file, countError);
-        }
+        // Process files in parallel
+        auto processFile = [this](const std::string& file) -> std::map<std::string, int> {
+            std::map<std::string, int> localCounts;
+            DataReader reader(minDate, maxDate, verbosity, inputFormat);
+            
+            reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+                if (ErrorDetector::isErrorReading(reading)) {
+                    std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+                    localCounts[errorDesc]++;
+                }
+            });
+            
+            return localCounts;
+        };
+        
+        // Combine function: sum counts
+        auto combineCounts = [](std::map<std::string, int>& combined, const std::map<std::string, int>& local) {
+            for (const auto& pair : local) {
+                combined[pair.first] += pair.second;
+            }
+        };
+        
+        errorCounts = processFilesParallel(inputFiles, processFile, combineCounts, 
+                                           std::map<std::string, int>());
     }
     
     // Print summary

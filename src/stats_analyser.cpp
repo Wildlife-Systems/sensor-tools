@@ -494,6 +494,12 @@ void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
     }
 }
 
+// Helper struct for parallel processing
+struct LocalStatsData {
+    std::map<std::string, std::vector<double>> columnData;
+    std::vector<long long> timestamps;
+};
+
 // ===== Main analyze method =====
 
 void StatsAnalyser::analyze() {
@@ -515,21 +521,63 @@ void StatsAnalyser::analyze() {
         return;
     }
     
-    DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
-    
-    auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
-        if (!shouldIncludeReading(reading)) return;
-        collectDataFromReading(reading);
-    };
-    
     if (inputFiles.empty()) {
+        DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+        auto collectData = [&](const std::map<std::string, std::string>& reading, int /*lineNum*/, const std::string& /*source*/) {
+            if (!shouldIncludeReading(reading)) return;
+            collectDataFromReading(reading);
+        };
         reader.processStdin(collectData);
     } else {
         printCommonVerboseInfo("Analyzing", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         
-        for (const auto& file : inputFiles) {
-            reader.processFile(file, collectData);
-        }
+        // Process files in parallel
+        auto processFile = [this](const std::string& file) -> LocalStatsData {
+            LocalStatsData local;
+            DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+            
+            reader.processFile(file, [&](const std::map<std::string, std::string>& reading, int, const std::string&) {
+                if (!shouldIncludeReading(reading)) return;
+                
+                // Collect timestamp if present
+                auto tsIt = reading.find("timestamp");
+                if (tsIt != reading.end() && isNumeric(tsIt->second)) {
+                    long long ts = std::stoll(tsIt->second);
+                    local.timestamps.push_back(ts);
+                }
+                
+                for (const auto& pair : reading) {
+                    // Skip if we're filtering by column and this isn't it
+                    if (!columnFilter.empty() && pair.first != columnFilter) continue;
+                    
+                    // Try to parse as numeric
+                    if (isNumeric(pair.second)) {
+                        double value = std::stod(pair.second);
+                        local.columnData[pair.first].push_back(value);
+                    }
+                }
+            });
+            
+            return local;
+        };
+        
+        // Combine function: merge column data and timestamps
+        auto combineStats = [](LocalStatsData& combined, const LocalStatsData& local) {
+            // Merge column data
+            for (const auto& pair : local.columnData) {
+                auto& target = combined.columnData[pair.first];
+                target.insert(target.end(), pair.second.begin(), pair.second.end());
+            }
+            // Merge timestamps
+            combined.timestamps.insert(combined.timestamps.end(), 
+                                       local.timestamps.begin(), local.timestamps.end());
+        };
+        
+        LocalStatsData result = processFilesParallel(inputFiles, processFile, combineStats, LocalStatsData());
+        
+        // Copy results to member variables
+        columnData = std::move(result.columnData);
+        timestamps = std::move(result.timestamps);
     }
     
     printStats();
