@@ -18,14 +18,6 @@ private:
     int verbosity;
     
     void collectFromDirectory(const std::string& dirPath, int currentDepth = 0) {
-        // Check depth limit
-        if (maxDepth >= 0 && currentDepth > maxDepth) {
-            if (verbosity >= 2) {
-                std::cout << "Skipping directory (depth limit): " << dirPath << std::endl;
-            }
-            return;
-        }
-        
         if (verbosity >= 1) {
             std::cout << "Scanning directory: " << dirPath << " (depth " << currentDepth << ")" << std::endl;
         }
@@ -37,36 +29,30 @@ private:
         }
         
         struct dirent* entry;
-        std::vector<std::string> dirEntries; // Collect entries first
         while ((entry = readdir(dir)) != nullptr) {
             std::string filename = entry->d_name;
             if (filename != "." && filename != "..") {
-                dirEntries.push_back(filename);
+                std::string fullPath = dirPath + "/" + filename;
+                if (FileUtils::isDirectory(fullPath)) {
+                    // Check depth limit BEFORE recursing to avoid unnecessary work
+                    if (recursive && (maxDepth < 0 || currentDepth < maxDepth)) {
+                        collectFromDirectory(fullPath, currentDepth + 1);
+                    } else if (verbosity >= 2 && recursive && maxDepth >= 0) {
+                        std::cout << "  Skipping subdirectory (depth limit): " << fullPath << std::endl;
+                    }
+                } else {
+                    if (FileUtils::matchesExtension(filename, extensionFilter)) {
+                        if (verbosity >= 2) {
+                            std::cout << "  Found file: " << fullPath << std::endl;
+                        }
+                        files.push_back(fullPath);
+                    } else if (verbosity >= 2 && !extensionFilter.empty()) {
+                        std::cout << "  Skipping (extension): " << fullPath << std::endl;
+                    }
+                }
             }
         }
         closedir(dir);
-        
-        // Sort entries for deterministic processing order
-        std::sort(dirEntries.begin(), dirEntries.end());
-        
-        // Process sorted entries
-        for (const std::string& filename : dirEntries) {
-            std::string fullPath = dirPath + "/" + filename;
-            if (FileUtils::isDirectory(fullPath)) {
-                if (recursive) {
-                    collectFromDirectory(fullPath, currentDepth + 1);
-                }
-            } else {
-                if (FileUtils::matchesExtension(filename, extensionFilter)) {
-                    if (verbosity >= 2) {
-                        std::cout << "  Found file: " << fullPath << std::endl;
-                    }
-                    files.push_back(fullPath);
-                } else if (verbosity >= 2 && !extensionFilter.empty()) {
-                    std::cout << "  Skipping (extension): " << fullPath << std::endl;
-                }
-            }
-        }
     }
     
 public:
