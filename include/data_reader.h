@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <mutex>
 #include "date_utils.h"
 #include "csv_parser.h"
 #include "json_parser.h"
@@ -16,7 +15,6 @@
 // Centralized data reader that handles file/stdin, CSV/JSON, and date filtering
 class DataReader {
 private:
-    static std::mutex outputMutex;  // Static mutex for thread-safe console output
     long long minDate;
     long long maxDate;
     int verbosity;
@@ -88,7 +86,6 @@ public:
     template<typename Callback>
     void processStdin(Callback callback) {
         if (verbosity >= 1) {
-            std::lock_guard<std::mutex> lock(outputMutex);
             std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
         }
         // For stdin: "csv" means CSV, anything else (including "auto" and "json") means JSON
@@ -99,7 +96,6 @@ public:
     template<typename Callback>
     void processFile(const std::string& filename, Callback callback) {
         if (verbosity >= 1) {
-            std::lock_guard<std::mutex> lock(outputMutex);
             std::cout << "Processing file: " << filename << std::endl;
             if (tailLines > 0) {
                 std::cout << "  (reading last " << tailLines << " lines only)" << std::endl;
@@ -178,7 +174,6 @@ public:
         } else {
             std::ifstream infile(filename);
             if (!infile) {
-                    std::lock_guard<std::mutex> lock(outputMutex);
                 return;
             }
             
