@@ -21,12 +21,12 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -of --output-format --tail --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
-    local count_opts="-f --follow --tail --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
+    local count_opts="-f --follow --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
-    local stats_opts="-f --follow --tail -o --output --column --group-by"
-    local latest_opts="-n -of --output-format --tail"
+    local stats_opts="-f --follow --tail --tail-column-value -o --output --column --group-by"
+    local latest_opts="-n -of --output-format --tail --tail-column-value"
 
     # Determine which command we're completing for
     local cmd=""
@@ -84,7 +84,7 @@ _sensor_data() {
             # Can't easily complete column names, leave empty
             return
             ;;
-        --only-value|--update-value|--update-where-empty)
+        --only-value|--update-value|--update-where-empty|--tail-column-value)
             # Format is column:value, can't easily complete
             return
             ;;

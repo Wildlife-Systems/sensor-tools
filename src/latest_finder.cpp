@@ -62,6 +62,7 @@ void LatestFinder::usage() {
               << "  --max-date <date>  Only consider readings before this date\n"
               << "  -if, --input-format <fmt>  Input format: json (default) or csv\n"
               << "  --tail <n>         Only read last n lines from each file\n"
+              << "  --tail-column-value <col:val> <n>  Return last n rows where column=value\n"
               << "  -v, --verbose      Show verbose output\n"
               << "  -h, --help         Show this help message\n"
               << "\nOutput columns: sensor_id, unix_timestamp, iso_date\n";

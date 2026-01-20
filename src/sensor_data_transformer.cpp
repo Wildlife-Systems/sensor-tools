@@ -439,6 +439,8 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
+    std::cerr << "  --tail-column-value <col:val> <n>" << std::endl;
+    std::cerr << "                            Return last n rows where column equals value (reads backwards)" << std::endl;
     std::cerr << "  --update-value <match> <target>" << std::endl;
     std::cerr << "                            Update target column when match column has value" << std::endl;
     std::cerr << "                            Format: col1:val1 col2:val2 (set col2 to val2 when col1==val1)" << std::endl;

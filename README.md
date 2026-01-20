@@ -100,6 +100,7 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id`
 - `--tail <n>` - Only read the last n lines from each file
+- `--tail-column-value <col:val> <n>` - Return last n rows where column equals value (reads backwards for efficiency)
 - `--update-value <match> <target>` - Update target column when match column has value (e.g., `--update-value sensor:ds18b20 unit:C`)
 - `--update-where-empty <match> <target>` - Same as `--update-value`, but only when target column is empty/missing
 - `-v` - Verbose output
@@ -147,6 +148,7 @@ sensor-data count -r -e .out /path/to/logs/
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
 - `--tail <n>` - Only read the last n lines from each file
+- `--tail-column-value <col:val> <n>` - Return last n rows where column equals value
 - `-v` - Verbose output
 - `-V` - Very verbose output
 

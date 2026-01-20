@@ -57,6 +57,11 @@ protected:
     // Performance options
     int tailLines;  // --tail <n>: only read last n lines from each file (0 = read all)
     
+    // --tail-column-value column:value n: return last n rows where column=value
+    std::string tailColumnValueColumn;
+    std::string tailColumnValueValue;
+    int tailColumnValueCount;
+    
     // Constructor with default values
     CommandBase() 
         : hasInputFiles(false)
@@ -69,7 +74,8 @@ protected:
         , maxDate(0)
         , removeErrors(false)
         , removeEmptyJson(false)
-        , tailLines(0) {}
+        , tailLines(0)
+        , tailColumnValueCount(0) {}
     
     virtual ~CommandBase() = default;
     
@@ -213,6 +219,9 @@ protected:
         removeErrors = parser.getRemoveErrors();
         tailLines = parser.getTailLines();
         updateRules = parser.getUpdateRules();
+        tailColumnValueColumn = parser.getTailColumnValueColumn();
+        tailColumnValueValue = parser.getTailColumnValueValue();
+        tailColumnValueCount = parser.getTailColumnValueCount();
     }
     
     /**
@@ -223,6 +232,9 @@ protected:
     DataReader createDataReader(bool rejectMode = false) const {
         DataReader reader(verbosity, inputFormat, tailLines);
         configureFilter(reader.getFilter(), rejectMode);
+        if (tailColumnValueCount > 0) {
+            reader.setTailColumnValue(tailColumnValueColumn, tailColumnValueValue, tailColumnValueCount);
+        }
         return reader;
     }
     

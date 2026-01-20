@@ -36,11 +36,16 @@ private:
     int tailLines;  // --tail <n>: only read last n lines from each file
     std::vector<UpdateRule> updateRules;  // --update-value and --update-where-empty
     
+    // --tail-column-value column:value n: return last n rows where column=value
+    std::string tailColumnValueColumn;
+    std::string tailColumnValueValue;
+    int tailColumnValueCount;
+    
 public:
     CommonArgParser() 
         : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), 
           inputFormat(DEFAULT_INPUT_FORMAT), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false),
-          tailLines(0) {}
+          tailLines(0), tailColumnValueCount(0) {}
     
     // Parse common arguments and collect files
     // Returns true if parsing should continue, false if help was shown or error occurred
@@ -106,6 +111,33 @@ public:
                     }
                 } else {
                     std::cerr << "Error: --tail requires a number argument" << std::endl;
+                    return false;
+                }
+            } else if (arg == "--tail-column-value") {
+                // --tail-column-value column:value n - return last n rows where column=value
+                if (i + 2 < argc) {
+                    ++i;
+                    std::string colVal = argv[i];
+                    size_t colonPos = colVal.find(':');
+                    if (colonPos == std::string::npos || colonPos == 0 || colonPos == colVal.length() - 1) {
+                        std::cerr << "Error: --tail-column-value requires format 'column:value n'" << std::endl;
+                        return false;
+                    }
+                    tailColumnValueColumn = colVal.substr(0, colonPos);
+                    tailColumnValueValue = colVal.substr(colonPos + 1);
+                    ++i;
+                    try {
+                        tailColumnValueCount = std::stoi(argv[i]);
+                        if (tailColumnValueCount <= 0) {
+                            std::cerr << "Error: --tail-column-value count must be a positive number" << std::endl;
+                            return false;
+                        }
+                    } catch (...) {
+                        std::cerr << "Error: invalid count for --tail-column-value: " << argv[i] << std::endl;
+                        return false;
+                    }
+                } else {
+                    std::cerr << "Error: --tail-column-value requires 'column:value n'" << std::endl;
                     return false;
                 }
             } else if (arg == "-o" || arg == "--output") {
@@ -336,6 +368,9 @@ public:
     bool getRemoveErrors() const noexcept { return removeErrors; }
     int getTailLines() const noexcept { return tailLines; }
     const std::vector<UpdateRule>& getUpdateRules() const noexcept { return updateRules; }
+    const std::string& getTailColumnValueColumn() const noexcept { return tailColumnValueColumn; }
+    const std::string& getTailColumnValueValue() const noexcept { return tailColumnValueValue; }
+    int getTailColumnValueCount() const noexcept { return tailColumnValueCount; }
     
     /**
      * Check for unknown options in command line arguments.
@@ -351,7 +386,7 @@ public:
         static const std::set<std::string> commonOptions = {
             "-r", "--recursive", "-v", "-V", "-if", "--input-format",
             "-e", "--extension", "-d", "--depth", "--min-date", "--max-date",
-            "--tail", "-h", "--help"
+            "--tail", "--tail-column-value", "-h", "--help"
         };
         
         // Common filtering options
@@ -362,12 +397,12 @@ public:
         };
         
         // Options that take arguments (need to skip the next arg)
-        // Note: --allowed-values takes TWO args but we handle that specially
+        // Note: --allowed-values and --tail-column-value take TWO args but we handle that specially
         static const std::set<std::string> optionsWithArgs = {
             "-if", "--input-format", "-e", "--extension", "-d", "--depth",
             "--min-date", "--max-date", "--not-empty", "--not-null", "--only-value", 
             "--exclude-value", "--allowed-values", "-o", "--output", "-of", "--output-format",
-            "-c", "--column", "--tail"
+            "-c", "--column", "--tail", "--tail-column-value"
         };
         
         for (int i = 1; i < argc; ++i) {

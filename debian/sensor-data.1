@@ -119,6 +119,11 @@ Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 .BI \-\-tail " n"
 Only read the last n lines from each file (useful for quick checks on large files).
 .TP
+.BI \-\-tail\-column\-value " col:val" " n"
+Return last n rows where the specified column equals value.
+Reads file backwards for efficiency on large files.
+Example: \-\-tail\-column\-value sensor:ds18b20 10 returns last 10 rows where sensor is "ds18b20".
+.TP
 .BI \-\-update\-value " match" " target"
 Update target column when match column has the specified value.
 Both arguments use the format column:value.
@@ -190,6 +195,9 @@ Filter readings before this date.
 .TP
 .BI \-\-tail " n"
 Only read the last n lines from each file (useful for quick checks on large files).
+.TP
+.BI \-\-tail\-column\-value " col:val" " n"
+Return last n rows where the specified column equals value.
 .SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
 .TP
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR

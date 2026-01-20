@@ -268,6 +268,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --min-date <date>         Filter readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date" << std::endl;
     std::cerr << "  --tail <n>                Only read the last n lines from each file" << std::endl;
+    std::cerr << "  --tail-column-value <col:val> <n>  Return last n rows where column=value" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " count sensor1.out" << std::endl;

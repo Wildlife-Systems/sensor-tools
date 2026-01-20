@@ -38,10 +38,22 @@ private:
     std::string inputFormat;  // "json", "csv", or "auto"
     int tailLines;  // 0 = read all, >0 = read only last n lines
     
+    // --tail-column-value column:value n: return last n rows where column=value
+    std::string tailColumnValueColumn;
+    std::string tailColumnValueValue;
+    int tailColumnValueCount;
+    
 public:
     DataReader(int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
-        : verbosity(verbosity), inputFormat(format), tailLines(tailLines) {
+        : verbosity(verbosity), inputFormat(format), tailLines(tailLines), tailColumnValueCount(0) {
         filter.setVerbosity(verbosity);
+    }
+    
+    // Set tail-column-value filter (reads file backwards for efficiency)
+    void setTailColumnValue(const std::string& column, const std::string& value, int count) {
+        tailColumnValueColumn = column;
+        tailColumnValueValue = value;
+        tailColumnValueCount = count;
     }
     
     // Get mutable reference to filter for configuration
@@ -153,6 +165,102 @@ public:
         } else {
             // "auto" or any other value: detect from file extension
             isCSV = FileUtils::isCsvFile(filename);
+        }
+        
+        // Handle --tail-column-value: read backwards to find last n matching rows
+        if (tailColumnValueCount > 0) {
+            if (verbosity >= 1) {
+                std::cerr << "  (finding last " << tailColumnValueCount << " rows where " 
+                         << tailColumnValueColumn << "=" << tailColumnValueValue << ")" << std::endl;
+            }
+            
+            std::vector<std::string> matchingLines;
+            matchingLines.reserve(tailColumnValueCount);
+            
+            // For CSV, we need the header first
+            std::vector<std::string> csvHeaders;
+            std::string headerLine;
+            if (isCSV) {
+                std::ifstream headerFile(filename);
+                if (!headerFile) {
+                    std::cerr << "Warning: Cannot open file: " << filename << std::endl;
+                    return;
+                }
+                if (std::getline(headerFile, headerLine) && !headerLine.empty()) {
+                    bool needMore = false;
+                    csvHeaders = CsvParser::parseCsvLine(headerFile, headerLine, needMore);
+                }
+                headerFile.close();
+            }
+            
+            // Read file backwards, collecting matching lines
+            FileUtils::readLinesReverse(filename, [&](const std::string& line) -> bool {
+                if (line.empty()) return true;  // continue
+                if (isCSV && line == headerLine) return true;  // skip header
+                
+                // Parse and check for match
+                if (isCSV) {
+                    auto fields = CsvParser::parseCsvLine(line);
+                    if (fields.empty()) return true;
+                    
+                    Reading reading;
+                    for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                        reading[csvHeaders[i]] = fields[i];
+                    }
+                    
+                    // Check column match
+                    auto it = reading.find(tailColumnValueColumn);
+                    if (it != reading.end() && it->second == tailColumnValueValue) {
+                        // Check other filters
+                        if (filter.shouldInclude(reading)) {
+                            matchingLines.push_back(line);
+                            if (static_cast<int>(matchingLines.size()) >= tailColumnValueCount) {
+                                return false;  // stop reading
+                            }
+                        }
+                    }
+                } else {
+                    // JSON
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (const auto& reading : readings) {
+                        if (reading.empty()) continue;
+                        
+                        auto it = reading.find(tailColumnValueColumn);
+                        if (it != reading.end() && it->second == tailColumnValueValue) {
+                            if (filter.shouldInclude(reading)) {
+                                matchingLines.push_back(line);
+                                if (static_cast<int>(matchingLines.size()) >= tailColumnValueCount) {
+                                    return false;  // stop reading
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;  // continue reading
+            });
+            
+            // Reverse to get chronological order, then process
+            std::reverse(matchingLines.begin(), matchingLines.end());
+            int lineNum = 0;
+            for (const auto& line : matchingLines) {
+                lineNum++;
+                if (isCSV) {
+                    auto fields = CsvParser::parseCsvLine(line);
+                    Reading reading;
+                    for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                        reading[csvHeaders[i]] = fields[i];
+                    }
+                    filter.applyTransformations(reading);
+                    callback(reading, lineNum, filename);
+                } else {
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (auto reading : readings) {
+                        filter.applyTransformations(reading);
+                        callback(reading, lineNum, filename);
+                    }
+                }
+            }
+            return;  // Done with tail-column-value processing
         }
         
         if (tailLines > 0) {
