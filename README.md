@@ -15,6 +15,8 @@ A command-line tool for processing and analysing sensor data files.
 - Summarise error occurrences
 - Recursive directory processing with depth limits
 - Bash autocompletion
+- **sensor-mon**: Interactive ncurses-based sensor monitoring with live graphs
+- **sensor-plot**: Historical data graphing tool for visualising sensor readings
 
 ## Installation
 

@@ -8,6 +8,48 @@
 #include <string.h>
 #include <time.h>
 
+/* Downsample values array to fit in graph, using time-based bucket averaging */
+int downsample_to_graph(const double *values, const long *timestamps, int count,
+                        long start_time, long end_time, int num_buckets, graph_data_t *graph)
+{
+    if (!values || !timestamps || count <= 0 || !graph) return 0;
+    if (start_time >= end_time) return 0;
+    if (num_buckets <= 0) num_buckets = MAX_GRAPH_POINTS;
+    if (num_buckets > MAX_GRAPH_POINTS) num_buckets = MAX_GRAPH_POINTS;
+    
+    reset_graph(graph);
+    
+    /* Use time-based bucketing for consistent x-axis representation */
+    long time_range = end_time - start_time;
+    double time_per_bucket = (double)time_range / num_buckets;
+    int points_added = 0;
+    
+    for (int bucket = 0; bucket < num_buckets; bucket++) {
+        long bucket_start = start_time + (long)(bucket * time_per_bucket);
+        long bucket_end = start_time + (long)((bucket + 1) * time_per_bucket);
+        
+        /* Find all values within this time bucket */
+        double sum = 0;
+        int bucket_count = 0;
+        for (int i = 0; i < count; i++) {
+            if (timestamps[i] >= bucket_start && timestamps[i] < bucket_end) {
+                sum += values[i];
+                bucket_count++;
+            }
+        }
+        
+        if (bucket_count > 0) {
+            add_graph_point(graph, sum / bucket_count);
+            points_added++;
+        } else {
+            /* No data in this bucket - use NaN or skip? 
+             * For now, we skip empty buckets to avoid gaps in the line */
+        }
+    }
+    
+    return points_added;
+}
+
 /* Add value to graph data */
 void add_graph_point(graph_data_t *graph, double value)
 {

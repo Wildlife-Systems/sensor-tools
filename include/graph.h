@@ -26,4 +26,16 @@ void draw_graph(graph_data_t *graph, int start_row, int end_row, int start_col, 
 /* Reset graph data */
 void reset_graph(graph_data_t *graph);
 
+/* Downsample values array to fit in graph, using time-based bucket averaging
+ * values: input array of values
+ * timestamps: input array of timestamps (unix time)
+ * count: number of values in input array
+ * start_time: start of time window
+ * end_time: end of time window
+ * num_buckets: number of buckets to create (typically screen width)
+ * graph: output graph to populate
+ * Returns number of points added to graph */
+int downsample_to_graph(const double *values, const long *timestamps, int count,
+                        long start_time, long end_time, int num_buckets, graph_data_t *graph);
+
 #endif /* GRAPH_H */

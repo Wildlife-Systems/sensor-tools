@@ -24,7 +24,9 @@ private:
         
         DIR* dir = opendir(dirPath.c_str());
         if (!dir) {
-            std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            if (verbosity >= 1) {
+                std::cerr << "Warning: Cannot open directory: " << dirPath << std::endl;
+            }
             return;
         }
         
@@ -32,7 +34,13 @@ private:
         while ((entry = readdir(dir)) != nullptr) {
             std::string filename = entry->d_name;
             if (filename != "." && filename != "..") {
-                std::string fullPath = dirPath + "/" + filename;
+                // Construct full path, avoiding double slashes
+                std::string fullPath = dirPath;
+                if (!fullPath.empty() && fullPath.back() != '/' && fullPath.back() != '\\') {
+                    fullPath += "/";
+                }
+                fullPath += filename;
+                
                 if (FileUtils::isDirectory(fullPath)) {
                     // Check depth limit BEFORE recursing to avoid unnecessary work
                     if (recursive && (maxDepth < 0 || currentDepth < maxDepth)) {
@@ -60,10 +68,20 @@ public:
         : recursive(recursive), extensionFilter(extension), maxDepth(maxDepth), verbosity(verbosity) {}
     
     void addPath(const std::string& path) {
-        if (FileUtils::isDirectory(path)) {
-            collectFromDirectory(path);
+        // Normalize path - remove trailing slashes
+        std::string normalizedPath = path;
+        while (!normalizedPath.empty() && 
+               (normalizedPath.back() == '/' || normalizedPath.back() == '\\')) {
+            normalizedPath.pop_back();
+        }
+        if (normalizedPath.empty()) {
+            normalizedPath = ".";
+        }
+        
+        if (FileUtils::isDirectory(normalizedPath)) {
+            collectFromDirectory(normalizedPath);
         } else {
-            files.push_back(path);
+            files.push_back(normalizedPath);
         }
     }
     

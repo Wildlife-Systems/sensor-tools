@@ -38,6 +38,65 @@ sensor_data_result_t *sensor_data_tail_by_sensor_id(
 );
 
 /**
+ * Read values for a specific sensor_id within a time range.
+ * 
+ * @param directory     Directory to search (e.g., "/var/ws")
+ * @param sensor_id     The sensor_id to filter by
+ * @param start_time    Start of time range (unix timestamp)
+ * @param end_time      End of time range (unix timestamp)
+ * @param recursive     If non-zero, search subdirectories
+ * @return              Result structure (caller must free with sensor_data_result_free)
+ *                      Returns NULL on error
+ */
+sensor_data_result_t *sensor_data_range_by_sensor_id(
+    const char *directory,
+    const char *sensor_id,
+    long start_time,
+    long end_time,
+    int recursive
+);
+
+/**
+ * Read values for a specific sensor_id within a time range, with extension filter.
+ * 
+ * @param directory     Directory to search (e.g., "/var/ws")
+ * @param sensor_id     The sensor_id to filter by
+ * @param start_time    Start of time range (unix timestamp)
+ * @param end_time      End of time range (unix timestamp)
+ * @param recursive     If non-zero, search subdirectories
+ * @param extension     File extension filter (e.g., ".out"), or NULL for default ".out"
+ * @param max_depth     Maximum directory depth (-1 for unlimited)
+ * @return              Result structure (caller must free with sensor_data_result_free)
+ *                      Returns NULL on error
+ */
+sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
+    const char *directory,
+    const char *sensor_id,
+    long start_time,
+    long end_time,
+    int recursive,
+    const char *extension,
+    int max_depth
+);
+
+/**
+ * Read the first n values for a specific sensor_id from .out files in a directory.
+ * 
+ * @param directory     Directory to search (e.g., "/var/ws")
+ * @param sensor_id     The sensor_id to filter by
+ * @param max_count     Maximum number of values to return
+ * @param recursive     If non-zero, search subdirectories
+ * @return              Result structure (caller must free with sensor_data_result_free)
+ *                      Returns NULL on error
+ */
+sensor_data_result_t *sensor_data_head_by_sensor_id(
+    const char *directory,
+    const char *sensor_id,
+    int max_count,
+    int recursive
+);
+
+/**
  * Free a result structure returned by sensor_data_* functions
  */
 void sensor_data_result_free(sensor_data_result_t *result);
