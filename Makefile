@@ -10,9 +10,21 @@ PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
 # Detect OS for ncurses/pdcurses
+# Check for MSYSTEM (set in MSYS2 environment) or Windows_NT
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
-ifeq ($(OS),Windows_NT)
-    # Windows with PDCurses
+MSYSTEM_VAL := $(shell echo $$MSYSTEM)
+ifneq (,$(findstring MINGW,$(MSYSTEM_VAL)))
+    # MSYS2 MinGW environment
+    LDFLAGS_NCURSES = -lpdcurses
+    TARGET_MON_EXT = .exe
+    TARGET_EXT = .exe
+else ifneq (,$(findstring MINGW,$(UNAME_S)))
+    # MSYS2 MinGW detected via uname
+    LDFLAGS_NCURSES = -lpdcurses
+    TARGET_MON_EXT = .exe
+    TARGET_EXT = .exe
+else ifeq ($(OS),Windows_NT)
+    # Windows native
     LDFLAGS_NCURSES = -lpdcurses
     TARGET_MON_EXT = .exe
     TARGET_EXT = .exe
