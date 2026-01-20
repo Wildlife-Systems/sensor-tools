@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, develop, add-sensor-plot ]
+    branches: [ main, master, develop, add-sensor-plot, add-rdata-output ]
   pull_request:
     branches: [ main, master, develop ]
 
@@ -97,6 +97,65 @@ jobs:
     
     - name: Generate coverage report
       shell: msys2 {0}
+      run: make coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        verbose: true
+
+  test-rdata:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential g++ libncurses-dev r-base
+    
+    - name: Build with coverage
+      run: make clean all COVERAGE=1
+    
+    - name: Test RData output
+      run: |
+        # Create test JSON input
+        echo '{"sensor_id":"temp1","unit":"C","value":23.5}' > /tmp/test_input.json
+        
+        # Transform to RData
+        ./sensor-data transform -i /tmp/test_input.json -o /tmp/test_output.RData -f rdata
+        
+        # Validate with R - load and verify structure
+        Rscript -e "
+          load('/tmp/test_output.RData')
+          stopifnot(exists('sensor_data'))
+          stopifnot(is.data.frame(sensor_data))
+          stopifnot(nrow(sensor_data) == 1)
+          print(sensor_data)
+          cat('RData validation passed!\n')
+        "
+    
+    - name: Test RDS output
+      run: |
+        # Create test JSON input
+        echo '{"sensor":"ds18b20","sensor_id":"28-123","value":21.5}' > /tmp/test_rds.json
+        
+        # Transform to RDS
+        ./sensor-data transform -i /tmp/test_rds.json -o /tmp/test_output.rds -f rds
+        
+        # Validate with R - load and verify structure
+        Rscript -e "
+          sensor_data <- readRDS('/tmp/test_output.rds')
+          stopifnot(is.data.frame(sensor_data))
+          stopifnot(nrow(sensor_data) == 1)
+          print(sensor_data)
+          cat('RDS validation passed!\n')
+        "
+    
+    - name: Generate coverage report
       run: make coverage
     
     - name: Upload coverage to Codecov
