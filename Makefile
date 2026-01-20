@@ -49,7 +49,7 @@ test: $(LIB_OBJECTS)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_common_arg_parser.cpp src/file_utils.o -o test_common_arg_parser $(LDFLAGS) && ./test_common_arg_parser
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_data_reader.cpp src/csv_parser.o src/json_parser.o src/file_utils.o src/error_detector.o -o test_data_reader $(LDFLAGS) && ./test_data_reader
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_file_collector.cpp src/file_utils.o -o test_file_collector $(LDFLAGS) && ./test_file_collector
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_command_base.cpp src/error_detector.o -o test_command_base $(LDFLAGS) && ./test_command_base
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_command_base.cpp src/csv_parser.o src/json_parser.o src/file_utils.o src/error_detector.o -o test_command_base $(LDFLAGS) && ./test_command_base
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_stats_analyser.cpp -o test_stats_analyser $(LDFLAGS) && ./test_stats_analyser
 	@echo "All unit tests passed!"
 
