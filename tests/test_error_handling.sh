@@ -200,12 +200,12 @@ echo "--- Invalid format errors ---"
 # Test: Invalid --output-format value
 check_error "transform: Invalid --output-format value" \
     "echo '{}' | ./sensor-data transform -of xml" \
-    "must be 'json' or 'csv'"
+    "must be 'json', 'csv', 'rdata', or 'rds'"
 
 # Test: Invalid --output-format value (yaml)
 check_error "transform: Invalid --output-format value (yaml)" \
     "echo '{}' | ./sensor-data transform --output-format yaml" \
-    "must be 'json' or 'csv'"
+    "must be 'json', 'csv', 'rdata', or 'rds'"
 
 # Test: Invalid --only-value format (no colon)
 check_error "transform: --only-value missing colon" \

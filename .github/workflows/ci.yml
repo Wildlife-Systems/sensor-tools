@@ -126,7 +126,7 @@ jobs:
         echo '{"sensor_id":"temp1","unit":"C","value":23.5}' > /tmp/test_input.json
         
         # Transform to RData
-        ./sensor-data transform -i /tmp/test_input.json -o /tmp/test_output.RData -f rdata
+        ./sensor-data transform -of rdata -o /tmp/test_output.RData /tmp/test_input.json
         
         # Validate with R - load and verify structure
         Rscript -e "
@@ -144,7 +144,7 @@ jobs:
         echo '{"sensor":"ds18b20","sensor_id":"28-123","value":21.5}' > /tmp/test_rds.json
         
         # Transform to RDS
-        ./sensor-data transform -i /tmp/test_rds.json -o /tmp/test_output.rds -f rds
+        ./sensor-data transform -of rds -o /tmp/test_output.rds /tmp/test_rds.json
         
         # Validate with R - load and verify structure
         Rscript -e "
