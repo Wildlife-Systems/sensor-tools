@@ -255,17 +255,17 @@ else
     FAILED=$((FAILED + 1))
 fi
 
-# Test 10: Multi-object JSON line passthrough
+# Test 10: Multi-object JSON line - each reading becomes a separate line
 echo ""
-echo "Test 10: Multi-object JSON line passthrough"
+echo "Test 10: Multi-object JSON line - each reading becomes a separate line"
 input='[ { "sensor": "ds18b20", "value": 22.5 }, { "sensor": "dht22", "value": 45 } ]'
 result=$(echo "$input" | ./sensor-data transform)
-if [ "$result" = "$input" ]; then
+count=$(echo "$result" | wc -l | tr -d ' ')
+if [ "$count" -eq 2 ]; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
 else
-    echo "  ✗ FAIL"
-    echo "  Expected: $input"
+    echo "  ✗ FAIL - Expected 2 output lines, got $count"
     echo "  Got: $result"
     FAILED=$((FAILED + 1))
 fi
