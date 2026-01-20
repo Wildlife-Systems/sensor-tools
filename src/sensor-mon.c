@@ -435,6 +435,106 @@ double extract_json_value(const char *json_str)
     return val;
 }
 
+/* Extract sensor_id from JSON object - returns malloc'd string or NULL */
+char *extract_json_sensor_id(const char *json_str)
+{
+    if (!json_str) return NULL;
+    
+    /* Look for "sensor_id": followed by a quoted string or number */
+    const char *id_pos = strstr(json_str, "\"sensor_id\":");
+    if (!id_pos) return NULL;
+    
+    /* Skip past "sensor_id": */
+    id_pos += 12;
+    
+    /* Skip whitespace */
+    while (*id_pos == ' ' || *id_pos == '\t') id_pos++;
+    
+    if (*id_pos == '"') {
+        /* Quoted string value */
+        id_pos++; /* skip opening quote */
+        const char *end = strchr(id_pos, '"');
+        if (!end) return NULL;
+        size_t len = end - id_pos;
+        char *result = malloc(len + 1);
+        if (result) {
+            memcpy(result, id_pos, len);
+            result[len] = '\0';
+        }
+        return result;
+    } else {
+        /* Unquoted value (number) */
+        const char *end = id_pos;
+        while (*end && *end != ',' && *end != '}' && *end != ' ') end++;
+        size_t len = end - id_pos;
+        char *result = malloc(len + 1);
+        if (result) {
+            memcpy(result, id_pos, len);
+            result[len] = '\0';
+        }
+        return result;
+    }
+}
+
+/* Load historical data from /var/ws .out files using sensor-data transform
+ * Pre-populates graph with last n matching readings for the given sensor_id
+ * Returns number of points loaded
+ */
+int load_historical_data(graph_data_t *graph, const char *sensor_id, int max_points)
+{
+    if (!graph || !sensor_id || max_points <= 0) return 0;
+    
+#ifdef _WIN32
+    /* Historical data loading not available on Windows */
+    (void)graph;
+    (void)sensor_id;
+    (void)max_points;
+    return 0;
+#else
+    /* Check if /var/ws exists */
+    struct stat st;
+    if (stat("/var/ws", &st) != 0 || !S_ISDIR(st.st_mode)) {
+        return 0;
+    }
+    
+    /* Build command: sensor-data transform --tail-column-value sensor_id:<id> <n> -r /var/ws -e .out */
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), 
+             "sensor-data transform --tail-column-value sensor_id:%s %d -r /var/ws -e .out 2>/dev/null",
+             sensor_id, max_points);
+    
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return 0;
+    
+    char line[1024];
+    int count = 0;
+    double *values = malloc(max_points * sizeof(double));
+    if (!values) {
+        pclose(fp);
+        return 0;
+    }
+    
+    /* Read values from output - each line is a JSON array with one object */
+    while (fgets(line, sizeof(line), fp) && count < max_points) {
+        double val = extract_json_value(line);
+        /* Only add if we got a valid number (non-zero or the string had "value":0) */
+        if (val != 0.0 || strstr(line, "\"value\":") != NULL) {
+            values[count++] = val;
+        }
+    }
+    
+    pclose(fp);
+    
+    /* Add values to graph in order (oldest first) */
+    for (int i = 0; i < count; i++) {
+        add_graph_point(graph, values[i]);
+    }
+    
+    free(values);
+    return count;
+#endif
+}
+
 /* scan sensors once - only include those that identify correctly */
 void scan_sensors(char ***apps_p, int *napps_p, int **ok_p)
 {
@@ -757,8 +857,24 @@ int main(int argc, char *argv[])
                     sensor_results = parse_sensor_results(sensor_output, &num_results);
                     current_result = 0;
                     
-                    /* Add initial graph point */
+                    /* Load historical data from /var/ws if sensor_id is available */
                     if (sensor_results && current_result < num_results) {
+                        char *sid = extract_json_sensor_id(sensor_results[current_result]);
+                        if (sid) {
+                            /* Show loading historical data message */
+                            mvwprintw(stdscr, 4, 2, "Loading historical data...");
+                            refresh();
+                            
+                            /* Load half the graph width with historical data */
+                            int loaded = load_historical_data(&graph, sid, MAX_GRAPH_POINTS / 2);
+                            if (loaded > 0) {
+                                mvwprintw(stdscr, 4, 2, "Loaded %d historical points", loaded);
+                                refresh();
+                            }
+                            free(sid);
+                        }
+                        
+                        /* Add current reading to graph */
                         double value = extract_json_value(sensor_results[current_result]);
                         add_graph_point(&graph, value);
                     }
@@ -770,8 +886,13 @@ int main(int argc, char *argv[])
             current_result = (current_result - 1 + num_results) % num_results;
             /* Reset graph data for new sensor result */
             reset_graph(&graph);
-            /* Add initial graph point for the new result */
+            /* Load historical data and add initial point for the new result */
             if (sensor_results && current_result < num_results) {
+                char *sid = extract_json_sensor_id(sensor_results[current_result]);
+                if (sid) {
+                    load_historical_data(&graph, sid, MAX_GRAPH_POINTS / 2);
+                    free(sid);
+                }
                 double value = extract_json_value(sensor_results[current_result]);
                 add_graph_point(&graph, value);
             }
@@ -780,8 +901,13 @@ int main(int argc, char *argv[])
             current_result = (current_result + 1) % num_results;
             /* Reset graph data for new sensor result */
             reset_graph(&graph);
-            /* Add initial graph point for the new result */
+            /* Load historical data and add initial point for the new result */
             if (sensor_results && current_result < num_results) {
+                char *sid = extract_json_sensor_id(sensor_results[current_result]);
+                if (sid) {
+                    load_historical_data(&graph, sid, MAX_GRAPH_POINTS / 2);
+                    free(sid);
+                }
                 double value = extract_json_value(sensor_results[current_result]);
                 add_graph_point(&graph, value);
             }
