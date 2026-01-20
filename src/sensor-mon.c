@@ -8,7 +8,9 @@
     #define pclose _pclose
     #define access _access
     #define F_OK 0
-    #define X_OK 0  /* Windows doesn't have X_OK */
+    #ifndef X_OK
+        #define X_OK 0  /* Windows doesn't have X_OK */
+    #endif
     #define PATH_SEP ';'
     #define DIR_SEP '\\'
     #define strtok_r strtok_s
@@ -29,6 +31,9 @@
 #include <errno.h>
 #include <time.h>
 #include "graph.h"
+
+/* Forward declarations */
+static const char *basename_of(const char *path);
 
 static volatile sig_atomic_t resized = 0;
 

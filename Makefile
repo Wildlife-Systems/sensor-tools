@@ -14,18 +14,22 @@ BINDIR = $(PREFIX)/bin
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 MSYSTEM_VAL := $(shell echo $$MSYSTEM)
 ifneq (,$(findstring MINGW,$(MSYSTEM_VAL)))
-    # MSYS2 MinGW environment
-    LDFLAGS_NCURSES = -lpdcurses
+    # MSYS2 MinGW environment - PDCurses headers are in pdcurses subdirectory
+    # PDC_WIDE and PDC_FORCE_UTF8 must match how the library was built
+    CFLAGS += -I/mingw64/include/pdcurses -DPDC_WIDE -DPDC_FORCE_UTF8
+    LDFLAGS_NCURSES = -L/mingw64/lib -lpdcurses
     TARGET_MON_EXT = .exe
     TARGET_EXT = .exe
 else ifneq (,$(findstring MINGW,$(UNAME_S)))
     # MSYS2 MinGW detected via uname
-    LDFLAGS_NCURSES = -lpdcurses
+    CFLAGS += -I/mingw64/include/pdcurses -DPDC_WIDE -DPDC_FORCE_UTF8
+    LDFLAGS_NCURSES = -L/mingw64/lib -lpdcurses
     TARGET_MON_EXT = .exe
     TARGET_EXT = .exe
 else ifeq ($(OS),Windows_NT)
     # Windows native
-    LDFLAGS_NCURSES = -lpdcurses
+    CFLAGS += -I/mingw64/include/pdcurses -DPDC_WIDE -DPDC_FORCE_UTF8
+    LDFLAGS_NCURSES = -L/mingw64/lib -lpdcurses
     TARGET_MON_EXT = .exe
     TARGET_EXT = .exe
 else ifeq ($(UNAME_S),Darwin)
