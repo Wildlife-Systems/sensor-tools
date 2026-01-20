@@ -149,7 +149,7 @@ void RDataWriter::writeStringColumn(const std::vector<std::string>& values) {
 
 void RDataWriter::writeDataFrameAttributes(const std::vector<std::string>& headers,
                                             int32_t rowCount,
-                                            const std::string& label) {
+                                            const std::string& /*label*/) {
     // Write "names" attribute (column names)
     writePairlistHeader("names");
     writeSimpleVectorHeader(STRSXP, static_cast<int32_t>(headers.size()));
