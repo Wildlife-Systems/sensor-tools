@@ -397,36 +397,52 @@ void SensorDataTransformer::transform() {
         }
         
         if (verbosity >= 1) {
-            std::cerr << "Pass 2: Collecting data for " << outputFormat << "..." << std::endl;
+            std::cerr << "Pass 2: Collecting data for " << outputFormat << " (column-oriented)..." << std::endl;
         }
         
-        // Collect all readings from all files
-        ReadingList allReadings;
+        // Use column-oriented storage for memory efficiency
+        ColumnData columns;
+        size_t rowCount = 0;
+        
+        // Pre-allocate column vectors
+        for (const auto& header : headers) {
+            columns[header].reserve(100000);  // Start with reasonable size
+        }
+        
         DataReader reader = createDataReader(rejectMode);
         
         for (const auto& file : inputFiles) {
             reader.processFile(file, [&](const Reading& reading,
                                           int /*lineNum*/, const std::string& /*source*/) {
                 if (!reading.empty()) {
-                    allReadings.push_back(reading);
+                    // Add values directly to columns
+                    for (const auto& header : headers) {
+                        auto it = reading.find(header);
+                        if (it != reading.end()) {
+                            columns[header].push_back(it->second);
+                        } else {
+                            columns[header].emplace_back();
+                        }
+                    }
+                    rowCount++;
                 }
             });
         }
         
-        if (allReadings.empty()) {
+        if (rowCount == 0) {
             std::cerr << "Error: No data to write" << std::endl;
             return;
         }
         
         bool success;
         if (outputFormat == "rdata") {
-            success = RDataWriter::writeRData(outputFile, allReadings, headers);
+            success = RDataWriter::writeRDataColumns(outputFile, columns, headers, rowCount);
         } else {
-            success = RDataWriter::writeRDS(outputFile, allReadings, headers);
+            success = RDataWriter::writeRDSColumns(outputFile, columns, headers, rowCount);
         }
         
         if (success && verbosity >= 1) {
-            std::cerr << "Wrote " << allReadings.size() << " rows to " << outputFile << std::endl;
+            std::cerr << "Wrote " << rowCount << " rows to " << outputFile << std::endl;
         }
         return;
     }

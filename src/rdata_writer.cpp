@@ -340,3 +340,133 @@ bool RDataWriter::writeRDS(const std::string& filename,
     
     return written == static_cast<int>(writer.buffer.size());
 }
+
+// ===== Column-oriented writers (memory efficient) =====
+
+void RDataWriter::writeDataFrameColumns(const std::string& tableName,
+                                         const ColumnData& columns,
+                                         const std::vector<std::string>& headers,
+                                         size_t rowCount) {
+    int32_t colCount = static_cast<int32_t>(headers.size());
+    
+    // For RData format, wrap in a pairlist with the table name
+    if (!tableName.empty()) {
+        writePairlistHeader(tableName);
+    }
+    
+    // Write the data frame as a generic vector (list) with attributes
+    writeAttributedVectorHeader(VECSXP, colCount);
+    
+    // Write each column directly from the column data
+    for (const auto& colName : headers) {
+        auto it = columns.find(colName);
+        if (it != columns.end()) {
+            writeStringColumn(it->second);
+        } else {
+            // Empty column - shouldn't happen but handle gracefully
+            std::vector<std::string> empty(rowCount);
+            writeStringColumn(empty);
+        }
+    }
+    
+    // Write data frame attributes
+    writeDataFrameAttributes(headers, static_cast<int32_t>(rowCount), "");
+    
+    // End pairlist for RData format
+    if (!tableName.empty()) {
+        writeHeader(NILVALUE_SXP, 0);
+    }
+}
+
+bool RDataWriter::writeRDataColumns(const std::string& filename,
+                                     const ColumnData& columns,
+                                     const std::vector<std::string>& headers,
+                                     size_t rowCount,
+                                     const std::string& tableName) {
+    if (columns.empty() || rowCount == 0) {
+        std::cerr << "Error: No data to write" << std::endl;
+        return false;
+    }
+    
+    RDataWriter writer;
+    writer.reset();
+    
+    // Pre-allocate buffer based on estimated size
+    // ~20 bytes per cell average (string + overhead)
+    writer.buffer.reserve(rowCount * headers.size() * 20);
+    
+    // Write RDX3 magic header
+    writer.writeBytes(RDATA_MAGIC, 5);
+    
+    // Write binary header
+    writer.writeBytes(BINARY_HEADER, 2);
+    writer.writeInt32(FORMAT_VERSION);
+    writer.writeInt32(READER_VERSION);
+    writer.writeInt32(WRITER_VERSION);
+    
+    // Format version 3 requires native encoding
+    writer.writeInt32(static_cast<int32_t>(strlen(NATIVE_ENCODING)));
+    writer.writeBytes(NATIVE_ENCODING, strlen(NATIVE_ENCODING));
+    
+    // Write the data frame from columns
+    writer.writeDataFrameColumns(tableName, columns, headers, rowCount);
+    
+    // Final NILSXP
+    writer.writeHeader(NILVALUE_SXP, 0);
+    
+    // Write to gzip file
+    gzFile gz = gzopen(filename.c_str(), "wb6");
+    if (!gz) {
+        std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
+        return false;
+    }
+    
+    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    gzclose(gz);
+    
+    if (written != static_cast<int>(writer.buffer.size())) {
+        std::cerr << "Error: gzwrite failed" << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
+bool RDataWriter::writeRDSColumns(const std::string& filename,
+                                   const ColumnData& columns,
+                                   const std::vector<std::string>& headers,
+                                   size_t rowCount,
+                                   const std::string& label) {
+    if (columns.empty() || rowCount == 0) {
+        std::cerr << "Error: No data to write" << std::endl;
+        return false;
+    }
+    
+    RDataWriter writer;
+    writer.reset();
+    writer.buffer.reserve(rowCount * headers.size() * 20);
+    
+    // RDS: write binary header
+    writer.writeBytes(BINARY_HEADER, 2);
+    writer.writeInt32(FORMAT_VERSION);
+    writer.writeInt32(READER_VERSION);
+    writer.writeInt32(WRITER_VERSION);
+    
+    writer.writeInt32(static_cast<int32_t>(strlen(NATIVE_ENCODING)));
+    writer.writeBytes(NATIVE_ENCODING, strlen(NATIVE_ENCODING));
+    
+    // Write the data frame from columns (no wrapping pairlist)
+    writer.writeDataFrameColumns("", columns, headers, rowCount);
+    
+    // Write to gzip file
+    gzFile gz = gzopen(filename.c_str(), "wb6");
+    if (!gz) {
+        std::cerr << "Error: Cannot create RDS file: " << filename << std::endl;
+        return false;
+    }
+    
+    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    gzclose(gz);
+    
+    return written == static_cast<int>(writer.buffer.size());
+}

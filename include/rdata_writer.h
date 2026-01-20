@@ -56,6 +56,32 @@ public:
                          const std::vector<std::string>& headers,
                          const std::string& label = "Sensor data");
 
+    /**
+     * Write column-oriented data to an RData file (memory efficient)
+     * Use this for large datasets to avoid OOM errors.
+     * 
+     * @param filename Output file path
+     * @param columns Column data (map of column name to vector of values)
+     * @param headers Column names in order
+     * @param rowCount Number of rows
+     * @param tableName Name of the data frame variable in R
+     * @return true if successful, false on error
+     */
+    static bool writeRDataColumns(const std::string& filename,
+                                   const ColumnData& columns,
+                                   const std::vector<std::string>& headers,
+                                   size_t rowCount,
+                                   const std::string& tableName = "sensor_data");
+
+    /**
+     * Write column-oriented data to an RDS file (memory efficient)
+     */
+    static bool writeRDSColumns(const std::string& filename,
+                                 const ColumnData& columns,
+                                 const std::vector<std::string>& headers,
+                                 size_t rowCount,
+                                 const std::string& label = "Sensor data");
+
 private:
     // R serialization constants - RDX3 indicates gzip compression
     static constexpr const char* RDATA_MAGIC = "RDX3\n";
@@ -149,6 +175,10 @@ private:
                         const ReadingList& readings,
                         const std::vector<std::string>& headers,
                         const std::string& label);
+    void writeDataFrameColumns(const std::string& tableName,
+                                const ColumnData& columns,
+                                const std::vector<std::string>& headers,
+                                size_t rowCount);
     void writeStringColumn(const std::vector<std::string>& values);
     void writeDataFrameAttributes(const std::vector<std::string>& headers,
                                    int32_t rowCount,
