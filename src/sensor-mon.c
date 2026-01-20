@@ -472,8 +472,13 @@ void scan_sensors(char ***apps_p, int *napps_p, int **ok_p)
     }
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    /* Identity check for automated tool discovery */
+    if (argc > 1 && strcmp(argv[1], "identify") == 0) {
+        return 61;
+    }
+
     initscr();
 
     /* Initialize colors */

@@ -58,6 +58,11 @@ int main(int argc, char* argv[]) {
     
     std::string command = argv[1];
     
+    // Identity check for automated tool discovery
+    if (command == "identify") {
+        return 61;
+    }
+    
     // Handle --version and --help before command dispatch
     if (command == "--version" || command == "-V") {
         printVersion();
