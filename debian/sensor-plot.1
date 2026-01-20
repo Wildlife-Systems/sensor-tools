@@ -13,7 +13,7 @@ Up to 5 sensors can be displayed simultaneously, with each sensor's graph
 shown in a different colour.
 .PP
 The program starts in day mode showing the last 24 hours of data.
-Use arrow keys to scroll through time and switch between day and week views.
+Use arrow keys to scroll through time and switch between different time views.
 .SH OPTIONS
 .TP
 .BI \-\-sensor " SENSOR_ID"
@@ -25,14 +25,22 @@ Display help message and exit.
 .SH CONTROLS
 .TP
 .B Left/Right Arrow
-Scroll the time window. In day mode, scrolls by 1 hour.
-In week mode, scrolls by 1 day.
+Scroll the time window. The scroll step depends on the current view mode.
+.TP
+.B h
+Switch to hour mode (1 hour view, 1 minute scroll steps).
 .TP
 .B d
 Switch to day mode (24 hour view, 1 hour scroll steps).
 .TP
 .B w
 Switch to week mode (7 day view, 1 day scroll steps).
+.TP
+.B m
+Switch to month mode (30 day view, 1 week scroll steps).
+.TP
+.B y
+Switch to year mode (365 day view, 1 month scroll steps).
 .TP
 .B r
 Reload data from disk.

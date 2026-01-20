@@ -30,8 +30,11 @@
 
 /* Mode definitions */
 typedef enum {
+    MODE_HOUR,
     MODE_DAY,
-    MODE_WEEK
+    MODE_WEEK,
+    MODE_MONTH,
+    MODE_YEAR
 } view_mode_t;
 
 /* Sensor data structure */
@@ -69,13 +72,40 @@ static void handle_signal(int sig)
 /* Get window duration in seconds based on mode */
 static long get_window_duration(void)
 {
-    return (current_mode == MODE_DAY) ? 24 * 3600 : 7 * 24 * 3600;
+    switch (current_mode) {
+        case MODE_HOUR:  return 3600;              /* 1 hour */
+        case MODE_DAY:   return 24 * 3600;         /* 24 hours */
+        case MODE_WEEK:  return 7 * 24 * 3600;     /* 7 days */
+        case MODE_MONTH: return 30 * 24 * 3600;    /* 30 days */
+        case MODE_YEAR:  return 365 * 24 * 3600;   /* 365 days */
+        default:         return 24 * 3600;
+    }
 }
 
 /* Get step size in seconds based on mode */
 static long get_step_size(void)
 {
-    return (current_mode == MODE_DAY) ? 3600 : 24 * 3600;  /* 1 hour or 1 day */
+    switch (current_mode) {
+        case MODE_HOUR:  return 60;              /* 1 minute */
+        case MODE_DAY:   return 3600;            /* 1 hour */
+        case MODE_WEEK:  return 24 * 3600;       /* 1 day */
+        case MODE_MONTH: return 7 * 24 * 3600;   /* 1 week */
+        case MODE_YEAR:  return 30 * 24 * 3600;  /* 1 month */
+        default:         return 3600;
+    }
+}
+
+/* Get mode name for display */
+static const char* get_mode_name(void)
+{
+    switch (current_mode) {
+        case MODE_HOUR:  return "Hour (1h)";
+        case MODE_DAY:   return "Day (24h)";
+        case MODE_WEEK:  return "Week (7d)";
+        case MODE_MONTH: return "Month (30d)";
+        case MODE_YEAR:  return "Year (365d)";
+        default:         return "Unknown";
+    }
 }
 
 /* Load data for a sensor within the current time window */
@@ -98,9 +128,34 @@ static void load_sensor_data(int sensor_idx)
         return;
     }
     
-    /* Add points to graph */
-    for (int i = 0; i < result->count; i++) {
-        add_graph_point(&s->graph, result->values[i]);
+    /* If we have more points than MAX_GRAPH_POINTS, we need to downsample */
+    if (result->count <= MAX_GRAPH_POINTS) {
+        /* All points fit - add them directly */
+        for (int i = 0; i < result->count; i++) {
+            add_graph_point(&s->graph, result->values[i]);
+        }
+    } else {
+        /* Downsample by averaging points into buckets */
+        int num_buckets = MAX_GRAPH_POINTS;
+        double points_per_bucket = (double)result->count / num_buckets;
+        
+        for (int bucket = 0; bucket < num_buckets; bucket++) {
+            int start_idx = (int)(bucket * points_per_bucket);
+            int end_idx = (int)((bucket + 1) * points_per_bucket);
+            if (end_idx > result->count) end_idx = result->count;
+            if (start_idx >= end_idx) continue;
+            
+            /* Calculate average for this bucket */
+            double sum = 0;
+            int count = 0;
+            for (int i = start_idx; i < end_idx; i++) {
+                sum += result->values[i];
+                count++;
+            }
+            if (count > 0) {
+                add_graph_point(&s->graph, sum / count);
+            }
+        }
     }
     
     s->has_data = 1;
@@ -143,10 +198,9 @@ static void draw_screen(void)
     format_time(start_time, start_buf, sizeof(start_buf));
     format_time(window_end, end_buf, sizeof(end_buf));
     
-    mvprintw(0, 2, "sensor-plot - %s mode", 
-             current_mode == MODE_DAY ? "Day (24h)" : "Week (7d)");
+    mvprintw(0, 2, "sensor-plot - %s mode", get_mode_name());
     mvprintw(1, 2, "Time range: %s to %s", start_buf, end_buf);
-    mvprintw(2, 2, "Keys: Left/Right=scroll, w=week mode, d=day mode, q=quit");
+    mvprintw(2, 2, "Keys: h=hour d=day w=week m=month y=year, Left/Right=scroll, q=quit");
     
     if (has_colors()) attroff(COLOR_PAIR(COLOR_LABEL));
     
@@ -206,8 +260,11 @@ static int parse_args(int argc, char **argv)
             printf("  --help        Show this help message\n");
             printf("\nControls:\n");
             printf("  Left/Right    Scroll time window\n");
+            printf("  h             Hour mode (1 hour view, 1 minute steps)\n");
             printf("  d             Day mode (24 hour view, 1 hour steps)\n");
             printf("  w             Week mode (7 day view, 1 day steps)\n");
+            printf("  m             Month mode (30 day view, 1 week steps)\n");
+            printf("  y             Year mode (365 day view, 1 month steps)\n");
             printf("  r             Reload data\n");
             printf("  q             Quit\n");
             return 1;  /* Signal to exit cleanly */
@@ -317,6 +374,27 @@ int main(int argc, char **argv)
             case 'w':
             case 'W':
                 current_mode = MODE_WEEK;
+                load_all_data();
+                needs_redraw = 1;
+                break;
+                
+            case 'h':
+            case 'H':
+                current_mode = MODE_HOUR;
+                load_all_data();
+                needs_redraw = 1;
+                break;
+                
+            case 'm':
+            case 'M':
+                current_mode = MODE_MONTH;
+                load_all_data();
+                needs_redraw = 1;
+                break;
+                
+            case 'y':
+            case 'Y':
+                current_mode = MODE_YEAR;
                 load_all_data();
                 needs_redraw = 1;
                 break;
