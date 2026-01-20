@@ -207,6 +207,99 @@ static void format_time(time_t t, char *buf, size_t len)
     strftime(buf, len, "%Y-%m-%d %H:%M", tm);
 }
 
+/* Show input dialog and get user input */
+static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
+{
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    
+    /* Calculate dialog size and position */
+    int dialog_width = 40;
+    int dialog_height = 5;
+    int start_col = (cols - dialog_width) / 2;
+    int start_row = (rows - dialog_height) / 2;
+    
+    /* Create dialog window */
+    WINDOW *dialog = newwin(dialog_height, dialog_width, start_row, start_col);
+    if (!dialog) return 0;
+    
+    /* Draw border and prompt */
+    box(dialog, 0, 0);
+    mvwprintw(dialog, 1, 2, "%s", prompt);
+    mvwprintw(dialog, 3, 2, "[Enter to confirm, Esc to cancel]");
+    
+    /* Input field position */
+    int input_row = 2;
+    int input_col = 2;
+    int max_input = dialog_width - 4;
+    if ((int)buflen - 1 < max_input) max_input = (int)buflen - 1;
+    
+    /* Show cursor and enable echo for input */
+    curs_set(1);
+    wmove(dialog, input_row, input_col);
+    wrefresh(dialog);
+    
+    /* Read input character by character */
+    int pos = 0;
+    buf[0] = '\0';
+    
+    while (1) {
+        int ch = wgetch(dialog);
+        
+        if (ch == 27) {  /* Escape */
+            curs_set(0);
+            delwin(dialog);
+            return 0;
+        }
+        else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            buf[pos] = '\0';
+            curs_set(0);
+            delwin(dialog);
+            return 1;
+        }
+        else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+            if (pos > 0) {
+                pos--;
+                buf[pos] = '\0';
+                mvwprintw(dialog, input_row, input_col + pos, " ");
+                wmove(dialog, input_row, input_col + pos);
+                wrefresh(dialog);
+            }
+        }
+        else if (pos < max_input && ch >= 32 && ch < 127) {
+            buf[pos] = (char)ch;
+            pos++;
+            buf[pos] = '\0';
+            mvwaddch(dialog, input_row, input_col + pos - 1, ch);
+            wrefresh(dialog);
+        }
+    }
+}
+
+/* Parse year and set window to show entire year */
+static int goto_year(int year)
+{
+    if (year < 1970 || year > 2100) return 0;
+    
+    struct tm tm_start = {0};
+    tm_start.tm_year = year - 1900;
+    tm_start.tm_mon = 0;   /* January */
+    tm_start.tm_mday = 1;
+    tm_start.tm_hour = 0;
+    tm_start.tm_min = 0;
+    tm_start.tm_sec = 0;
+    tm_start.tm_isdst = -1;
+    
+    time_t start = mktime(&tm_start);
+    if (start == (time_t)-1) return 0;
+    
+    /* Set to year mode and position window at end of year */
+    current_mode = MODE_YEAR;
+    window_end = start + get_window_duration();
+    
+    return 1;
+}
+
 /* Draw the screen */
 static void draw_screen(void)
 {
@@ -287,6 +380,7 @@ static void print_help(void)
     printf("  w             Week mode (7 day view, 1 day steps)\n");
     printf("  m             Month mode (30 day view, 1 week steps)\n");
     printf("  y             Year mode (365 day view, 1 month steps)\n");
+    printf("  Y             Go to specific year (shows input dialog)\n");
     printf("  r             Reload data\n");
     printf("  q             Quit\n");
 }
@@ -457,9 +551,23 @@ int main(int argc, char **argv)
                 break;
                 
             case 'y':
-            case 'Y':
                 current_mode = MODE_YEAR;
                 needs_reload = 1;
+                break;
+                
+            case 'Y':
+                /* Show dialog to enter specific year */
+                {
+                    char year_buf[16];
+                    if (show_input_dialog("Enter year (e.g. 2025):", year_buf, sizeof(year_buf))) {
+                        int year = atoi(year_buf);
+                        if (goto_year(year)) {
+                            needs_reload = 1;
+                        }
+                    }
+                    /* Redraw screen after dialog closes */
+                    needs_redraw = 1;
+                }
                 break;
                 
             case 'r':
