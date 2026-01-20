@@ -1,5 +1,6 @@
 #include "sensor_data_transformer.h"
 #include "data_reader.h"
+#include "rdata_writer.h"
 #include <fstream>
 #include <future>
 #include <cstdio>
@@ -205,8 +206,9 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool reject
             if (i + 1 < argc) {
                 ++i;
                 outputFormat = argv[i];
-                if (outputFormat != "json" && outputFormat != "csv") {
-                    std::cerr << "Error: --output-format must be 'json' or 'csv'" << std::endl;
+                if (outputFormat != "json" && outputFormat != "csv" && 
+                    outputFormat != "rdata" && outputFormat != "rds") {
+                    std::cerr << "Error: --output-format must be 'json', 'csv', 'rdata', or 'rds'" << std::endl;
                     exit(1);
                 }
             } else {
@@ -272,7 +274,24 @@ void SensorDataTransformer::transform() {
         std::sort(headers.begin(), headers.end());
         
         // Output the data
-        if (outputFile.empty()) {
+        if (outputFormat == "rdata" || outputFormat == "rds") {
+            // RData/RDS requires a file output
+            if (outputFile.empty()) {
+                std::cerr << "Error: RData/RDS output requires -o/--output file" << std::endl;
+                return;
+            }
+            
+            bool success;
+            if (outputFormat == "rdata") {
+                success = RDataWriter::writeRData(outputFile, stdinReadings, headers);
+            } else {
+                success = RDataWriter::writeRDS(outputFile, stdinReadings, headers);
+            }
+            
+            if (success && verbosity >= 1) {
+                std::cerr << "Wrote " << stdinReadings.size() << " rows to " << outputFile << std::endl;
+            }
+        } else if (outputFile.empty()) {
             if (outputFormat == "json") {
                 processStdinDataJson(stdinReadings, std::cout);
                 std::cout << "\n";
@@ -349,7 +368,51 @@ void SensorDataTransformer::transform() {
     std::vector<std::string> headers(allKeys.begin(), allKeys.end());
     std::sort(headers.begin(), headers.end());
     
-    // PASS 2: Stream data to output
+    // PASS 2: Stream data to output (or collect for RData)
+    
+    // RData/RDS requires collecting all data first
+    if (outputFormat == "rdata" || outputFormat == "rds") {
+        if (outputFile.empty()) {
+            std::cerr << "Error: RData/RDS output requires -o/--output file" << std::endl;
+            return;
+        }
+        
+        if (verbosity >= 1) {
+            std::cerr << "Pass 2: Collecting data for " << outputFormat << "..." << std::endl;
+        }
+        
+        // Collect all readings from all files
+        ReadingList allReadings;
+        DataReader reader = createDataReader(rejectMode);
+        
+        for (const auto& file : inputFiles) {
+            reader.processFile(file, [&](const Reading& reading,
+                                          int /*lineNum*/, const std::string& /*source*/) {
+                if (!reading.empty()) {
+                    allReadings.push_back(reading);
+                }
+            });
+        }
+        
+        if (allReadings.empty()) {
+            std::cerr << "Error: No data to write" << std::endl;
+            return;
+        }
+        
+        bool success;
+        if (outputFormat == "rdata") {
+            success = RDataWriter::writeRData(outputFile, allReadings, headers);
+        } else {
+            success = RDataWriter::writeRDS(outputFile, allReadings, headers);
+        }
+        
+        if (success && verbosity >= 1) {
+            std::cerr << "Wrote " << allReadings.size() << " rows to " << outputFile << std::endl;
+        }
+        return;
+    }
+    
+    // JSON/CSV streaming output
     if (outputFile.empty()) {
         if (verbosity >= 1) {
             std::cerr << "Pass 2: Writing " << outputFormat << " to stdout..." << std::endl;
@@ -413,7 +476,7 @@ void SensorDataTransformer::transform() {
 void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "Usage: " << progName << " transform [options] [<input_file(s)_or_directory(ies)>]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Transform JSON or CSV sensor data files to JSON or CSV format." << std::endl;
+    std::cerr << "Transform JSON or CSV sensor data files to JSON, CSV, or R data formats." << std::endl;
     std::cerr << "For JSON: Each line in input files should contain JSON with sensor readings." << std::endl;
     std::cerr << "For CSV: Files with .csv extension are automatically detected and processed." << std::endl;
     std::cerr << "Each sensor reading will become a row in the output." << std::endl;
@@ -424,7 +487,8 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "Options:" << std::endl;
     std::cerr << "  -o, --output <file>       Output file (default: stdout)" << std::endl;
     std::cerr << "  -if, --input-format <fmt>  Input format for stdin: json or csv (default: json)" << std::endl;
-    std::cerr << "  -of, --output-format <fmt> Output format: json or csv (default: json)" << std::endl;
+    std::cerr << "  -of, --output-format <fmt> Output format: json, csv, rdata, or rds (default: json)" << std::endl;
+    std::cerr << "                             rdata/rds formats require -o/--output file" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -467,6 +531,8 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  " << progName << " transform --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
     std::cerr << "  " << progName << " transform --update-value sensor:ds18b20 unit:C data.out" << std::endl;
     std::cerr << "  " << progName << " transform --update-where-empty sensor:dht22 unit:% data.out" << std::endl;
+    std::cerr << "  " << progName << " transform -of rdata -o data.RData sensor1.out  # Output as R data file" << std::endl;
+    std::cerr << "  " << progName << " transform -of rds -o data.rds -r -e .out /logs # Output as RDS file" << std::endl;
 }
 
 void SensorDataTransformer::printListRejectsUsage(const char* progName) {
