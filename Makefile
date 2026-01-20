@@ -71,7 +71,7 @@ PLOT_SOURCES = src/sensor-plot.c src/graph.c
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
 MON_OBJECTS = $(MON_SOURCES:.c=.o)
 PLOT_OBJECTS = src/sensor-plot.o src/graph.o
-TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser
+TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser test_graph
 
 TARGET = sensor-data
 TARGET_MON = sensor-mon
@@ -113,6 +113,8 @@ test: $(LIB_OBJECTS)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_file_collector.cpp src/file_utils.o -o test_file_collector $(LDFLAGS) && ./test_file_collector
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_command_base.cpp src/csv_parser.o src/json_parser.o src/file_utils.o src/error_detector.o -o test_command_base $(LDFLAGS) && ./test_command_base
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_stats_analyser.cpp -o test_stats_analyser $(LDFLAGS) && ./test_stats_analyser
+	@$(CC) $(CPPFLAGS) $(CFLAGS) -c src/graph.c -o src/graph.o
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_graph.cpp src/graph.o -o test_graph $(LDFLAGS) $(LDFLAGS_NCURSES) && ./test_graph
 	@echo "All unit tests passed!"
 
 # Run integration tests (requires bash)
