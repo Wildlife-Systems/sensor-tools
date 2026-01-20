@@ -5,6 +5,11 @@
 
 # Enable all hardening flags
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Strip -O2 from dpkg-buildflags so Makefile's -O3 is the only optimization
+export DEB_CFLAGS_MAINT_STRIP = -O2
+export DEB_CXXFLAGS_MAINT_STRIP = -O2
+
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
 
