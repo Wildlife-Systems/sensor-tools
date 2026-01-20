@@ -46,6 +46,67 @@ bool RDataWriter::writeUncompressedFile(const std::string& filename, const std::
     return file.good();
 }
 
+// Compress data to a vector using zlib deflate (gzip format)
+static std::vector<char> gzipCompress(const std::string& data) {
+    // Gzip header (10 bytes)
+    std::vector<char> result;
+    result.push_back('\x1f');  // Magic number
+    result.push_back('\x8b');  // Magic number
+    result.push_back('\x08');  // Compression method (deflate)
+    result.push_back('\x00');  // Flags
+    result.push_back('\x00');  // Modification time
+    result.push_back('\x00');
+    result.push_back('\x00');
+    result.push_back('\x00');
+    result.push_back('\x00');  // Extra flags
+    result.push_back('\xff');  // OS (unknown)
+    
+    // Compress the data using raw deflate (windowBits = -15 for raw)
+    z_stream zs;
+    memset(&zs, 0, sizeof(zs));
+    
+    if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        return {};
+    }
+    
+    zs.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(data.data()));
+    zs.avail_in = static_cast<uInt>(data.size());
+    
+    char outbuffer[32768];
+    int ret;
+    
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(outbuffer);
+        zs.avail_out = sizeof(outbuffer);
+        
+        ret = deflate(&zs, Z_FINISH);
+        
+        size_t have = sizeof(outbuffer) - zs.avail_out;
+        result.insert(result.end(), outbuffer, outbuffer + have);
+    } while (ret == Z_OK || ret == Z_BUF_ERROR);
+    
+    deflateEnd(&zs);
+    
+    if (ret != Z_STREAM_END) {
+        return {};
+    }
+    
+    // Gzip trailer: CRC32 + original size (both little-endian)
+    uLong crc = crc32(0L, reinterpret_cast<const Bytef*>(data.data()), static_cast<uInt>(data.size()));
+    result.push_back(static_cast<char>(crc & 0xFF));
+    result.push_back(static_cast<char>((crc >> 8) & 0xFF));
+    result.push_back(static_cast<char>((crc >> 16) & 0xFF));
+    result.push_back(static_cast<char>((crc >> 24) & 0xFF));
+    
+    uLong size = static_cast<uLong>(data.size());
+    result.push_back(static_cast<char>(size & 0xFF));
+    result.push_back(static_cast<char>((size >> 8) & 0xFF));
+    result.push_back(static_cast<char>((size >> 16) & 0xFF));
+    result.push_back(static_cast<char>((size >> 24) & 0xFF));
+    
+    return result;
+}
+
 // ===== Utility methods =====
 
 bool RDataWriter::isMachineLittleEndian() {
@@ -260,34 +321,32 @@ bool RDataWriter::writeRData(const std::string& filename,
     // Final NILSXP to end the file
     writer.writeHeader(NILVALUE_SXP, 0);
     
-    // Get buffer contents
+    // Get buffer contents and compress
     std::string data = writer.buffer.str();
     
-    // Write magic header (uncompressed) then compressed data
+    if (data.empty()) {
+        std::cerr << "Error: No serialized data" << std::endl;
+        return false;
+    }
+    
+    std::vector<char> compressed = gzipCompress(data);
+    
+    if (compressed.empty()) {
+        std::cerr << "Error: Failed to compress data (input size: " << data.size() << ")" << std::endl;
+        return false;
+    }
+    
+    // Write magic header followed by compressed data
     std::ofstream outFile(filename, std::ios::binary);
     if (!outFile) {
         std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
         return false;
     }
+    
     outFile.write(RDATA_MAGIC, 5);
-    outFile.close();
+    outFile.write(compressed.data(), compressed.size());
     
-    // Append gzip compressed data
-    gzFile gz = gzopen(filename.c_str(), "ab9");  // append binary, max compression
-    if (!gz) {
-        std::cerr << "Error: Cannot open file for gzip append: " << filename << std::endl;
-        return false;
-    }
-    
-    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
-    gzclose(gz);
-    
-    if (written != static_cast<int>(data.size())) {
-        std::cerr << "Error: Failed to write compressed data" << std::endl;
-        return false;
-    }
-    
-    return true;
+    return outFile.good();
 }
 
 bool RDataWriter::writeRDS(const std::string& filename,
