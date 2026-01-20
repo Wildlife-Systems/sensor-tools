@@ -410,7 +410,7 @@ mkdir -p testdir
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/file3.txt
-./sensor-data transform -if csv -e .out testdir/ -o output.csv
+./sensor-data transform -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 2 ]; then
@@ -428,7 +428,7 @@ mkdir -p testdir/subdir1/subdir2
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
-./sensor-data transform -if csv -r -e .out testdir/ -o output.csv
+./sensor-data transform -r -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 3 ]; then
@@ -445,7 +445,7 @@ echo "Test 16: Depth 0 (root only)"
 mkdir -p testdir/subdir1
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
-./sensor-data transform -if csv -r -d 0 -e .out testdir/ -o output.csv
+./sensor-data transform -r -d 0 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 1 ]; then
@@ -463,7 +463,7 @@ mkdir -p testdir/subdir1/subdir2
 echo '{"sensor":"ds18b20","value":"20.0"}' > testdir/file1.out
 echo '{"sensor":"ds18b20","value":"21.0"}' > testdir/subdir1/file2.out
 echo '{"sensor":"ds18b20","value":"22.0"}' > testdir/subdir1/subdir2/file3.out
-./sensor-data transform -if csv -r -d 1 -e .out testdir/ -o output.csv
+./sensor-data transform -r -d 1 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 2 ]; then
@@ -482,7 +482,7 @@ echo '{"sensor":"ds18b20","value":"1"}' > testdir/file.out
 echo '{"sensor":"ds18b20","value":"2"}' > testdir/sub1/file.out
 echo '{"sensor":"ds18b20","value":"3"}' > testdir/sub1/sub2/file.out
 echo '{"sensor":"ds18b20","value":"4"}' > testdir/sub1/sub2/sub3/file.out
-./sensor-data transform -if csv -r -d 2 -e .out testdir/ -o output.csv
+./sensor-data transform -r -d 2 -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 3 ]; then
@@ -502,7 +502,7 @@ echo '{"sensor":"ds18b20","value":"2"}' > testdir/a/file.out
 echo '{"sensor":"ds18b20","value":"3"}' > testdir/a/b/file.out
 echo '{"sensor":"ds18b20","value":"4"}' > testdir/a/b/c/file.out
 echo '{"sensor":"ds18b20","value":"5"}' > testdir/a/b/c/d/file.out
-./sensor-data transform -if csv -r -e .out testdir/ -o output.csv
+./sensor-data transform -r -e .out testdir/ -o output.csv
 count=$(grep -c "ds18b20" output.csv || true)
 rm -rf testdir output.csv
 if [ "$count" -eq 5 ]; then
@@ -592,7 +592,7 @@ if [ "$OS_TYPE" = "Linux" ]; then
     echo "Test 22b: --use-prototype produces valid CSV output"
     mkdir -p testdir
     echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-    output=$(./sensor-data transform --use-prototype -if csv testdir/test.out 2>&1)
+    output=$(./sensor-data transform --use-prototype testdir/test.out 2>&1)
     rm -rf testdir
     # Check that output contains data rows (not just errors)
     if echo "$output" | grep -q "22.5\|ds18b20\|1234567890"; then
@@ -615,7 +615,7 @@ if [ "$OS_TYPE" = "Linux" ]; then
     echo "Test 22c: --use-prototype with file output"
     mkdir -p testdir
     echo '{"timestamp": 1234567890, "sensor": "ds18b20", "value": 22.5}' > testdir/test.out
-    ./sensor-data transform --use-prototype -if csv -o output.csv testdir/test.out 2>/dev/null
+    ./sensor-data transform --use-prototype -o output.csv testdir/test.out 2>/dev/null
     if [ -f output.csv ] && grep -q "22.5\|ds18b20" output.csv; then
         echo "  ✓ PASS"
         PASSED=$((PASSED + 1))
