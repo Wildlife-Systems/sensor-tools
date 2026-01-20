@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, develop, add-sensor-mon ]
+    branches: [ main, master, develop, add-sensor-plot ]
   pull_request:
     branches: [ main, master, develop ]
 
