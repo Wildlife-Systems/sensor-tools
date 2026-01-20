@@ -114,6 +114,9 @@ private:
     static constexpr int HAS_ATTR = 0x200;
     static constexpr int HAS_TAG = 0x400;
     static constexpr int IS_UTF8 = 0x40000;  // UTF-8 encoding flag for CHARSXP
+    
+    // Special values
+    static constexpr int32_t NA_INTEGER = -2147483648;  // R's NA for integers (INT_MIN)
 
     // Writer state - write to buffer, then compress
     std::ostringstream buffer;

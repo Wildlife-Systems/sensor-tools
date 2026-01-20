@@ -20,7 +20,7 @@ void RDataWriter::reset() {
 // ===== Compression methods =====
 
 bool RDataWriter::writeGzipFile(const std::string& filename, const std::string& data) {
-    gzFile gz = gzopen(filename.c_str(), "wb9");  // wb9 = write binary, max compression
+    gzFile gz = gzopen(filename.c_str(), "wb6");  // wb6 = write binary, good compression/speed balance
     if (!gz) {
         std::cerr << "Error: Cannot create gzip file: " << filename << std::endl;
         return false;
@@ -186,12 +186,12 @@ void RDataWriter::writeDataFrameAttributes(const std::vector<std::string>& heade
     // Write "class" attribute
     writeClassPairlist("data.frame");
     
-    // Write "row.names" attribute
+    // Write "row.names" attribute using compact format: c(NA, -nrow)
+    // This is how R internally stores automatic row names
     writePairlistHeader("row.names");
-    writeSimpleVectorHeader(STRSXP, rowCount);
-    for (int32_t i = 1; i <= rowCount; ++i) {
-        writeString(std::to_string(i).c_str());
-    }
+    writeSimpleVectorHeader(INTSXP, 2);
+    writeInt32(NA_INTEGER);  // NA marker
+    writeInt32(-rowCount);   // Negative row count
     
     // End of attributes (NILSXP)
     writeHeader(NILVALUE_SXP, 0);
@@ -204,6 +204,25 @@ void RDataWriter::writeDataFrame(const std::string& tableName,
     int32_t rowCount = static_cast<int32_t>(readings.size());
     int32_t colCount = static_cast<int32_t>(headers.size());
     
+    // Pre-transpose: build all columns in a single pass through readings
+    // This is O(rows * cols) but with sequential access, much faster than
+    // O(cols * rows) with random map lookups per column
+    std::vector<std::vector<std::string>> columns(headers.size());
+    for (auto& col : columns) {
+        col.reserve(readings.size());
+    }
+    
+    for (const auto& reading : readings) {
+        for (size_t i = 0; i < headers.size(); ++i) {
+            auto it = reading.find(headers[i]);
+            if (it != reading.end()) {
+                columns[i].push_back(it->second);
+            } else {
+                columns[i].emplace_back();
+            }
+        }
+    }
+    
     // For RData format, wrap in a pairlist with the table name
     if (!tableName.empty()) {
         writePairlistHeader(tableName);
@@ -212,20 +231,8 @@ void RDataWriter::writeDataFrame(const std::string& tableName,
     // Write the data frame as a generic vector (list) with attributes
     writeAttributedVectorHeader(VECSXP, colCount);
     
-    // Write each column
-    for (const auto& colName : headers) {
-        std::vector<std::string> columnValues;
-        columnValues.reserve(readings.size());
-        
-        for (const auto& reading : readings) {
-            auto it = reading.find(colName);
-            if (it != reading.end()) {
-                columnValues.push_back(it->second);
-            } else {
-                columnValues.push_back("");
-            }
-        }
-        
+    // Write each pre-built column
+    for (const auto& columnValues : columns) {
         writeStringColumn(columnValues);
     }
     
@@ -280,7 +287,7 @@ bool RDataWriter::writeRData(const std::string& filename,
     }
     
     // Write directly to gzip file (RDX3 magic is already in the buffer)
-    gzFile gz = gzopen(filename.c_str(), "wb9");  // write binary, max compression
+    gzFile gz = gzopen(filename.c_str(), "wb6");  // write binary, good compression/speed balance
     if (!gz) {
         std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
         return false;
