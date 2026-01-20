@@ -39,11 +39,25 @@ typedef enum {
     MODE_YEAR
 } view_mode_t;
 
+/* Maximum cache size per sensor (number of data points) */
+#define MAX_CACHE_SIZE 100000
+
+/* Cached data for a sensor */
+typedef struct {
+    double *values;
+    long *timestamps;
+    int count;
+    int capacity;
+    long cache_start;    /* Earliest timestamp in cache */
+    long cache_end;      /* Latest timestamp in cache */
+} sensor_cache_t;
+
 /* Sensor data structure */
 typedef struct {
     char *sensor_id;
     graph_data_t graph;
     int has_data;
+    sensor_cache_t cache;
 } sensor_plot_t;
 
 /* Global state */
@@ -101,6 +115,113 @@ static long get_step_size(void)
     }
 }
 
+/* Initialize a sensor cache */
+static void init_cache(sensor_cache_t *cache)
+{
+    cache->values = NULL;
+    cache->timestamps = NULL;
+    cache->count = 0;
+    cache->capacity = 0;
+    cache->cache_start = 0;
+    cache->cache_end = 0;
+}
+
+/* Free a sensor cache */
+static void free_cache(sensor_cache_t *cache)
+{
+    free(cache->values);
+    free(cache->timestamps);
+    init_cache(cache);
+}
+
+/* Clear cache without freeing memory */
+static void clear_cache(sensor_cache_t *cache)
+{
+    cache->count = 0;
+    cache->cache_start = 0;
+    cache->cache_end = 0;
+}
+
+/* Ensure cache has capacity for n more items */
+static int ensure_cache_capacity(sensor_cache_t *cache, int additional)
+{
+    int needed = cache->count + additional;
+    if (needed <= cache->capacity) return 1;
+    
+    /* Limit cache size */
+    if (needed > MAX_CACHE_SIZE) return 0;
+    
+    int new_capacity = cache->capacity == 0 ? 1024 : cache->capacity * 2;
+    if (new_capacity < needed) new_capacity = needed;
+    if (new_capacity > MAX_CACHE_SIZE) new_capacity = MAX_CACHE_SIZE;
+    
+    double *new_values = realloc(cache->values, new_capacity * sizeof(double));
+    long *new_timestamps = realloc(cache->timestamps, new_capacity * sizeof(long));
+    
+    if (!new_values || !new_timestamps) {
+        free(new_values);
+        free(new_timestamps);
+        return 0;
+    }
+    
+    cache->values = new_values;
+    cache->timestamps = new_timestamps;
+    cache->capacity = new_capacity;
+    return 1;
+}
+
+/* Add data to cache, merging with existing data */
+static void merge_into_cache(sensor_cache_t *cache, sensor_data_result_t *result)
+{
+    if (!result || result->count == 0) return;
+    
+    /* If cache is empty, just copy */
+    if (cache->count == 0) {
+        if (!ensure_cache_capacity(cache, result->count)) return;
+        memcpy(cache->values, result->values, result->count * sizeof(double));
+        memcpy(cache->timestamps, result->timestamps, result->count * sizeof(long));
+        cache->count = result->count;
+        cache->cache_start = result->timestamps[0];
+        cache->cache_end = result->timestamps[result->count - 1];
+        return;
+    }
+    
+    /* Determine if new data is before or after existing cache */
+    long new_start = result->timestamps[0];
+    long new_end = result->timestamps[result->count - 1];
+    
+    if (new_end < cache->cache_start) {
+        /* New data is entirely before cache - prepend */
+        if (!ensure_cache_capacity(cache, result->count)) return;
+        memmove(cache->values + result->count, cache->values, cache->count * sizeof(double));
+        memmove(cache->timestamps + result->count, cache->timestamps, cache->count * sizeof(long));
+        memcpy(cache->values, result->values, result->count * sizeof(double));
+        memcpy(cache->timestamps, result->timestamps, result->count * sizeof(long));
+        cache->count += result->count;
+        cache->cache_start = new_start;
+    }
+    else if (new_start > cache->cache_end) {
+        /* New data is entirely after cache - append */
+        if (!ensure_cache_capacity(cache, result->count)) return;
+        memcpy(cache->values + cache->count, result->values, result->count * sizeof(double));
+        memcpy(cache->timestamps + cache->count, result->timestamps, result->count * sizeof(long));
+        cache->count += result->count;
+        cache->cache_end = new_end;
+    }
+    /* Overlapping data is ignored (already have it) */
+}
+
+/* Check if input is available (for cancellation) */
+static int input_pending(void)
+{
+    int ch = getch();
+    if (ch != ERR) {
+        ungetch(ch);  /* Put it back */
+        return 1;
+    }
+    return 0;
+}
+
 /* Get mode name for display */
 static const char* get_mode_name(void)
 {
@@ -114,10 +235,11 @@ static const char* get_mode_name(void)
     }
 }
 
-/* Load data for a sensor within the current time window */
-static void load_sensor_data(int sensor_idx, int screen_width)
+/* Load data for a sensor within the current time window 
+ * Returns: 1 = success, 0 = cancelled (input pending), -1 = error */
+static int load_sensor_data(int sensor_idx, int screen_width)
 {
-    if (sensor_idx < 0 || sensor_idx >= num_sensors) return;
+    if (sensor_idx < 0 || sensor_idx >= num_sensors) return -1;
     
     sensor_plot_t *s = &sensors[sensor_idx];
     reset_graph(&s->graph);
@@ -127,28 +249,94 @@ static void load_sensor_data(int sensor_idx, int screen_width)
     long end_time = (long)window_end;
     
     const char *dir = data_directory ? data_directory : DEFAULT_DATA_DIR;
-    sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
-        dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter, max_depth);
+    sensor_cache_t *cache = &s->cache;
     
-    if (!result || result->count == 0) {
+    /* Check what parts we need to fetch */
+    int need_before = (cache->count == 0 || start_time < cache->cache_start);
+    int need_after = (cache->count == 0 || end_time > cache->cache_end);
+    
+    /* If window is completely outside cache, clear and refetch */
+    if (cache->count > 0 && (end_time < cache->cache_start || start_time > cache->cache_end)) {
+        clear_cache(cache);
+        need_before = 0;
+        need_after = 0;
+        
+        /* Check for cancellation before fetch */
+        if (input_pending()) return 0;
+        
+        sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
+            dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter, max_depth);
+        merge_into_cache(cache, result);
         sensor_data_result_free(result);
-        return;
+    }
+    else {
+        /* Fetch data before cache if needed */
+        if (need_before && cache->count > 0 && start_time < cache->cache_start) {
+            /* Check for cancellation */
+            if (input_pending()) return 0;
+            
+            sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
+                dir, s->sensor_id, start_time, cache->cache_start - 1, 
+                recursive_search, extension_filter, max_depth);
+            merge_into_cache(cache, result);
+            sensor_data_result_free(result);
+        }
+        
+        /* Fetch data after cache if needed */
+        if (need_after && cache->count > 0 && end_time > cache->cache_end) {
+            /* Check for cancellation */
+            if (input_pending()) return 0;
+            
+            sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
+                dir, s->sensor_id, cache->cache_end + 1, end_time,
+                recursive_search, extension_filter, max_depth);
+            merge_into_cache(cache, result);
+            sensor_data_result_free(result);
+        }
+        
+        /* Initial load when cache is empty */
+        if (cache->count == 0) {
+            /* Check for cancellation */
+            if (input_pending()) return 0;
+            
+            sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
+                dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter, max_depth);
+            merge_into_cache(cache, result);
+            sensor_data_result_free(result);
+        }
     }
     
-    /* Use time-based downsampling to graph, scaled to screen width */
-    downsample_to_graph(result->values, result->timestamps, result->count,
-                        start_time, end_time, screen_width, &s->graph);
+    /* Now extract the window from cache and downsample */
+    if (cache->count > 0) {
+        /* Find the range in cache that overlaps with our window */
+        int win_start = -1, win_end = -1;
+        for (int i = 0; i < cache->count; i++) {
+            if (cache->timestamps[i] >= start_time && cache->timestamps[i] <= end_time) {
+                if (win_start < 0) win_start = i;
+                win_end = i;
+            }
+        }
+        
+        if (win_start >= 0 && win_end >= win_start) {
+            int win_count = win_end - win_start + 1;
+            downsample_to_graph(cache->values + win_start, cache->timestamps + win_start, win_count,
+                                start_time, end_time, screen_width, &s->graph);
+            s->has_data = 1;
+        }
+    }
     
-    s->has_data = 1;
-    sensor_data_result_free(result);
+    return 1;
 }
 
-/* Load data for all sensors, scaled to screen width */
-static void load_all_data(int screen_width)
+/* Load data for all sensors, scaled to screen width 
+ * Returns: 1 = success, 0 = cancelled */
+static int load_all_data(int screen_width)
 {
     for (int i = 0; i < num_sensors; i++) {
-        load_sensor_data(i, screen_width);
+        int result = load_sensor_data(i, screen_width);
+        if (result == 0) return 0;  /* Cancelled */
     }
+    return 1;
 }
 
 /* Check if any sensor has data */
@@ -524,6 +712,7 @@ static int parse_args(int argc, char **argv)
         args.sensor_ids[i] = NULL;  /* Transfer ownership */
         sensors[num_sensors].has_data = 0;
         reset_graph(&sensors[num_sensors].graph);
+        init_cache(&sensors[num_sensors].cache);
         num_sensors++;
     }
     
@@ -543,6 +732,7 @@ static void cleanup(void)
 {
     for (int i = 0; i < num_sensors; i++) {
         free(sensors[i].sensor_id);
+        free_cache(&sensors[i].cache);
     }
     free(data_directory);
     free(extension_filter);
@@ -751,8 +941,11 @@ int main(int argc, char **argv)
         }
         
         if (needs_reload) {
-            load_all_data(cols);
-            needs_redraw = 1;
+            if (load_all_data(cols)) {
+                needs_redraw = 1;
+            }
+            /* If load was cancelled, don't redraw - loop will continue
+             * and process the pending input that caused cancellation */
         }
         
         if (needs_redraw) {
