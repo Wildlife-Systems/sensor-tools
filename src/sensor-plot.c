@@ -207,26 +207,32 @@ static void format_time(time_t t, char *buf, size_t len)
     strftime(buf, len, "%Y-%m-%d %H:%M", tm);
 }
 
-/* Show input dialog and get user input */
-static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
+/* Dialog return codes */
+#define DIALOG_CANCEL 0
+#define DIALOG_CONFIRM 1
+#define DIALOG_DRILLDOWN 2  /* Tab pressed - drill down to next level */
+
+/* Show input dialog and get user input
+ * Returns: DIALOG_CANCEL (0), DIALOG_CONFIRM (1), or DIALOG_DRILLDOWN (2) */
+static int show_input_dialog_ex(const char *prompt, const char *hint, char *buf, size_t buflen)
 {
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
     
     /* Calculate dialog size and position */
-    int dialog_width = 40;
+    int dialog_width = 44;
     int dialog_height = 5;
     int start_col = (cols - dialog_width) / 2;
     int start_row = (rows - dialog_height) / 2;
     
     /* Create dialog window */
     WINDOW *dialog = newwin(dialog_height, dialog_width, start_row, start_col);
-    if (!dialog) return 0;
+    if (!dialog) return DIALOG_CANCEL;
     
     /* Draw border and prompt */
     box(dialog, 0, 0);
     mvwprintw(dialog, 1, 2, "%s", prompt);
-    mvwprintw(dialog, 3, 2, "[Enter to confirm, Esc to cancel]");
+    mvwprintw(dialog, 3, 2, "%s", hint);
     
     /* Input field position */
     int input_row = 2;
@@ -249,13 +255,19 @@ static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
         if (ch == 27) {  /* Escape */
             curs_set(0);
             delwin(dialog);
-            return 0;
+            return DIALOG_CANCEL;
         }
         else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
             buf[pos] = '\0';
             curs_set(0);
             delwin(dialog);
-            return 1;
+            return DIALOG_CONFIRM;
+        }
+        else if (ch == '\t' || ch == KEY_STAB) {  /* Tab */
+            buf[pos] = '\0';
+            curs_set(0);
+            delwin(dialog);
+            return DIALOG_DRILLDOWN;
         }
         else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
             if (pos > 0) {
@@ -274,6 +286,100 @@ static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
             wrefresh(dialog);
         }
     }
+}
+
+/* Wrapper for simple confirm/cancel dialog */
+static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
+{
+    int result = show_input_dialog_ex(prompt, "[Enter=confirm, Esc=cancel]", buf, buflen);
+    return (result == DIALOG_CONFIRM) ? 1 : 0;
+}
+
+/* Show cascading date/time dialogs starting from year
+ * Returns 1 if a valid selection was made, 0 if cancelled */
+static int show_datetime_picker(void)
+{
+    char buf[16];
+    int result;
+    int year, month, day, hour;
+    struct tm tm_date = {0};
+    
+    /* Year dialog */
+    result = show_input_dialog_ex("Enter year (e.g. 2025):", 
+                                   "[Enter=go, Tab=month, Esc=cancel]", buf, sizeof(buf));
+    if (result == DIALOG_CANCEL) return 0;
+    
+    year = atoi(buf);
+    if (year < 1970 || year > 2100) return 0;
+    
+    tm_date.tm_year = year - 1900;
+    tm_date.tm_mon = 0;
+    tm_date.tm_mday = 1;
+    tm_date.tm_hour = 0;
+    tm_date.tm_min = 0;
+    tm_date.tm_sec = 0;
+    tm_date.tm_isdst = -1;
+    
+    if (result == DIALOG_CONFIRM) {
+        /* Show whole year */
+        time_t start = mktime(&tm_date);
+        if (start == (time_t)-1) return 0;
+        current_mode = MODE_YEAR;
+        window_end = start + get_window_duration();
+        return 1;
+    }
+    
+    /* Month dialog (Tab was pressed) */
+    result = show_input_dialog_ex("Enter month (1-12):", 
+                                   "[Enter=go, Tab=day, Esc=cancel]", buf, sizeof(buf));
+    if (result == DIALOG_CANCEL) return 0;
+    
+    month = atoi(buf);
+    if (month < 1 || month > 12) return 0;
+    tm_date.tm_mon = month - 1;
+    
+    if (result == DIALOG_CONFIRM) {
+        /* Show whole month */
+        time_t start = mktime(&tm_date);
+        if (start == (time_t)-1) return 0;
+        current_mode = MODE_MONTH;
+        window_end = start + get_window_duration();
+        return 1;
+    }
+    
+    /* Day dialog (Tab was pressed) */
+    result = show_input_dialog_ex("Enter day (1-31):", 
+                                   "[Enter=go, Tab=hour, Esc=cancel]", buf, sizeof(buf));
+    if (result == DIALOG_CANCEL) return 0;
+    
+    day = atoi(buf);
+    if (day < 1 || day > 31) return 0;
+    tm_date.tm_mday = day;
+    
+    if (result == DIALOG_CONFIRM) {
+        /* Show whole day */
+        time_t start = mktime(&tm_date);
+        if (start == (time_t)-1) return 0;
+        current_mode = MODE_DAY;
+        window_end = start + get_window_duration();
+        return 1;
+    }
+    
+    /* Hour dialog (Tab was pressed) */
+    result = show_input_dialog_ex("Enter hour (0-23):", 
+                                   "[Enter=go, Esc=cancel]", buf, sizeof(buf));
+    if (result == DIALOG_CANCEL) return 0;
+    
+    hour = atoi(buf);
+    if (hour < 0 || hour > 23) return 0;
+    tm_date.tm_hour = hour;
+    
+    /* Show whole hour */
+    time_t start = mktime(&tm_date);
+    if (start == (time_t)-1) return 0;
+    current_mode = MODE_HOUR;
+    window_end = start + get_window_duration();
+    return 1;
 }
 
 /* Parse year and set window to show entire year */
@@ -380,7 +486,7 @@ static void print_help(void)
     printf("  w             Week mode (7 day view, 1 day steps)\n");
     printf("  m             Month mode (30 day view, 1 week steps)\n");
     printf("  y             Year mode (365 day view, 1 month steps)\n");
-    printf("  Y             Go to specific year (shows input dialog)\n");
+    printf("  Y             Go to date (year -> Tab -> month -> Tab -> day -> Tab -> hour)\n");
     printf("  r             Reload data\n");
     printf("  q             Quit\n");
 }
@@ -556,18 +662,12 @@ int main(int argc, char **argv)
                 break;
                 
             case 'Y':
-                /* Show dialog to enter specific year */
-                {
-                    char year_buf[16];
-                    if (show_input_dialog("Enter year (e.g. 2025):", year_buf, sizeof(year_buf))) {
-                        int year = atoi(year_buf);
-                        if (goto_year(year)) {
-                            needs_reload = 1;
-                        }
-                    }
-                    /* Redraw screen after dialog closes */
-                    needs_redraw = 1;
+                /* Show cascading datetime picker dialog */
+                if (show_datetime_picker()) {
+                    needs_reload = 1;
                 }
+                /* Redraw screen after dialog closes */
+                needs_redraw = 1;
                 break;
                 
             case 'r':
