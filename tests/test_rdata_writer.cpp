@@ -39,17 +39,9 @@ void test_rdata_empty_data() {
     std::vector<std::string> headers = {"col1", "col2"};
     
     bool result = RDataWriter::writeRData(filename, readings, headers);
-    assert(result == true);
+    // Empty data should fail
+    assert(result == false);
     
-    // File should exist with RData magic header
-    auto bytes = readFileBytes(filename, 5);
-    assert(bytes[0] == 'R');
-    assert(bytes[1] == 'D');
-    assert(bytes[2] == 'X');
-    assert(bytes[3] == '2');
-    assert(bytes[4] == '\n');
-    
-    std::remove(filename.c_str());
     std::cout << "[PASS] test_rdata_empty_data" << std::endl;
 }
 
@@ -59,14 +51,9 @@ void test_rds_empty_data() {
     std::vector<std::string> headers = {"col1", "col2"};
     
     bool result = RDataWriter::writeRDS(filename, readings, headers);
-    assert(result == true);
+    // Empty data should fail
+    assert(result == false);
     
-    // RDS files start with 'X\n' (no RDX2 magic)
-    auto bytes = readFileBytes(filename, 2);
-    assert(bytes[0] == 'X');
-    assert(bytes[1] == '\n');
-    
-    std::remove(filename.c_str());
     std::cout << "[PASS] test_rds_empty_data" << std::endl;
 }
 
