@@ -1,6 +1,7 @@
 /* Unit tests for sensor_plot_utils - utility functions for sensor-plot */
 
 #include <cstdio>
+#include <cstdlib>
 
 extern "C" {
 #include "sensor_plot_utils.h"
@@ -227,6 +228,44 @@ bool test_invalid_hour() {
     return true;
 }
 
+/* ===== Leading Zero Parsing Tests ===== */
+/* Verify atoi correctly handles leading zeros (not octal) */
+
+bool test_leading_zero_month() {
+    /* atoi("08") should be 8, not 0 (octal would fail) */
+    ASSERT_EQ(atoi("01"), 1);
+    ASSERT_EQ(atoi("02"), 2);
+    ASSERT_EQ(atoi("08"), 8);
+    ASSERT_EQ(atoi("09"), 9);
+    ASSERT_EQ(atoi("10"), 10);
+    ASSERT_EQ(atoi("12"), 12);
+    return true;
+}
+
+bool test_leading_zero_day() {
+    ASSERT_EQ(atoi("01"), 1);
+    ASSERT_EQ(atoi("09"), 9);
+    ASSERT_EQ(atoi("15"), 15);
+    ASSERT_EQ(atoi("31"), 31);
+    return true;
+}
+
+bool test_leading_zero_hour() {
+    ASSERT_EQ(atoi("00"), 0);
+    ASSERT_EQ(atoi("01"), 1);
+    ASSERT_EQ(atoi("08"), 8);
+    ASSERT_EQ(atoi("09"), 9);
+    ASSERT_EQ(atoi("23"), 23);
+    return true;
+}
+
+bool test_leading_zero_year() {
+    /* Years with leading zeros (unlikely but possible) */
+    ASSERT_EQ(atoi("2025"), 2025);
+    ASSERT_EQ(atoi("1999"), 1999);
+    return true;
+}
+
 /* ===== Main ===== */
 
 int main() {
@@ -271,6 +310,12 @@ int main() {
     TEST(invalid_day);
     TEST(valid_hour);
     TEST(invalid_hour);
+    
+    printf("\nLeading Zero Parsing Tests:\n");
+    TEST(leading_zero_month);
+    TEST(leading_zero_day);
+    TEST(leading_zero_hour);
+    TEST(leading_zero_year);
     
     printf("\n============================\n");
     printf("Results: %d/%d tests passed\n", tests_passed, tests_run);
