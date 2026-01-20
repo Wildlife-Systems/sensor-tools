@@ -73,11 +73,27 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
                 value = line.substr(valueStart + 1, valueEnd - valueStart - 1);
                 pos = valueEnd + 1;
             } else if (line[valueStart] == '[') {
-                // Array value
-                size_t bracketEnd = line.find(']', valueStart);
-                if (bracketEnd == std::string::npos) break;
-                value = line.substr(valueStart + 1, bracketEnd - valueStart - 1);
-                pos = bracketEnd + 1;
+                // Array value - find matching ]
+                int depth = 1;
+                size_t i = valueStart + 1;
+                while (i < line.length() && depth > 0) {
+                    if (line[i] == '[') depth++;
+                    else if (line[i] == ']') depth--;
+                    i++;
+                }
+                value = line.substr(valueStart + 1, i - valueStart - 2);
+                pos = i;
+            } else if (line[valueStart] == '{') {
+                // Nested object value - find matching } and stringify
+                int depth = 1;
+                size_t i = valueStart + 1;
+                while (i < line.length() && depth > 0) {
+                    if (line[i] == '{') depth++;
+                    else if (line[i] == '}') depth--;
+                    i++;
+                }
+                value = line.substr(valueStart, i - valueStart);  // Include braces
+                pos = i;
             } else {
                 // Numeric or other value
                 size_t valueEnd = line.find_first_of(",}]", valueStart);
