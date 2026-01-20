@@ -21,3 +21,4 @@ Description: Tools for managing and reading sensor data
   * JSON/CSV transformer for sensor data files
   * Support for processing multiple files and directories
   * sensor-mon: ncurses-based sensor monitoring interface
+  * sensor-plot: historical sensor data graphing tool

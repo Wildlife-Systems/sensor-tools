@@ -64,15 +64,20 @@ TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_e
 # Source files for sensor-mon (C)
 MON_SOURCES = src/sensor-mon.c src/graph.c
 
+# Source files for sensor-plot (C)
+PLOT_SOURCES = src/sensor-plot.c src/graph.c
+
 # Object files
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
 MON_OBJECTS = $(MON_SOURCES:.c=.o)
+PLOT_OBJECTS = src/sensor-plot.o src/graph.o
 TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser
 
 TARGET = sensor-data
 TARGET_MON = sensor-mon
+TARGET_PLOT = sensor-plot
 
-all: $(TARGET) $(TARGET_MON)
+all: $(TARGET) $(TARGET_MON) $(TARGET_PLOT)
 
 # Build library objects
 %.o: %.cpp
@@ -90,6 +95,10 @@ $(TARGET): $(LIB_OBJECTS) $(SOURCES)
 API_OBJECTS = src/sensor_data_api.o src/csv_parser.o src/json_parser.o src/file_utils.o src/error_detector.o
 $(TARGET_MON): $(MON_OBJECTS) $(API_OBJECTS)
 	$(CXX) $(CFLAGS) -o $(TARGET_MON) $(MON_OBJECTS) $(API_OBJECTS) $(LDFLAGS) $(LDFLAGS_NCURSES)
+
+# Build sensor-plot (links with C++ API objects, so uses C++ linker)
+$(TARGET_PLOT): $(PLOT_OBJECTS) $(API_OBJECTS)
+	$(CXX) $(CFLAGS) -o $(TARGET_PLOT) $(PLOT_OBJECTS) $(API_OBJECTS) $(LDFLAGS) $(LDFLAGS_NCURSES)
 
 # Build and run tests
 test: $(LIB_OBJECTS)
@@ -123,17 +132,18 @@ test-integration: $(TARGET)
 # Run all tests
 test-all: test test-integration
 
-install: $(TARGET) $(TARGET_MON)
+install: $(TARGET) $(TARGET_MON) $(TARGET_PLOT)
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/
 	install -m 755 $(TARGET_MON) $(DESTDIR)$(BINDIR)/
+	install -m 755 $(TARGET_PLOT) $(DESTDIR)$(BINDIR)/
 	install -d $(DESTDIR)/etc/ws/sensor-errors
 	install -m 644 etc/ws/sensor-errors/*.errors $(DESTDIR)/etc/ws/sensor-errors/
 	install -d $(DESTDIR)/usr/share/bash-completion/completions
 	install -m 644 completions/sensor-data.bash $(DESTDIR)/usr/share/bash-completion/completions/sensor-data
 
 clean:
-	rm -f $(TARGET) $(TARGET_MON) $(LIB_OBJECTS) $(MON_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
+	rm -f $(TARGET) $(TARGET_MON) $(TARGET_PLOT) $(LIB_OBJECTS) $(MON_OBJECTS) $(PLOT_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
 
 # Force a clean rebuild
 rebuild: clean all
@@ -142,6 +152,7 @@ rebuild: clean all
 release: clean
 	$(CXX) $(CPPFLAGS) -std=c++11 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) -pthread
 	$(CXX) $(CPPFLAGS) -std=c++11 -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_MON) $(MON_SOURCES) src/sensor_data_api.cpp src/csv_parser.cpp src/json_parser.cpp src/file_utils.cpp src/error_detector.cpp $(LDFLAGS_NCURSES)
+	$(CXX) $(CPPFLAGS) -std=c++11 -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_PLOT) $(PLOT_SOURCES) src/sensor_data_api.cpp src/csv_parser.cpp src/json_parser.cpp src/file_utils.cpp src/error_detector.cpp $(LDFLAGS_NCURSES)
 
 # Generate coverage report (requires gcov)
 coverage:

@@ -1,0 +1,82 @@
+.TH SENSOR-PLOT 1 "January 2026" "sensor-tools" "User Commands"
+.SH NAME
+sensor-plot \- display historical sensor data graphs
+.SH SYNOPSIS
+.B sensor-plot
+.BI \-\-sensor " SENSOR_ID"
+.RB [ \-\-sensor " SENSOR_ID2" ]
+\&...
+.SH DESCRIPTION
+.B sensor-plot
+displays historical sensor data from /var/ws/*.out files as graphs.
+Up to 5 sensors can be displayed simultaneously, with each sensor's graph
+shown in a different colour.
+.PP
+The program starts in day mode showing the last 24 hours of data.
+Use arrow keys to scroll through time and switch between day and week views.
+.SH OPTIONS
+.TP
+.BI \-\-sensor " SENSOR_ID"
+Specify a sensor ID to plot. Can be specified up to 5 times to display
+multiple sensors on the same screen.
+.TP
+.BR \-\-help ", " \-h
+Display help message and exit.
+.SH CONTROLS
+.TP
+.B Left/Right Arrow
+Scroll the time window. In day mode, scrolls by 1 hour.
+In week mode, scrolls by 1 day.
+.TP
+.B d
+Switch to day mode (24 hour view, 1 hour scroll steps).
+.TP
+.B w
+Switch to week mode (7 day view, 1 day scroll steps).
+.TP
+.B r
+Reload data from disk.
+.TP
+.B q
+Quit the program.
+.SH DISPLAY
+Each sensor is displayed in a different colour:
+.IP \[bu] 2
+Sensor 1: Cyan
+.IP \[bu]
+Sensor 2: Yellow
+.IP \[bu]
+Sensor 3: Magenta
+.IP \[bu]
+Sensor 4: Red
+.IP \[bu]
+Sensor 5: Blue
+.PP
+The screen is divided into horizontal sections, with each sensor's graph
+occupying an equal portion of the available space.
+.SH DATA SOURCE
+Sensor data is read from .out files in /var/ws and its subdirectories.
+These files should contain JSON records with at least the following fields:
+.IP \[bu] 2
+.B sensor_id
+\- The sensor identifier
+.IP \[bu]
+.B value
+\- The numeric reading value
+.IP \[bu]
+.B datetime
+or
+.B timestamp
+\- The time of the reading
+.SH EXAMPLES
+.TP
+Display a single sensor:
+.B sensor-plot --sensor ds18b20_abc123
+.TP
+Display three sensors together:
+.B sensor-plot --sensor temp_indoor --sensor temp_outdoor --sensor humidity
+.SH SEE ALSO
+.BR sensor-mon (1),
+.BR sensor-data (1)
+.SH AUTHOR
+Wildlife Systems
