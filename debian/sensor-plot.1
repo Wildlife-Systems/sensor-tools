@@ -3,22 +3,37 @@
 sensor-plot \- display historical sensor data graphs
 .SH SYNOPSIS
 .B sensor-plot
+.RB [ \-r | \-R ]
+.RB [ \-e
+.IR extension ]
 .BI \-\-sensor " SENSOR_ID"
 .RB [ \-\-sensor " SENSOR_ID2" ]
 \&...
+.RI [ PATH ]
 .SH DESCRIPTION
 .B sensor-plot
-displays historical sensor data from /var/ws/*.out files as graphs.
+displays historical sensor data from .out files as graphs.
 Up to 5 sensors can be displayed simultaneously, with each sensor's graph
 shown in a different colour.
 .PP
 The program starts in day mode showing the last 24 hours of data.
 Use arrow keys to scroll through time and switch between different time views.
+.PP
+If no PATH is specified, defaults to /var/ws.
 .SH OPTIONS
 .TP
 .BI \-\-sensor " SENSOR_ID"
 Specify a sensor ID to plot. Can be specified up to 5 times to display
 multiple sensors on the same screen.
+.TP
+.BR \-r ", " \-\-recursive
+Search subdirectories for data files. This is the default.
+.TP
+.BR \-R ", " \-\-no\-recursive
+Do not search subdirectories.
+.TP
+.BR \-e ", " \-\-extension " " \fIEXT\fR
+Only read files with the specified extension (e.g., .out).
 .TP
 .BR \-\-help ", " \-h
 Display help message and exit.

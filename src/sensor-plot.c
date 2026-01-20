@@ -26,7 +26,7 @@
 #include "sensor_data_api.h"
 
 #define MAX_SENSORS 5
-#define DATA_DIR "/var/ws"
+#define DEFAULT_DATA_DIR "/var/ws"
 
 /* Mode definitions */
 typedef enum {
@@ -50,6 +50,9 @@ static int num_sensors = 0;
 static view_mode_t current_mode = MODE_DAY;
 static time_t window_end;      /* End of current view window */
 static volatile int running = 1;
+static char *data_directory = NULL;  /* Data directory path */
+static int recursive_search = 1;     /* Whether to search subdirectories */
+static char *extension_filter = NULL; /* File extension filter (e.g., ".out") */
 
 /* Color pairs */
 #define COLOR_FRAME 1
@@ -120,8 +123,9 @@ static void load_sensor_data(int sensor_idx)
     long start_time = (long)window_end - get_window_duration();
     long end_time = (long)window_end;
     
-    sensor_data_result_t *result = sensor_data_range_by_sensor_id(
-        DATA_DIR, s->sensor_id, start_time, end_time, 1);
+    const char *dir = data_directory ? data_directory : DEFAULT_DATA_DIR;
+    sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
+        dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter);
     
     if (!result || result->count == 0) {
         sensor_data_result_free(result);
@@ -225,12 +229,36 @@ static int parse_args(int argc, char **argv)
             sensors[num_sensors].has_data = 0;
             reset_graph(&sensors[num_sensors].graph);
             num_sensors++;
+        } else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
+            recursive_search = 1;
+        } else if (strcmp(argv[i], "-R") == 0 || strcmp(argv[i], "--no-recursive") == 0) {
+            recursive_search = 0;
+        } else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--extension") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s requires an argument\n", argv[i]);
+                return -1;
+            }
+            i++;
+            /* Ensure extension starts with a dot */
+            if (argv[i][0] == '.') {
+                extension_filter = strdup(argv[i]);
+            } else {
+                extension_filter = malloc(strlen(argv[i]) + 2);
+                if (extension_filter) {
+                    extension_filter[0] = '.';
+                    strcpy(extension_filter + 1, argv[i]);
+                }
+            }
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printf("Usage: sensor-plot --sensor SENSOR_ID [--sensor SENSOR_ID2] ...\n");
+            printf("Usage: sensor-plot [OPTIONS] --sensor SENSOR_ID [--sensor SENSOR_ID2] ... [PATH]\n");
             printf("\nDisplay historical sensor data graphs.\n");
             printf("\nOptions:\n");
-            printf("  --sensor ID   Sensor ID to plot (up to %d sensors)\n", MAX_SENSORS);
-            printf("  --help        Show this help message\n");
+            printf("  --sensor ID          Sensor ID to plot (up to %d sensors)\n", MAX_SENSORS);
+            printf("  -r, --recursive      Search subdirectories (default)\n");
+            printf("  -R, --no-recursive   Do not search subdirectories\n");
+            printf("  -e, --extension EXT  Only read files with this extension\n");
+            printf("  --help               Show this help message\n");
+            printf("\nIf PATH is not specified, defaults to %s\n", DEFAULT_DATA_DIR);
             printf("\nControls:\n");
             printf("  Left/Right    Scroll time window\n");
             printf("  h             Hour mode (1 hour view, 1 minute steps)\n");
@@ -241,6 +269,10 @@ static int parse_args(int argc, char **argv)
             printf("  r             Reload data\n");
             printf("  q             Quit\n");
             return 1;  /* Signal to exit cleanly */
+        } else if (argv[i][0] != '-') {
+            /* Positional argument - treat as data directory/file */
+            free(data_directory);
+            data_directory = strdup(argv[i]);
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             return -1;
@@ -262,6 +294,8 @@ static void cleanup(void)
     for (int i = 0; i < num_sensors; i++) {
         free(sensors[i].sensor_id);
     }
+    free(data_directory);
+    free(extension_filter);
 }
 
 int main(int argc, char **argv)
