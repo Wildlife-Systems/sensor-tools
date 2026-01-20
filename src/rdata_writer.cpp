@@ -1,5 +1,6 @@
 #include "rdata_writer.h"
 #include <cstring>
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <zlib.h>
@@ -44,67 +45,6 @@ bool RDataWriter::writeUncompressedFile(const std::string& filename, const std::
     }
     file.write(data.data(), data.size());
     return file.good();
-}
-
-// Compress data to a vector using zlib deflate (gzip format)
-static std::vector<char> gzipCompress(const std::string& data) {
-    // Gzip header (10 bytes)
-    std::vector<char> result;
-    result.push_back('\x1f');  // Magic number
-    result.push_back('\x8b');  // Magic number
-    result.push_back('\x08');  // Compression method (deflate)
-    result.push_back('\x00');  // Flags
-    result.push_back('\x00');  // Modification time
-    result.push_back('\x00');
-    result.push_back('\x00');
-    result.push_back('\x00');
-    result.push_back('\x00');  // Extra flags
-    result.push_back('\xff');  // OS (unknown)
-    
-    // Compress the data using raw deflate (windowBits = -15 for raw)
-    z_stream zs;
-    memset(&zs, 0, sizeof(zs));
-    
-    if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
-        return {};
-    }
-    
-    zs.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(data.data()));
-    zs.avail_in = static_cast<uInt>(data.size());
-    
-    char outbuffer[32768];
-    int ret;
-    
-    do {
-        zs.next_out = reinterpret_cast<Bytef*>(outbuffer);
-        zs.avail_out = sizeof(outbuffer);
-        
-        ret = deflate(&zs, Z_FINISH);
-        
-        size_t have = sizeof(outbuffer) - zs.avail_out;
-        result.insert(result.end(), outbuffer, outbuffer + have);
-    } while (ret == Z_OK || ret == Z_BUF_ERROR);
-    
-    deflateEnd(&zs);
-    
-    if (ret != Z_STREAM_END) {
-        return {};
-    }
-    
-    // Gzip trailer: CRC32 + original size (both little-endian)
-    uLong crc = crc32(0L, reinterpret_cast<const Bytef*>(data.data()), static_cast<uInt>(data.size()));
-    result.push_back(static_cast<char>(crc & 0xFF));
-    result.push_back(static_cast<char>((crc >> 8) & 0xFF));
-    result.push_back(static_cast<char>((crc >> 16) & 0xFF));
-    result.push_back(static_cast<char>((crc >> 24) & 0xFF));
-    
-    uLong size = static_cast<uLong>(data.size());
-    result.push_back(static_cast<char>(size & 0xFF));
-    result.push_back(static_cast<char>((size >> 8) & 0xFF));
-    result.push_back(static_cast<char>((size >> 16) & 0xFF));
-    result.push_back(static_cast<char>((size >> 24) & 0xFF));
-    
-    return result;
 }
 
 // ===== Utility methods =====
@@ -321,7 +261,7 @@ bool RDataWriter::writeRData(const std::string& filename,
     // Final NILSXP to end the file
     writer.writeHeader(NILVALUE_SXP, 0);
     
-    // Get buffer contents and compress
+    // Get buffer contents
     std::string data = writer.buffer.str();
     
     if (data.empty()) {
@@ -329,24 +269,55 @@ bool RDataWriter::writeRData(const std::string& filename,
         return false;
     }
     
-    std::vector<char> compressed = gzipCompress(data);
+    // Compress to a temp file first, then prepend magic header
+    std::string tempFile = filename + ".tmp";
     
-    if (compressed.empty()) {
-        std::cerr << "Error: Failed to compress data (input size: " << data.size() << ")" << std::endl;
+    gzFile gz = gzopen(tempFile.c_str(), "wb9");  // write binary, max compression
+    if (!gz) {
+        std::cerr << "Error: Cannot create temp gzip file" << std::endl;
         return false;
     }
     
-    // Write magic header followed by compressed data
-    std::ofstream outFile(filename, std::ios::binary);
-    if (!outFile) {
+    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
+    gzclose(gz);
+    
+    if (written != static_cast<int>(data.size())) {
+        std::cerr << "Error: gzwrite failed" << std::endl;
+        std::remove(tempFile.c_str());
+        return false;
+    }
+    
+    // Read temp gzip file using C-style I/O for better compatibility
+    FILE* fp = fopen(tempFile.c_str(), "rb");
+    if (!fp) {
+        std::cerr << "Error: Cannot read temp file" << std::endl;
+        std::remove(tempFile.c_str());
+        return false;
+    }
+    
+    fseek(fp, 0, SEEK_END);
+    long gzSize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    
+    std::vector<char> gzData(static_cast<size_t>(gzSize));
+    fread(gzData.data(), 1, static_cast<size_t>(gzSize), fp);
+    fclose(fp);
+    
+    // Write final file: magic header + gzipped data
+    FILE* outFp = fopen(filename.c_str(), "wb");
+    if (!outFp) {
         std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
+        std::remove(tempFile.c_str());
         return false;
     }
     
-    outFile.write(RDATA_MAGIC, 5);
-    outFile.write(compressed.data(), compressed.size());
+    fwrite(RDATA_MAGIC, 1, 5, outFp);
+    fwrite(gzData.data(), 1, static_cast<size_t>(gzSize), outFp);
+    fclose(outFp);
     
-    return outFile.good();
+    std::remove(tempFile.c_str());
+    
+    return true;
 }
 
 bool RDataWriter::writeRDS(const std::string& filename,
