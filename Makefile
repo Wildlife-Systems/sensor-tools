@@ -60,7 +60,7 @@ endif
 # Source files for sensor-data (C++)
 SOURCES = src/sensor-data.cpp
 LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp src/sensor_data_api.cpp src/rdata_writer.cpp
-TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp tests/test_file_collector.cpp tests/test_command_base.cpp tests/test_stats_analyser.cpp
+TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp tests/test_file_collector.cpp tests/test_command_base.cpp tests/test_stats_analyser.cpp tests/test_rdata_writer.cpp
 
 # Source files for sensor-mon (C)
 MON_SOURCES = src/sensor-mon.c src/graph.c
@@ -72,7 +72,7 @@ PLOT_SOURCES = src/sensor-plot.c src/graph.c
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
 MON_OBJECTS = $(MON_SOURCES:.c=.o)
 PLOT_OBJECTS = src/sensor-plot.o src/graph.o src/sensor_plot_args.o
-TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser test_graph test_sensor_plot_args
+TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser test_graph test_sensor_plot_args test_rdata_writer
 
 TARGET = sensor-data
 TARGET_MON = sensor-mon
@@ -118,6 +118,7 @@ test: $(LIB_OBJECTS)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_graph.cpp src/graph.o -o test_graph $(LDFLAGS) $(LDFLAGS_NCURSES) && ./test_graph
 	@$(CC) $(CPPFLAGS) $(CFLAGS) -c src/sensor_plot_args.c -o src/sensor_plot_args.o
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_sensor_plot_args.cpp src/sensor_plot_args.o -o test_sensor_plot_args $(LDFLAGS) && ./test_sensor_plot_args
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/test_rdata_writer.cpp src/rdata_writer.o -o test_rdata_writer $(LDFLAGS) && ./test_rdata_writer
 	@echo "All unit tests passed!"
 
 # Run integration tests (requires bash)
