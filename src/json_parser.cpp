@@ -28,9 +28,43 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
     }
     
     // Parse all objects in the line (either one object or multiple in an array)
+    // We need to track depth to only find TOP-LEVEL objects, not nested ones
+    int depth = 0;
+    bool inString = false;
+    
     while (pos < line.length()) {
-        // Look for start of next object
-        size_t objStart = line.find('{', pos);
+        // Find start of next top-level object
+        size_t objStart = std::string::npos;
+        size_t searchPos = pos;
+        
+        while (searchPos < line.length()) {
+            char c = line[searchPos];
+            if (inString) {
+                if (c == '\\' && searchPos + 1 < line.length()) {
+                    searchPos++;  // Skip escaped char
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else {
+                if (c == '"') {
+                    inString = true;
+                } else if (c == '[') {
+                    depth++;
+                } else if (c == ']') {
+                    depth--;
+                } else if (c == '{') {
+                    if (depth == 0) {
+                        objStart = searchPos;
+                        break;
+                    }
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                }
+            }
+            searchPos++;
+        }
+        
         if (objStart == std::string::npos) break;
         
         pos = objStart + 1;
@@ -149,6 +183,10 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
         if (!current.empty()) {
             readings.push_back(std::move(current));
         }
+        
+        // Reset outer tracking state after parsing an object
+        depth = 0;
+        inString = false;
         
         // Skip whitespace and commas after the object
         while (pos < line.length() && (isspace(line[pos]) || line[pos] == ',')) pos++;
