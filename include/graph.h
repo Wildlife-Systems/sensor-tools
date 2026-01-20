@@ -26,4 +26,11 @@ void draw_graph(graph_data_t *graph, int start_row, int end_row, int start_col, 
 /* Reset graph data */
 void reset_graph(graph_data_t *graph);
 
+/* Downsample values array to fit in graph, using bucket averaging
+ * values: input array of values
+ * count: number of values in input array
+ * graph: output graph to populate
+ * Returns number of points added to graph */
+int downsample_to_graph(const double *values, int count, graph_data_t *graph);
+
 #endif /* GRAPH_H */

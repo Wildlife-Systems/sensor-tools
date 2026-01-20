@@ -273,6 +273,142 @@ bool test_zero_values() {
     return true;
 }
 
+/* Test downsample_to_graph with small array (no downsampling needed) */
+bool test_downsample_small_array() {
+    graph_data_t graph;
+    reset_graph(&graph);
+    
+    double values[] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    int result = downsample_to_graph(values, 5, &graph);
+    
+    ASSERT_EQ(result, 5);
+    ASSERT_EQ(graph.count, 5);
+    ASSERT_DOUBLE_EQ(graph.values[0], 1.0);
+    ASSERT_DOUBLE_EQ(graph.values[4], 5.0);
+    ASSERT_DOUBLE_EQ(graph.min_val, 1.0);
+    ASSERT_DOUBLE_EQ(graph.max_val, 5.0);
+    
+    return true;
+}
+
+/* Test downsample_to_graph with null/invalid inputs */
+bool test_downsample_null_handling() {
+    graph_data_t graph;
+    reset_graph(&graph);
+    
+    double values[] = {1.0, 2.0, 3.0};
+    
+    ASSERT_EQ(downsample_to_graph(NULL, 5, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, 0, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, -1, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, 3, NULL), 0);
+    
+    return true;
+}
+
+/* Test downsample_to_graph with large array (downsampling needed) */
+bool test_downsample_large_array() {
+    graph_data_t graph;
+    reset_graph(&graph);
+    
+    /* Create array larger than MAX_GRAPH_POINTS */
+    int size = MAX_GRAPH_POINTS * 2;
+    double *values = new double[size];
+    
+    /* Fill with incrementing values 0, 1, 2, ... */
+    for (int i = 0; i < size; i++) {
+        values[i] = (double)i;
+    }
+    
+    int result = downsample_to_graph(values, size, &graph);
+    
+    /* Should downsample to MAX_GRAPH_POINTS */
+    ASSERT_EQ(result, MAX_GRAPH_POINTS);
+    ASSERT_EQ(graph.count, MAX_GRAPH_POINTS);
+    
+    /* First bucket should average values 0 and 1 = 0.5 */
+    ASSERT_DOUBLE_EQ(graph.values[0], 0.5);
+    
+    /* Last bucket should average second-to-last pair */
+    /* With 800 values in 400 buckets, last bucket averages 798 and 799 = 798.5 */
+    ASSERT_DOUBLE_EQ(graph.values[MAX_GRAPH_POINTS - 1], 798.5);
+    
+    delete[] values;
+    return true;
+}
+
+/* Test downsample_to_graph averaging correctness */
+bool test_downsample_averaging() {
+    graph_data_t graph;
+    reset_graph(&graph);
+    
+    /* Create 800 values in 4 groups of 200 */
+    int size = MAX_GRAPH_POINTS * 2;
+    double *values = new double[size];
+    
+    for (int i = 0; i < size; i++) {
+        /* Each group of 2 consecutive values will be averaged */
+        /* Make pairs (10, 20), (10, 20), etc. so average is always 15 */
+        values[i] = (i % 2 == 0) ? 10.0 : 20.0;
+    }
+    
+    int result = downsample_to_graph(values, size, &graph);
+    
+    ASSERT_EQ(result, MAX_GRAPH_POINTS);
+    
+    /* Each bucket averages 2 values: 10 and 20, result should be 15 */
+    for (int i = 0; i < MAX_GRAPH_POINTS; i++) {
+        ASSERT_DOUBLE_EQ(graph.values[i], 15.0);
+    }
+    
+    delete[] values;
+    return true;
+}
+
+/* Test downsample_to_graph with exactly MAX_GRAPH_POINTS (boundary) */
+bool test_downsample_exact_max() {
+    graph_data_t graph;
+    reset_graph(&graph);
+    
+    double *values = new double[MAX_GRAPH_POINTS];
+    for (int i = 0; i < MAX_GRAPH_POINTS; i++) {
+        values[i] = (double)i;
+    }
+    
+    int result = downsample_to_graph(values, MAX_GRAPH_POINTS, &graph);
+    
+    /* Should NOT downsample - all points fit exactly */
+    ASSERT_EQ(result, MAX_GRAPH_POINTS);
+    ASSERT_EQ(graph.count, MAX_GRAPH_POINTS);
+    ASSERT_DOUBLE_EQ(graph.values[0], 0.0);
+    ASSERT_DOUBLE_EQ(graph.values[MAX_GRAPH_POINTS - 1], (double)(MAX_GRAPH_POINTS - 1));
+    
+    delete[] values;
+    return true;
+}
+
+/* Test downsample clears previous graph data */
+bool test_downsample_resets_graph() {
+    graph_data_t graph;
+    
+    /* Pre-fill with junk */
+    graph.count = 100;
+    graph.start_idx = 50;
+    graph.min_val = -999.0;
+    graph.max_val = 999.0;
+    
+    double values[] = {5.0, 10.0, 15.0};
+    int result = downsample_to_graph(values, 3, &graph);
+    
+    ASSERT_EQ(result, 3);
+    ASSERT_EQ(graph.count, 3);
+    ASSERT_EQ(graph.start_idx, 0);
+    ASSERT_DOUBLE_EQ(graph.min_val, 5.0);
+    ASSERT_DOUBLE_EQ(graph.max_val, 15.0);
+    
+    return true;
+}
+
 int main() {
     printf("=== Graph Data Structure Unit Tests ===\n\n");
     
@@ -288,6 +424,12 @@ int main() {
     TEST(historical_circular_buffer);
     TEST(timestamps_set);
     TEST(zero_values);
+    TEST(downsample_small_array);
+    TEST(downsample_null_handling);
+    TEST(downsample_large_array);
+    TEST(downsample_averaging);
+    TEST(downsample_exact_max);
+    TEST(downsample_resets_graph);
     
     printf("\n=== Results: %d/%d tests passed ===\n", tests_passed, tests_run);
     

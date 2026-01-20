@@ -128,35 +128,8 @@ static void load_sensor_data(int sensor_idx)
         return;
     }
     
-    /* If we have more points than MAX_GRAPH_POINTS, we need to downsample */
-    if (result->count <= MAX_GRAPH_POINTS) {
-        /* All points fit - add them directly */
-        for (int i = 0; i < result->count; i++) {
-            add_graph_point(&s->graph, result->values[i]);
-        }
-    } else {
-        /* Downsample by averaging points into buckets */
-        int num_buckets = MAX_GRAPH_POINTS;
-        double points_per_bucket = (double)result->count / num_buckets;
-        
-        for (int bucket = 0; bucket < num_buckets; bucket++) {
-            int start_idx = (int)(bucket * points_per_bucket);
-            int end_idx = (int)((bucket + 1) * points_per_bucket);
-            if (end_idx > result->count) end_idx = result->count;
-            if (start_idx >= end_idx) continue;
-            
-            /* Calculate average for this bucket */
-            double sum = 0;
-            int count = 0;
-            for (int i = start_idx; i < end_idx; i++) {
-                sum += result->values[i];
-                count++;
-            }
-            if (count > 0) {
-                add_graph_point(&s->graph, sum / count);
-            }
-        }
-    }
+    /* Use downsample_to_graph which handles both small and large datasets */
+    downsample_to_graph(result->values, result->count, &s->graph);
     
     s->has_data = 1;
     sensor_data_result_free(result);

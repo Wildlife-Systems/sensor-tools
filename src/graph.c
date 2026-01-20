@@ -8,6 +8,48 @@
 #include <string.h>
 #include <time.h>
 
+/* Downsample values array to fit in graph, using bucket averaging */
+int downsample_to_graph(const double *values, int count, graph_data_t *graph)
+{
+    if (!values || count <= 0 || !graph) return 0;
+    
+    reset_graph(graph);
+    
+    if (count <= MAX_GRAPH_POINTS) {
+        /* All points fit - add them directly */
+        for (int i = 0; i < count; i++) {
+            add_graph_point(graph, values[i]);
+        }
+        return count;
+    }
+    
+    /* Downsample by averaging points into buckets */
+    int num_buckets = MAX_GRAPH_POINTS;
+    double points_per_bucket = (double)count / num_buckets;
+    int points_added = 0;
+    
+    for (int bucket = 0; bucket < num_buckets; bucket++) {
+        int start_idx = (int)(bucket * points_per_bucket);
+        int end_idx = (int)((bucket + 1) * points_per_bucket);
+        if (end_idx > count) end_idx = count;
+        if (start_idx >= end_idx) continue;
+        
+        /* Calculate average for this bucket */
+        double sum = 0;
+        int bucket_count = 0;
+        for (int i = start_idx; i < end_idx; i++) {
+            sum += values[i];
+            bucket_count++;
+        }
+        if (bucket_count > 0) {
+            add_graph_point(graph, sum / bucket_count);
+            points_added++;
+        }
+    }
+    
+    return points_added;
+}
+
 /* Add value to graph data */
 void add_graph_point(graph_data_t *graph, double value)
 {
