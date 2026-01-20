@@ -128,7 +128,7 @@ static void draw_screen(void)
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
     
-    clear();
+    erase();  /* Use erase() instead of clear() to avoid full terminal clear */
     
     /* Calculate layout */
     int header_height = 3;
@@ -273,12 +273,15 @@ int main(int argc, char **argv)
     /* Load initial data */
     load_all_data();
     
+    /* Draw initial screen */
+    draw_screen();
+    
     /* Main loop */
     while (running) {
-        draw_screen();
-        
         int ch = getch();
         if (ch == ERR) continue;
+        
+        int needs_redraw = 0;
         
         switch (ch) {
             case 'q':
@@ -290,6 +293,7 @@ int main(int argc, char **argv)
                 /* Move window back */
                 window_end -= get_step_size();
                 load_all_data();
+                needs_redraw = 1;
                 break;
                 
             case KEY_RIGHT:
@@ -300,29 +304,38 @@ int main(int argc, char **argv)
                     window_end = time(NULL);
                 }
                 load_all_data();
+                needs_redraw = 1;
                 break;
                 
             case 'd':
             case 'D':
                 current_mode = MODE_DAY;
                 load_all_data();
+                needs_redraw = 1;
                 break;
                 
             case 'w':
             case 'W':
                 current_mode = MODE_WEEK;
                 load_all_data();
+                needs_redraw = 1;
                 break;
                 
             case 'r':
             case 'R':
                 /* Reload data */
                 load_all_data();
+                needs_redraw = 1;
                 break;
                 
             case KEY_RESIZE:
-                /* Terminal resized, just redraw */
+                /* Terminal resized, redraw */
+                needs_redraw = 1;
                 break;
+        }
+        
+        if (needs_redraw) {
+            draw_screen();
         }
     }
     
