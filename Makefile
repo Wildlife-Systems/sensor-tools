@@ -1,5 +1,5 @@
 CXX ?= g++
-CC ?= gcc
+CC = gcc
 CXXFLAGS ?= -Wall -O2
 CFLAGS ?= -Wall -Wextra -pedantic -O2
 CXXFLAGS += -std=c++11 -pthread -Iinclude
@@ -58,7 +58,7 @@ endif
 
 # Source files for sensor-data (C++)
 SOURCES = src/sensor-data.cpp
-LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp
+LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp src/sensor_data_api.cpp
 TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp tests/test_file_collector.cpp tests/test_command_base.cpp tests/test_stats_analyser.cpp
 
 # Source files for sensor-mon (C)
@@ -86,9 +86,10 @@ src/%.o: src/%.c
 $(TARGET): $(LIB_OBJECTS) $(SOURCES)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LIB_OBJECTS) $(LDFLAGS)
 
-# Build sensor-mon
-$(TARGET_MON): $(MON_OBJECTS)
-	$(CC) $(CFLAGS) -o $(TARGET_MON) $(MON_OBJECTS) $(LDFLAGS_NCURSES)
+# Build sensor-mon (links with C++ API objects, so uses C++ linker)
+API_OBJECTS = src/sensor_data_api.o src/csv_parser.o src/json_parser.o src/file_utils.o src/error_detector.o
+$(TARGET_MON): $(MON_OBJECTS) $(API_OBJECTS)
+	$(CXX) $(CFLAGS) -o $(TARGET_MON) $(MON_OBJECTS) $(API_OBJECTS) $(LDFLAGS) $(LDFLAGS_NCURSES)
 
 # Build and run tests
 test: $(LIB_OBJECTS)
@@ -140,7 +141,7 @@ rebuild: clean all
 # Release build with maximum optimizations
 release: clean
 	$(CXX) $(CPPFLAGS) -std=c++11 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) -pthread
-	$(CC) $(CPPFLAGS) -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_MON) $(MON_SOURCES) $(LDFLAGS_NCURSES)
+	$(CXX) $(CPPFLAGS) -std=c++11 -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_MON) $(MON_SOURCES) src/sensor_data_api.cpp src/csv_parser.cpp src/json_parser.cpp src/file_utils.cpp src/error_detector.cpp $(LDFLAGS_NCURSES)
 
 # Generate coverage report (requires gcov)
 coverage:

@@ -32,6 +32,9 @@ void add_graph_point(graph_data_t *graph, double value)
         graph->timestamps[idx] = now;
         graph->start_idx = (graph->start_idx + 1) % MAX_GRAPH_POINTS;
         
+        /* Historical count decreases as old points are overwritten */
+        if (graph->historical_count > 0) graph->historical_count--;
+        
         /* Recalculate min/max for all values in buffer */
         graph->min_val = graph->max_val = graph->values[0];
         for (int i = 0; i < MAX_GRAPH_POINTS; i++) {
@@ -39,6 +42,16 @@ void add_graph_point(graph_data_t *graph, double value)
             if (graph->values[i] > graph->max_val) graph->max_val = graph->values[i];
         }
     }
+}
+
+/* Add historical value to graph data (plotted in lighter color) */
+void add_historical_point(graph_data_t *graph, double value)
+{
+    if (!graph) return;
+    
+    /* Add as normal point but track it as historical */
+    add_graph_point(graph, value);
+    graph->historical_count++;
 }
 
 /* Draw graph in the specified area */
@@ -73,17 +86,30 @@ void draw_graph(graph_data_t *graph, int start_row, int end_row, int start_col, 
     /* Draw the graph points */
     int prev_graph_row = -1;
     int prev_col = -1;
+    int prev_is_historical = 0;
+    
+    /* Calculate where historical points end */
+    int historical_end_idx = graph->historical_count;
     
     for (int i = 0; i < points_to_show; i++) {
         int value_idx;
+        int is_historical = 0;
+        
         if (graph->count < MAX_GRAPH_POINTS) {
             /* Linear buffer */
             value_idx = graph->count - points_to_show + i;
+            /* Point is historical if its index is less than historical_count */
+            is_historical = (value_idx < historical_end_idx);
         } else {
             /* Circular buffer */
             int offset = MAX_GRAPH_POINTS - points_to_show + i;
             value_idx = (graph->start_idx + offset) % MAX_GRAPH_POINTS;
+            /* In circular mode, first historical_count points from start are historical */
+            int logical_idx = (value_idx - graph->start_idx + MAX_GRAPH_POINTS) % MAX_GRAPH_POINTS;
+            is_historical = (logical_idx < graph->historical_count);
         }
+        
+        int color_pair = is_historical ? 4 : 2; /* Cyan for historical, Blue for live */
         
         if (value_idx >= 0 && value_idx < graph->count) {
             int graph_row;
@@ -104,7 +130,9 @@ void draw_graph(graph_data_t *graph, int start_row, int end_row, int start_col, 
                 int line_start = (prev_graph_row < graph_row) ? prev_graph_row : graph_row;
                 int line_end = (prev_graph_row > graph_row) ? prev_graph_row : graph_row;
                 
-                if (has_colors()) attron(COLOR_PAIR(2)); /* Blue lines */
+                /* Use previous point's color for connecting line */
+                int line_color = prev_is_historical ? 4 : 2;
+                if (has_colors()) attron(COLOR_PAIR(line_color));
                 for (int row = line_start; row <= line_end; row++) {
                     if (row >= start_row + 1 && row <= end_row - 1) {
                         /* Use different character for connecting line vs data point */
@@ -113,18 +141,19 @@ void draw_graph(graph_data_t *graph, int start_row, int end_row, int start_col, 
                         }
                     }
                 }
-                if (has_colors()) attroff(COLOR_PAIR(2));
+                if (has_colors()) attroff(COLOR_PAIR(line_color));
             }
             
             /* Draw the data point */
             if (graph_row >= start_row + 1 && graph_row <= end_row - 1) {
-                if (has_colors()) attron(COLOR_PAIR(2)); /* Blue data points */
+                if (has_colors()) attron(COLOR_PAIR(color_pair));
                 mvaddch(graph_row, current_col, '*');
-                if (has_colors()) attroff(COLOR_PAIR(2));
+                if (has_colors()) attroff(COLOR_PAIR(color_pair));
             }
             
             prev_graph_row = graph_row;
             prev_col = current_col;
+            prev_is_historical = is_historical;
         }
     }
 }

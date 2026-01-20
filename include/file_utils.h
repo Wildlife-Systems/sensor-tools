@@ -60,7 +60,7 @@ int FileUtils::readLinesReverse(const std::string& filename, Callback callback) 
     
     // Read backwards through the file
     for (std::streamoff pos = static_cast<std::streamoff>(fileSize) - 1; pos >= 0; --pos) {
-        file.seekg(pos);
+        file.seekg(pos, std::ios::beg);
         char c;
         file.get(c);
         
