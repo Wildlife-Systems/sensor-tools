@@ -178,6 +178,28 @@ static time_t find_most_recent_timestamp(void)
     return most_recent;
 }
 
+/* Find the earliest timestamp across all sensors */
+static time_t find_earliest_timestamp(void)
+{
+    time_t earliest = 0;
+    const char *dir = data_directory ? data_directory : DEFAULT_DATA_DIR;
+    
+    for (int i = 0; i < num_sensors; i++) {
+        sensor_data_result_t *result = sensor_data_head_by_sensor_id(
+            dir, sensors[i].sensor_id, 1, recursive_search);
+        
+        if (result && result->count > 0) {
+            time_t ts = (time_t)result->timestamps[0];
+            if (earliest == 0 || ts < earliest) {
+                earliest = ts;
+            }
+        }
+        sensor_data_result_free(result);
+    }
+    
+    return earliest;
+}
+
 /* Format time for display */
 static void format_time(time_t t, char *buf, size_t len)
 {
@@ -208,7 +230,7 @@ static void draw_screen(void)
     
     mvprintw(0, 2, "sensor-plot - %s mode", get_mode_name());
     mvprintw(1, 2, "Time range: %s to %s", start_buf, end_buf);
-    mvprintw(2, 2, "Keys: h=hour d=day w=week m=month y=year, Left/Right=scroll, q=quit");
+    mvprintw(2, 2, "Keys: h/d/w/m/y=scale, arrows=scroll, n=newest s=start +/-=zoom, q=quit");
     
     if (has_colors()) attroff(COLOR_PAIR(COLOR_LABEL));
     
@@ -257,6 +279,9 @@ static void print_help(void)
     printf("\nIf PATH is not specified, defaults to %s\n", DEFAULT_DATA_DIR);
     printf("\nControls:\n");
     printf("  Left/Right    Scroll time window\n");
+    printf("  n             Jump to newest data (most recent on right)\n");
+    printf("  s             Jump to start (earliest data on left)\n");
+    printf("  +/-           Zoom in/out (change time scale)\n");
     printf("  h             Hour mode (1 hour view, 1 minute steps)\n");
     printf("  d             Day mode (24 hour view, 1 hour steps)\n");
     printf("  w             Week mode (7 day view, 1 day steps)\n");
@@ -438,8 +463,70 @@ int main(int argc, char **argv)
                 break;
                 
             case 'r':
-            case 'R':
                 /* Reload data */
+                needs_reload = 1;
+                break;
+                
+            case 'n':
+            case 'N':
+                /* Jump to newest data (most recent on right edge) */
+                {
+                    time_t most_recent = find_most_recent_timestamp();
+                    if (most_recent > 0) {
+                        window_end = most_recent;
+                    }
+                }
+                needs_reload = 1;
+                break;
+                
+            case 's':
+            case 'S':
+                /* Jump to start (earliest data on left edge) */
+                {
+                    time_t earliest = find_earliest_timestamp();
+                    if (earliest > 0) {
+                        /* Set window_end so earliest is at left edge */
+                        window_end = earliest + get_window_duration();
+                    }
+                }
+                needs_reload = 1;
+                break;
+                
+            case '+':
+            case '=':
+                /* Zoom in by ~10% (decrease window duration) */
+                {
+                    /* Keep center point fixed while zooming */
+                    long old_duration = get_window_duration();
+                    long center = (long)window_end - old_duration / 2;
+                    
+                    /* Decrease mode (zoom in) */
+                    if (current_mode > MODE_HOUR) {
+                        current_mode--;
+                    }
+                    
+                    long new_duration = get_window_duration();
+                    window_end = (time_t)(center + new_duration / 2);
+                }
+                needs_reload = 1;
+                break;
+                
+            case '-':
+            case '_':
+                /* Zoom out by ~10% (increase window duration) */
+                {
+                    /* Keep center point fixed while zooming */
+                    long old_duration = get_window_duration();
+                    long center = (long)window_end - old_duration / 2;
+                    
+                    /* Increase mode (zoom out) */
+                    if (current_mode < MODE_YEAR) {
+                        current_mode++;
+                    }
+                    
+                    long new_duration = get_window_duration();
+                    window_end = (time_t)(center + new_duration / 2);
+                }
                 needs_reload = 1;
                 break;
                 

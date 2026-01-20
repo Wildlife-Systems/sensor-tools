@@ -225,6 +225,103 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
     return result;
 }
 
+sensor_data_result_t *sensor_data_head_by_sensor_id(
+    const char *directory,
+    const char *sensor_id,
+    int max_count,
+    int recursive
+)
+{
+    if (!directory || !sensor_id || max_count <= 0) {
+        return nullptr;
+    }
+    
+    // Collect .out files from directory
+    FileCollector collector(recursive != 0, ".out", -1, 0);
+    collector.addPath(directory);
+    std::vector<std::string> files = collector.getSortedFiles();
+    
+    if (files.empty()) {
+        return nullptr;
+    }
+    
+    // Create DataReader with filter for sensor_id
+    DataReader reader(0, "auto", 0);
+    reader.getFilter().addOnlyValueFilter("sensor_id", sensor_id);
+    
+    // Collect all matching readings from all files
+    struct ValueTimestamp {
+        double value;
+        long timestamp;
+    };
+    std::vector<ValueTimestamp> allValues;
+    allValues.reserve(max_count * 2);
+    
+    for (const auto& file : files) {
+        reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
+            auto valueIt = reading.find("value");
+            if (valueIt == reading.end()) return;
+            
+            double val;
+            try {
+                val = std::stod(valueIt->second);
+            } catch (...) {
+                return;
+            }
+            
+            long ts = static_cast<long>(DateUtils::getTimestamp(reading));
+            allValues.push_back({val, ts});
+        });
+    }
+    
+    if (allValues.empty()) {
+        return nullptr;
+    }
+    
+    // Sort by timestamp to ensure chronological order
+    bool hasTimestamps = false;
+    for (const auto& vt : allValues) {
+        if (vt.timestamp > 0) {
+            hasTimestamps = true;
+            break;
+        }
+    }
+    
+    if (hasTimestamps) {
+        std::sort(allValues.begin(), allValues.end(), 
+                  [](const ValueTimestamp& a, const ValueTimestamp& b) {
+                      return a.timestamp < b.timestamp;
+                  });
+    }
+    
+    // Take the first max_count values
+    int resultCount = static_cast<int>(std::min(allValues.size(), static_cast<size_t>(max_count)));
+    
+    // Allocate result structure
+    sensor_data_result_t *result = static_cast<sensor_data_result_t*>(
+        malloc(sizeof(sensor_data_result_t)));
+    if (!result) return nullptr;
+    
+    result->values = static_cast<double*>(malloc(resultCount * sizeof(double)));
+    result->timestamps = static_cast<long*>(malloc(resultCount * sizeof(long)));
+    result->count = resultCount;
+    
+    if (!result->values || !result->timestamps) {
+        free(result->values);
+        free(result->timestamps);
+        free(result);
+        return nullptr;
+    }
+    
+    // Copy values (oldest first)
+    for (int i = 0; i < resultCount; i++) {
+        result->values[i] = allValues[i].value;
+        result->timestamps[i] = allValues[i].timestamp;
+    }
+    
+    return result;
+}
+
 void sensor_data_result_free(sensor_data_result_t *result)
 {
     if (!result) return;

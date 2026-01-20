@@ -80,6 +80,23 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
 );
 
 /**
+ * Read the first n values for a specific sensor_id from .out files in a directory.
+ * 
+ * @param directory     Directory to search (e.g., "/var/ws")
+ * @param sensor_id     The sensor_id to filter by
+ * @param max_count     Maximum number of values to return
+ * @param recursive     If non-zero, search subdirectories
+ * @return              Result structure (caller must free with sensor_data_result_free)
+ *                      Returns NULL on error
+ */
+sensor_data_result_t *sensor_data_head_by_sensor_id(
+    const char *directory,
+    const char *sensor_id,
+    int max_count,
+    int recursive
+);
+
+/**
  * Free a result structure returned by sensor_data_* functions
  */
 void sensor_data_result_free(sensor_data_result_t *result);
