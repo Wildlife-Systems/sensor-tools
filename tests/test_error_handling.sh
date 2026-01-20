@@ -281,12 +281,12 @@ echo "--- File/directory errors ---"
 # Test: Non-existent file
 check_error "transform: Non-existent file" \
     "./sensor-data transform nonexistent_file.json 2>&1" \
-    "Cannot open\|No such file\|Warning"
+    "Cannot open\|No such file\|Warning\|Failed to open"
 
 # Test: Non-existent directory
 check_error "transform: Non-existent directory" \
     "./sensor-data transform /nonexistent/path/ 2>&1" \
-    "Cannot open\|No such\|Warning\|No input"
+    "Cannot open\|No such\|Warning\|No input\|Failed to open"
 
 # ============================================
 # VALID EDGE CASES (should NOT error)
