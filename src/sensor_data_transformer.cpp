@@ -240,6 +240,25 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool reject
 // ===== Main transform method =====
 
 void SensorDataTransformer::transform() {
+    // Auto-detect output format from file extension if not specified
+    if (outputFormat.empty() && !outputFile.empty()) {
+        size_t dotPos = outputFile.rfind('.');
+        if (dotPos != std::string::npos) {
+            std::string ext = outputFile.substr(dotPos);
+            // Convert to lowercase for comparison
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (ext == ".rdata") {
+                outputFormat = "rdata";
+            } else if (ext == ".rds") {
+                outputFormat = "rds";
+            } else if (ext == ".csv") {
+                outputFormat = "csv";
+            } else if (ext == ".json") {
+                outputFormat = "json";
+            }
+        }
+    }
+    
     if (outputFormat.empty()) {
         outputFormat = "json";
     }
