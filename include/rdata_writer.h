@@ -61,9 +61,10 @@ private:
     // R serialization constants - RDX3 indicates gzip compression
     static constexpr const char* RDATA_MAGIC = "RDX3\n";
     static constexpr const char* BINARY_HEADER = "X\n";
-    static constexpr uint32_t FORMAT_VERSION = 2;
-    static constexpr uint32_t READER_VERSION = 131840;  // R 2.4.0
-    static constexpr uint32_t WRITER_VERSION = 131840;
+    static constexpr uint32_t FORMAT_VERSION = 3;  // Version 3 includes native encoding
+    static constexpr uint32_t READER_VERSION = 263426;  // R 4.5.2 (4*65536 + 5*256 + 2)
+    static constexpr uint32_t WRITER_VERSION = 263426;
+    static constexpr const char* NATIVE_ENCODING = "UTF-8";
 
     // SEXP types from R internals
     static constexpr int NILSXP = 0;        // NULL
@@ -112,6 +113,7 @@ private:
     static constexpr int HAS_OBJECT = 0x100;
     static constexpr int HAS_ATTR = 0x200;
     static constexpr int HAS_TAG = 0x400;
+    static constexpr int IS_UTF8 = 0x40000;  // UTF-8 encoding flag for CHARSXP
 
     // Writer state - write to buffer, then compress
     std::ostringstream buffer;

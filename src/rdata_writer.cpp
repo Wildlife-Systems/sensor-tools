@@ -69,9 +69,12 @@ uint64_t RDataWriter::byteSwap64(uint64_t val) {
 }
 
 double RDataWriter::byteSwapDouble(double val) {
-    uint64_t* ptr = reinterpret_cast<uint64_t*>(&val);
-    uint64_t swapped = byteSwap64(*ptr);
-    return *reinterpret_cast<double*>(&swapped);
+    uint64_t bits;
+    std::memcpy(&bits, &val, sizeof(bits));
+    bits = byteSwap64(bits);
+    double result;
+    std::memcpy(&result, &bits, sizeof(result));
+    return result;
 }
 
 // ===== Low-level write methods =====
@@ -104,13 +107,13 @@ void RDataWriter::writeHeader(int type, int flags) {
 }
 
 void RDataWriter::writeString(const char* str) {
-    // Write a CHARSXP (character string)
-    writeHeader(CHARSXP, 0);
-    
+    // Write a CHARSXP (character string) with UTF-8 encoding flag
     if (str == nullptr) {
-        // NA string - write -1 length
+        // NA string
+        writeHeader(CHARSXP, 0);
         writeInt32(-1);
     } else {
+        writeHeader(CHARSXP, IS_UTF8);  // Mark as UTF-8 encoded
         size_t len = strlen(str);
         writeInt32(static_cast<int32_t>(len));
         if (len > 0) {
@@ -249,11 +252,18 @@ bool RDataWriter::writeRData(const std::string& filename,
     RDataWriter writer;
     writer.reset();
     
+    // Write RDX3 magic header first (inside compressed stream)
+    writer.writeBytes(RDATA_MAGIC, 5);
+    
     // Write binary header to buffer (will be compressed)
     writer.writeBytes(BINARY_HEADER, 2);
     writer.writeInt32(FORMAT_VERSION);
     writer.writeInt32(READER_VERSION);
     writer.writeInt32(WRITER_VERSION);
+    
+    // Format version 3 requires native encoding
+    writer.writeInt32(static_cast<int32_t>(strlen(NATIVE_ENCODING)));
+    writer.writeBytes(NATIVE_ENCODING, strlen(NATIVE_ENCODING));
     
     // Write the data frame
     writer.writeDataFrame(tableName, readings, headers, "Sensor data");
@@ -269,12 +279,10 @@ bool RDataWriter::writeRData(const std::string& filename,
         return false;
     }
     
-    // Compress to a temp file first, then prepend magic header
-    std::string tempFile = filename + ".tmp";
-    
-    gzFile gz = gzopen(tempFile.c_str(), "wb9");  // write binary, max compression
+    // Write directly to gzip file (RDX3 magic is already in the buffer)
+    gzFile gz = gzopen(filename.c_str(), "wb9");  // write binary, max compression
     if (!gz) {
-        std::cerr << "Error: Cannot create temp gzip file" << std::endl;
+        std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
         return false;
     }
     
@@ -283,39 +291,8 @@ bool RDataWriter::writeRData(const std::string& filename,
     
     if (written != static_cast<int>(data.size())) {
         std::cerr << "Error: gzwrite failed" << std::endl;
-        std::remove(tempFile.c_str());
         return false;
     }
-    
-    // Read temp gzip file using C-style I/O for better compatibility
-    FILE* fp = fopen(tempFile.c_str(), "rb");
-    if (!fp) {
-        std::cerr << "Error: Cannot read temp file" << std::endl;
-        std::remove(tempFile.c_str());
-        return false;
-    }
-    
-    fseek(fp, 0, SEEK_END);
-    long gzSize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    
-    std::vector<char> gzData(static_cast<size_t>(gzSize));
-    fread(gzData.data(), 1, static_cast<size_t>(gzSize), fp);
-    fclose(fp);
-    
-    // Write final file: magic header + gzipped data
-    FILE* outFp = fopen(filename.c_str(), "wb");
-    if (!outFp) {
-        std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
-        std::remove(tempFile.c_str());
-        return false;
-    }
-    
-    fwrite(RDATA_MAGIC, 1, 5, outFp);
-    fwrite(gzData.data(), 1, static_cast<size_t>(gzSize), outFp);
-    fclose(outFp);
-    
-    std::remove(tempFile.c_str());
     
     return true;
 }
