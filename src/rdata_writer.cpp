@@ -436,7 +436,7 @@ bool RDataWriter::writeRDSColumns(const std::string& filename,
                                    const ColumnData& columns,
                                    const std::vector<std::string>& headers,
                                    size_t rowCount,
-                                   const std::string& label) {
+                                   const std::string& /*label*/) {
     if (columns.empty() || rowCount == 0) {
         std::cerr << "Error: No data to write" << std::endl;
         return false;
