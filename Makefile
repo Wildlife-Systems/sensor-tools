@@ -6,11 +6,9 @@ CPPFLAGS ?=
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
-# Extract version: try dpkg-parsechangelog (Linux), then parse debian/changelog, then git tag, else "unknown"
-VERSION := $(shell dpkg-parsechangelog -S Version 2>/dev/null || \
-	head -1 debian/changelog 2>/dev/null | sed -n 's/.*(\([^)]*\)).*/\1/p' || \
-	git describe --tags --abbrev=0 2>/dev/null || \
-	echo "unknown")
+# Extract version: try dpkg-parsechangelog, then git tag, else "unknown"
+# Note: debian/changelog parsing removed due to shell escaping issues in Make
+VERSION := $(shell dpkg-parsechangelog -S Version 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo unknown)
 CPPFLAGS += -DVERSION='"$(VERSION)"'
 
 # Coverage flags (set COVERAGE=1 to enable)
