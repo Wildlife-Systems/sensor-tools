@@ -24,9 +24,10 @@
 #include <signal.h>
 #include "graph.h"
 #include "sensor_data_api.h"
+#include "sensor_plot_args.h"
 
-#define MAX_SENSORS 5
-#define DEFAULT_DATA_DIR "/var/ws"
+#define MAX_SENSORS SENSOR_PLOT_MAX_SENSORS
+#define DEFAULT_DATA_DIR SENSOR_PLOT_DEFAULT_DIR
 
 /* Mode definitions */
 typedef enum {
@@ -52,6 +53,7 @@ static time_t window_end;      /* End of current view window */
 static volatile int running = 1;
 static char *data_directory = NULL;  /* Data directory path */
 static int recursive_search = 1;     /* Whether to search subdirectories */
+static int max_depth = -1;           /* Max directory depth (-1 = unlimited) */
 static char *extension_filter = NULL; /* File extension filter (e.g., ".out") */
 
 /* Color pairs */
@@ -125,7 +127,7 @@ static void load_sensor_data(int sensor_idx)
     
     const char *dir = data_directory ? data_directory : DEFAULT_DATA_DIR;
     sensor_data_result_t *result = sensor_data_range_by_sensor_id_ext(
-        dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter);
+        dir, s->sensor_id, start_time, end_time, recursive_search, extension_filter, max_depth);
     
     if (!result || result->count == 0) {
         sensor_data_result_free(result);
@@ -211,80 +213,68 @@ static void draw_screen(void)
     refresh();
 }
 
-/* Parse command line arguments */
+/* Print help message */
+static void print_help(void)
+{
+    printf("Usage: sensor-plot [OPTIONS] --sensor SENSOR_ID [--sensor SENSOR_ID2] ... [PATH]\n");
+    printf("\nDisplay historical sensor data graphs.\n");
+    printf("\nOptions:\n");
+    printf("  --sensor ID          Sensor ID to plot (up to %d sensors)\n", MAX_SENSORS);
+    printf("  -r, --recursive      Search subdirectories (default)\n");
+    printf("  -R, --no-recursive   Do not search subdirectories\n");
+    printf("  -d, --depth N        Maximum directory depth to search\n");
+    printf("  -e, --extension EXT  Only read files with this extension\n");
+    printf("  --help               Show this help message\n");
+    printf("\nIf PATH is not specified, defaults to %s\n", DEFAULT_DATA_DIR);
+    printf("\nControls:\n");
+    printf("  Left/Right    Scroll time window\n");
+    printf("  h             Hour mode (1 hour view, 1 minute steps)\n");
+    printf("  d             Day mode (24 hour view, 1 hour steps)\n");
+    printf("  w             Week mode (7 day view, 1 day steps)\n");
+    printf("  m             Month mode (30 day view, 1 week steps)\n");
+    printf("  y             Year mode (365 day view, 1 month steps)\n");
+    printf("  r             Reload data\n");
+    printf("  q             Quit\n");
+}
+
+/* Parse command line arguments using sensor_plot_args module */
 static int parse_args(int argc, char **argv)
 {
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--sensor") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --sensor requires an argument\n");
-                return -1;
-            }
-            if (num_sensors >= MAX_SENSORS) {
-                fprintf(stderr, "Error: maximum %d sensors allowed\n", MAX_SENSORS);
-                return -1;
-            }
-            i++;
-            sensors[num_sensors].sensor_id = strdup(argv[i]);
-            sensors[num_sensors].has_data = 0;
-            reset_graph(&sensors[num_sensors].graph);
-            num_sensors++;
-        } else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
-            recursive_search = 1;
-        } else if (strcmp(argv[i], "-R") == 0 || strcmp(argv[i], "--no-recursive") == 0) {
-            recursive_search = 0;
-        } else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--extension") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: %s requires an argument\n", argv[i]);
-                return -1;
-            }
-            i++;
-            /* Ensure extension starts with a dot */
-            if (argv[i][0] == '.') {
-                extension_filter = strdup(argv[i]);
-            } else {
-                extension_filter = malloc(strlen(argv[i]) + 2);
-                if (extension_filter) {
-                    extension_filter[0] = '.';
-                    strcpy(extension_filter + 1, argv[i]);
-                }
-            }
-        } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printf("Usage: sensor-plot [OPTIONS] --sensor SENSOR_ID [--sensor SENSOR_ID2] ... [PATH]\n");
-            printf("\nDisplay historical sensor data graphs.\n");
-            printf("\nOptions:\n");
-            printf("  --sensor ID          Sensor ID to plot (up to %d sensors)\n", MAX_SENSORS);
-            printf("  -r, --recursive      Search subdirectories (default)\n");
-            printf("  -R, --no-recursive   Do not search subdirectories\n");
-            printf("  -e, --extension EXT  Only read files with this extension\n");
-            printf("  --help               Show this help message\n");
-            printf("\nIf PATH is not specified, defaults to %s\n", DEFAULT_DATA_DIR);
-            printf("\nControls:\n");
-            printf("  Left/Right    Scroll time window\n");
-            printf("  h             Hour mode (1 hour view, 1 minute steps)\n");
-            printf("  d             Day mode (24 hour view, 1 hour steps)\n");
-            printf("  w             Week mode (7 day view, 1 day steps)\n");
-            printf("  m             Month mode (30 day view, 1 week steps)\n");
-            printf("  y             Year mode (365 day view, 1 month steps)\n");
-            printf("  r             Reload data\n");
-            printf("  q             Quit\n");
-            return 1;  /* Signal to exit cleanly */
-        } else if (argv[i][0] != '-') {
-            /* Positional argument - treat as data directory/file */
-            free(data_directory);
-            data_directory = strdup(argv[i]);
-        } else {
-            fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            return -1;
-        }
+    sensor_plot_args_t args;
+    int result = sensor_plot_args_parse(argc, argv, &args);
+    
+    if (result == 1) {
+        /* Help requested */
+        print_help();
+        sensor_plot_args_free(&args);
+        return 1;
     }
     
-    if (num_sensors == 0) {
-        fprintf(stderr, "Error: at least one --sensor argument required\n");
+    if (result < 0) {
+        /* Error */
+        fprintf(stderr, "Error: %s\n", args.error_message ? args.error_message : "unknown error");
         fprintf(stderr, "Use --help for usage information\n");
+        sensor_plot_args_free(&args);
         return -1;
     }
     
+    /* Copy parsed values to global state */
+    for (int i = 0; i < args.num_sensors; i++) {
+        sensors[num_sensors].sensor_id = args.sensor_ids[i];
+        args.sensor_ids[i] = NULL;  /* Transfer ownership */
+        sensors[num_sensors].has_data = 0;
+        reset_graph(&sensors[num_sensors].graph);
+        num_sensors++;
+    }
+    
+    recursive_search = args.recursive;
+    max_depth = args.max_depth;
+    data_directory = args.data_directory;
+    args.data_directory = NULL;  /* Transfer ownership */
+    extension_filter = args.extension;
+    args.extension = NULL;  /* Transfer ownership */
+    
+    sensor_plot_args_free(&args);
     return 0;
 }
 

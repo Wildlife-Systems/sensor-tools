@@ -65,6 +65,7 @@ sensor_data_result_t *sensor_data_range_by_sensor_id(
  * @param end_time      End of time range (unix timestamp)
  * @param recursive     If non-zero, search subdirectories
  * @param extension     File extension filter (e.g., ".out"), or NULL for default ".out"
+ * @param max_depth     Maximum directory depth (-1 for unlimited)
  * @return              Result structure (caller must free with sensor_data_result_free)
  *                      Returns NULL on error
  */
@@ -74,7 +75,8 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
     long start_time,
     long end_time,
     int recursive,
-    const char *extension
+    const char *extension,
+    int max_depth
 );
 
 /**

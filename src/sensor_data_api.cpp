@@ -125,7 +125,7 @@ sensor_data_result_t *sensor_data_range_by_sensor_id(
     int recursive
 )
 {
-    return sensor_data_range_by_sensor_id_ext(directory, sensor_id, start_time, end_time, recursive, NULL);
+    return sensor_data_range_by_sensor_id_ext(directory, sensor_id, start_time, end_time, recursive, NULL, -1);
 }
 
 sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
@@ -134,7 +134,8 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
     long start_time,
     long end_time,
     int recursive,
-    const char *extension
+    const char *extension,
+    int max_depth
 )
 {
     if (!directory || !sensor_id || start_time >= end_time) {
@@ -145,7 +146,7 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
     std::string ext = (extension && extension[0]) ? extension : ".out";
     
     // Collect files from directory
-    FileCollector collector(recursive != 0, ext, -1, 0);
+    FileCollector collector(recursive != 0, ext, max_depth, 0);
     collector.addPath(directory);
     std::vector<std::string> files = collector.getSortedFiles();
     
