@@ -145,13 +145,10 @@ sensor_data_result_t *sensor_data_range_by_sensor_id_ext(
     // Use provided extension or default to ".out"
     std::string ext = (extension && extension[0]) ? extension : ".out";
     
-    // Collect files from directory - use verbosity=1 for debugging
-    FileCollector collector(recursive != 0, ext, max_depth, 1);
+    // Collect files from directory
+    FileCollector collector(recursive != 0, ext, max_depth, 0);
     collector.addPath(directory);
     std::vector<std::string> files = collector.getSortedFiles();
-    
-    std::cerr << "DEBUG: Found " << files.size() << " files in " << directory 
-              << " (recursive=" << recursive << ", ext=" << ext << ", depth=" << max_depth << ")" << std::endl;
     
     if (files.empty()) {
         return nullptr;

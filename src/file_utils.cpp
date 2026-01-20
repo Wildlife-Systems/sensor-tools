@@ -3,19 +3,13 @@
 #include <algorithm>
 #include <fstream>
 #include <deque>
-#include <iostream>
-#include <cerrno>
-#include <cstring>
 
 bool FileUtils::isDirectory(const std::string& path) {
     struct stat info;
     if (stat(path.c_str(), &info) != 0) {
-        std::cerr << "DEBUG isDirectory: stat failed for '" << path << "': " << strerror(errno) << std::endl;
         return false;
     }
-    bool isDir = (info.st_mode & S_IFDIR) != 0;
-    std::cerr << "DEBUG isDirectory: '" << path << "' -> " << (isDir ? "true" : "false") << std::endl;
-    return isDir;
+    return (info.st_mode & S_IFDIR) != 0;
 }
 
 long long FileUtils::getFileSize(const std::string& filename) {
