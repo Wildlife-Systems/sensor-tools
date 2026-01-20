@@ -25,6 +25,7 @@
 #include "graph.h"
 #include "sensor_data_api.h"
 #include "sensor_plot_args.h"
+#include "sensor_plot_utils.h"
 
 #define MAX_SENSORS SENSOR_PLOT_MAX_SENSORS
 #define DEFAULT_DATA_DIR SENSOR_PLOT_DEFAULT_DIR
@@ -347,17 +348,8 @@ static int show_datetime_picker(void)
         return 1;
     }
     
-    /* Calculate days in this month */
-    int days_in_month;
-    if (month == 2) {
-        /* February - check for leap year */
-        int is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-        days_in_month = is_leap ? 29 : 28;
-    } else if (month == 4 || month == 6 || month == 9 || month == 11) {
-        days_in_month = 30;
-    } else {
-        days_in_month = 31;
-    }
+    /* Calculate days in this month using utility function */
+    int days_in_month = sensor_plot_days_in_month(year, month);
     
     /* Day dialog (Tab was pressed) */
     char day_prompt[32];
