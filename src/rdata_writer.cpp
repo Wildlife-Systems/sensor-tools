@@ -5,6 +5,30 @@
 #include <fstream>
 #include <zlib.h>
 
+// ===== Helper function to write buffer to gzip in chunks =====
+
+static bool writeBufferToGzip(gzFile gz, const std::vector<char>& buffer) {
+    const size_t CHUNK_SIZE = 1024 * 1024;  // 1MB chunks
+    size_t offset = 0;
+    
+    while (offset < buffer.size()) {
+        size_t toWrite = std::min(CHUNK_SIZE, buffer.size() - offset);
+        int written = gzwrite(gz, buffer.data() + offset, static_cast<unsigned>(toWrite));
+        if (written <= 0) {
+            int errnum;
+            const char* errMsg = gzerror(gz, &errnum);
+            if (errnum != Z_OK) {
+                std::cerr << "Error: gzwrite failed: " << errMsg << std::endl;
+            } else {
+                std::cerr << "Error: gzwrite returned 0" << std::endl;
+            }
+            return false;
+        }
+        offset += static_cast<size_t>(written);
+    }
+    return true;
+}
+
 // ===== Constructor and buffer operations =====
 
 RDataWriter::RDataWriter() : needByteSwap(false) {
@@ -26,14 +50,26 @@ bool RDataWriter::writeGzipFile(const std::string& filename, const std::string& 
         return false;
     }
     
-    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
-    gzclose(gz);
+    // Write in chunks to handle large data
+    const size_t CHUNK_SIZE = 1024 * 1024;  // 1MB chunks
+    size_t offset = 0;
     
-    if (written != static_cast<int>(data.size())) {
-        std::cerr << "Error: Failed to write compressed data" << std::endl;
-        return false;
+    while (offset < data.size()) {
+        size_t toWrite = std::min(CHUNK_SIZE, data.size() - offset);
+        int written = gzwrite(gz, data.data() + offset, static_cast<unsigned>(toWrite));
+        if (written <= 0) {
+            int errnum;
+            const char* errMsg = gzerror(gz, &errnum);
+            if (errnum != Z_OK) {
+                std::cerr << "Error: gzwrite failed: " << errMsg << std::endl;
+            }
+            gzclose(gz);
+            return false;
+        }
+        offset += static_cast<size_t>(written);
     }
     
+    gzclose(gz);
     return true;
 }
 
@@ -292,15 +328,10 @@ bool RDataWriter::writeRData(const std::string& filename,
         return false;
     }
     
-    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    bool success = writeBufferToGzip(gz, writer.buffer);
     gzclose(gz);
     
-    if (written != static_cast<int>(writer.buffer.size())) {
-        std::cerr << "Error: gzwrite failed" << std::endl;
-        return false;
-    }
-    
-    return true;
+    return success;
 }
 
 bool RDataWriter::writeRDS(const std::string& filename,
@@ -335,10 +366,10 @@ bool RDataWriter::writeRDS(const std::string& filename,
         return false;
     }
     
-    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    bool success = writeBufferToGzip(gz, writer.buffer);
     gzclose(gz);
     
-    return written == static_cast<int>(writer.buffer.size());
+    return success;
 }
 
 // ===== Column-oriented writers (memory efficient) =====
@@ -421,15 +452,10 @@ bool RDataWriter::writeRDataColumns(const std::string& filename,
         return false;
     }
     
-    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    bool success = writeBufferToGzip(gz, writer.buffer);
     gzclose(gz);
     
-    if (written != static_cast<int>(writer.buffer.size())) {
-        std::cerr << "Error: gzwrite failed" << std::endl;
-        return false;
-    }
-    
-    return true;
+    return success;
 }
 
 bool RDataWriter::writeRDSColumns(const std::string& filename,
@@ -465,8 +491,8 @@ bool RDataWriter::writeRDSColumns(const std::string& filename,
         return false;
     }
     
-    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    bool success = writeBufferToGzip(gz, writer.buffer);
     gzclose(gz);
     
-    return written == static_cast<int>(writer.buffer.size());
+    return success;
 }

@@ -48,12 +48,21 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
                 break;
             }
             
-            // Find key
+            // Find key (handle escaped quotes)
             size_t keyStart = line.find('"', pos);
             if (keyStart == std::string::npos || keyStart >= line.length()) break;
             
-            size_t keyEnd = line.find('"', keyStart + 1);
-            if (keyEnd == std::string::npos) break;
+            size_t keyEnd = keyStart + 1;
+            while (keyEnd < line.length()) {
+                if (line[keyEnd] == '\\' && keyEnd + 1 < line.length()) {
+                    keyEnd += 2;  // Skip escaped character
+                } else if (line[keyEnd] == '"') {
+                    break;
+                } else {
+                    keyEnd++;
+                }
+            }
+            if (keyEnd >= line.length()) break;
             
             std::string key = line.substr(keyStart + 1, keyEnd - keyStart - 1);
             
@@ -67,29 +76,58 @@ ReadingList JsonParser::parseJsonLine(const std::string& line) {
             
             std::string value;
             if (line[valueStart] == '"') {
-                // String value
-                size_t valueEnd = line.find('"', valueStart + 1);
-                if (valueEnd == std::string::npos) break;
-                value = line.substr(valueStart + 1, valueEnd - valueStart - 1);
-                pos = valueEnd + 1;
+                // String value - handle escaped quotes
+                size_t i = valueStart + 1;
+                while (i < line.length()) {
+                    if (line[i] == '\\' && i + 1 < line.length()) {
+                        i += 2;  // Skip escaped character
+                    } else if (line[i] == '"') {
+                        break;
+                    } else {
+                        i++;
+                    }
+                }
+                if (i >= line.length()) break;
+                value = line.substr(valueStart + 1, i - valueStart - 1);
+                pos = i + 1;
             } else if (line[valueStart] == '[') {
-                // Array value - find matching ]
+                // Array value - find matching ], respecting nesting and strings
                 int depth = 1;
+                bool inString = false;
                 size_t i = valueStart + 1;
                 while (i < line.length() && depth > 0) {
-                    if (line[i] == '[') depth++;
-                    else if (line[i] == ']') depth--;
+                    if (inString) {
+                        if (line[i] == '\\' && i + 1 < line.length()) {
+                            i++;  // Skip escaped char
+                        } else if (line[i] == '"') {
+                            inString = false;
+                        }
+                    } else {
+                        if (line[i] == '"') inString = true;
+                        else if (line[i] == '[') depth++;
+                        else if (line[i] == ']') depth--;
+                    }
                     i++;
                 }
                 value = line.substr(valueStart + 1, i - valueStart - 2);
                 pos = i;
             } else if (line[valueStart] == '{') {
-                // Nested object value - find matching } and stringify
+                // Nested object value - find matching }, respecting nesting and strings
                 int depth = 1;
+                bool inString = false;
                 size_t i = valueStart + 1;
                 while (i < line.length() && depth > 0) {
-                    if (line[i] == '{') depth++;
-                    else if (line[i] == '}') depth--;
+                    if (inString) {
+                        if (line[i] == '\\' && i + 1 < line.length()) {
+                            i++;  // Skip escaped char
+                        } else if (line[i] == '"') {
+                            inString = false;
+                        }
+                    } else {
+                        if (line[i] == '"') inString = true;
+                        else if (line[i] == '{') depth++;
+                        else if (line[i] == '}') depth--;
+                    }
                     i++;
                 }
                 value = line.substr(valueStart, i - valueStart);  // Include braces
