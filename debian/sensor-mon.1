@@ -1,0 +1,88 @@
+.TH SENSOR\-MON 1 "January 2026" "sensor-tools" "User Commands"
+.SH NAME
+sensor\-mon \- ncurses-based sensor monitoring interface
+.SH SYNOPSIS
+.B sensor\-mon
+.SH DESCRIPTION
+.B sensor\-mon
+provides an interactive ncurses-based terminal interface for monitoring
+sensor data from sensor-* applications.
+.PP
+The tool scans for executable sensor-* programs in the PATH, verifies
+they respond correctly to the "identify" command, and allows real-time
+monitoring of their output with a graphical display.
+.SH USAGE
+When started, sensor\-mon displays a list of available sensors.
+Use number keys (1-9) to select a sensor to monitor.
+.PP
+In sensor view mode:
+.TP
+.B b
+Return to the main sensor list.
+.TP
+.B [
+Show previous result (for sensors with multiple readings).
+.TP
+.B ]
+Show next result (for sensors with multiple readings).
+.TP
+.B q
+Quit the program.
+.SH DISPLAY
+The sensor view shows:
+.TP
+.B Top half
+Formatted JSON output from the selected sensor.
+.TP
+.B Bottom half
+Real-time graph of the "value" field, updated every second.
+The graph shows min/max range and plots the most recent readings.
+.SH SENSOR REQUIREMENTS
+For a sensor application to be detected by sensor\-mon, it must:
+.TP
+1.
+Be named with the prefix "sensor-" (e.g., sensor-dht22, sensor-ds18b20).
+.TP
+2.
+Be executable and in the system PATH.
+.TP
+3.
+Exit with status code 60 when called with the "identify" argument.
+.TP
+4.
+Output JSON data when called with the "all" argument.
+.SH EXAMPLE
+.EX
+# Start sensor monitoring
+sensor\-mon
+
+# The interface will display available sensors:
+# ws-sensors - Select a sensor to view data
+# Found 3 working sensor-* apps
+#   sensor-dht22
+#   sensor-ds18b20
+#   sensor-bmp280
+#
+# Press 1, 2, or 3 to select a sensor
+.EE
+.SH NOTES
+.B sensor\-mon
+requires ncurses support and is designed for Unix-like systems.
+The program updates sensor readings every second when viewing a sensor.
+.PP
+Color support is used when available:
+.TP
+.B Green
+Frame and borders
+.TP
+.B Blue
+Graph data points and lines
+.TP
+.B Reversed
+Header text background
+.SH SEE ALSO
+.BR sensor\-data (1)
+.SH AUTHOR
+Wildlife Systems <https://wildlife.systems>
+.SH BUGS
+Report bugs at https://github.com/Wildlife-Systems/sensor-tools/issues

@@ -1,10 +1,32 @@
 CXX ?= g++
+CC ?= gcc
 CXXFLAGS ?= -Wall -O2
+CFLAGS ?= -Wall -Wextra -pedantic -O2
 CXXFLAGS += -std=c++11 -pthread -Iinclude
+CFLAGS += -Iinclude
 LDFLAGS += -pthread
 CPPFLAGS ?=
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
+
+# Detect OS for ncurses/pdcurses
+UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
+ifeq ($(OS),Windows_NT)
+    # Windows with PDCurses
+    LDFLAGS_NCURSES = -lpdcurses
+    TARGET_MON_EXT = .exe
+    TARGET_EXT = .exe
+else ifeq ($(UNAME_S),Darwin)
+    # macOS
+    LDFLAGS_NCURSES = -lncurses
+    TARGET_MON_EXT =
+    TARGET_EXT =
+else
+    # Linux and other POSIX
+    LDFLAGS_NCURSES = -lncurses
+    TARGET_MON_EXT =
+    TARGET_EXT =
+endif
 
 # Extract version: try dpkg-parsechangelog, then git tag, else "unknown"
 # Note: debian/changelog parsing removed due to shell escaping issues in Make
@@ -14,29 +36,43 @@ CPPFLAGS += -DVERSION='"$(VERSION)"'
 # Coverage flags (set COVERAGE=1 to enable)
 ifdef COVERAGE
 CXXFLAGS += --coverage
+CFLAGS += --coverage
 LDFLAGS += --coverage
 endif
 
-# Source files
+# Source files for sensor-data (C++)
 SOURCES = src/sensor-data.cpp
 LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp
 TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp tests/test_file_collector.cpp tests/test_command_base.cpp tests/test_stats_analyser.cpp
 
+# Source files for sensor-mon (C)
+MON_SOURCES = src/sensor-mon.c src/graph.c
+
 # Object files
 LIB_OBJECTS = $(LIB_SOURCES:.cpp=.o)
+MON_OBJECTS = $(MON_SOURCES:.c=.o)
 TEST_EXECUTABLES = test_csv_parser test_json_parser test_error_detector test_file_utils test_date_utils test_common_arg_parser test_data_reader test_file_collector test_command_base test_stats_analyser
 
 TARGET = sensor-data
+TARGET_MON = sensor-mon
 
-all: $(TARGET)
+all: $(TARGET) $(TARGET_MON)
 
 # Build library objects
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
-# Build main application
+# Build C objects for sensor-mon
+src/%.o: src/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+# Build main application (sensor-data)
 $(TARGET): $(LIB_OBJECTS) $(SOURCES)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $(TARGET) $(SOURCES) $(LIB_OBJECTS) $(LDFLAGS)
+
+# Build sensor-mon
+$(TARGET_MON): $(MON_OBJECTS)
+	$(CC) $(CFLAGS) -o $(TARGET_MON) $(MON_OBJECTS) $(LDFLAGS_NCURSES)
 
 # Build and run tests
 test: $(LIB_OBJECTS)
@@ -70,16 +106,17 @@ test-integration: $(TARGET)
 # Run all tests
 test-all: test test-integration
 
-install: $(TARGET)
+install: $(TARGET) $(TARGET_MON)
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/
+	install -m 755 $(TARGET_MON) $(DESTDIR)$(BINDIR)/
 	install -d $(DESTDIR)/etc/ws/sensor-errors
 	install -m 644 etc/ws/sensor-errors/*.errors $(DESTDIR)/etc/ws/sensor-errors/
 	install -d $(DESTDIR)/usr/share/bash-completion/completions
 	install -m 644 completions/sensor-data.bash $(DESTDIR)/usr/share/bash-completion/completions/sensor-data
 
 clean:
-	rm -f $(TARGET) $(LIB_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
+	rm -f $(TARGET) $(TARGET_MON) $(LIB_OBJECTS) $(MON_OBJECTS) $(TEST_EXECUTABLES) src/*.o *.gcda *.gcno src/*.gcda src/*.gcno
 
 # Force a clean rebuild
 rebuild: clean all
@@ -87,6 +124,7 @@ rebuild: clean all
 # Release build with maximum optimizations
 release: clean
 	$(CXX) $(CPPFLAGS) -std=c++11 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) -pthread
+	$(CC) $(CPPFLAGS) -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_MON) $(MON_SOURCES) $(LDFLAGS_NCURSES)
 
 # Generate coverage report (requires gcov)
 coverage:
