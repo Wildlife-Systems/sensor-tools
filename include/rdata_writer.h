@@ -24,7 +24,6 @@
 #include <vector>
 #include <fstream>
 #include <cstdint>
-#include <sstream>
 #include "types.h"
 
 class RDataWriter {
@@ -118,8 +117,8 @@ private:
     // Special values
     static constexpr int32_t NA_INTEGER = -2147483648;  // R's NA for integers (INT_MIN)
 
-    // Writer state - write to buffer, then compress
-    std::ostringstream buffer;
+    // Writer state - use vector<char> for fast buffering (ostringstream is slow)
+    std::vector<char> buffer;
     bool needByteSwap;
     std::vector<std::string> refTable;  // For reference tracking
 

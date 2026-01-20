@@ -12,8 +12,8 @@ RDataWriter::RDataWriter() : needByteSwap(false) {
 }
 
 void RDataWriter::reset() {
-    buffer.str("");
     buffer.clear();
+    buffer.reserve(64 * 1024);  // Pre-allocate 64KB
     refTable.clear();
 }
 
@@ -80,7 +80,8 @@ double RDataWriter::byteSwapDouble(double val) {
 // ===== Low-level write methods =====
 
 void RDataWriter::writeBytes(const void* data, size_t len) {
-    buffer.write(static_cast<const char*>(data), len);
+    const char* bytes = static_cast<const char*>(data);
+    buffer.insert(buffer.end(), bytes, bytes + len);
 }
 
 void RDataWriter::writeInt32(int32_t val) {
@@ -278,10 +279,8 @@ bool RDataWriter::writeRData(const std::string& filename,
     // Final NILSXP to end the file
     writer.writeHeader(NILVALUE_SXP, 0);
     
-    // Get buffer contents
-    std::string data = writer.buffer.str();
-    
-    if (data.empty()) {
+    // Check buffer
+    if (writer.buffer.empty()) {
         std::cerr << "Error: No serialized data" << std::endl;
         return false;
     }
@@ -293,10 +292,10 @@ bool RDataWriter::writeRData(const std::string& filename,
         return false;
     }
     
-    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
+    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
     gzclose(gz);
     
-    if (written != static_cast<int>(data.size())) {
+    if (written != static_cast<int>(writer.buffer.size())) {
         std::cerr << "Error: gzwrite failed" << std::endl;
         return false;
     }
@@ -329,7 +328,15 @@ bool RDataWriter::writeRDS(const std::string& filename,
     // Write the data frame directly (no wrapping pairlist)
     writer.writeDataFrame("", readings, headers, label);
     
-    // Get buffer contents and write as gzip
-    std::string data = writer.buffer.str();
-    return writeGzipFile(filename, data);
+    // Write buffer as gzip
+    gzFile gz = gzopen(filename.c_str(), "wb6");
+    if (!gz) {
+        std::cerr << "Error: Cannot create RDS file: " << filename << std::endl;
+        return false;
+    }
+    
+    int written = gzwrite(gz, writer.buffer.data(), static_cast<unsigned>(writer.buffer.size()));
+    gzclose(gz);
+    
+    return written == static_cast<int>(writer.buffer.size());
 }
