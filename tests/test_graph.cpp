@@ -273,13 +273,17 @@ bool test_zero_values() {
     return true;
 }
 
-/* Test downsample_to_graph with small array (no downsampling needed) */
+/* Test downsample_to_graph with time-based bucketing */
 bool test_downsample_small_array() {
     graph_data_t graph;
     reset_graph(&graph);
     
+    /* 5 values evenly spread over 5 seconds */
     double values[] = {1.0, 2.0, 3.0, 4.0, 5.0};
-    int result = downsample_to_graph(values, 5, &graph);
+    long timestamps[] = {100, 101, 102, 103, 104};
+    
+    /* Request 5 buckets for 5 seconds = 1 value per bucket */
+    int result = downsample_to_graph(values, timestamps, 5, 100, 105, 5, &graph);
     
     ASSERT_EQ(result, 5);
     ASSERT_EQ(graph.count, 5);
@@ -297,43 +301,49 @@ bool test_downsample_null_handling() {
     reset_graph(&graph);
     
     double values[] = {1.0, 2.0, 3.0};
+    long timestamps[] = {100, 101, 102};
     
-    ASSERT_EQ(downsample_to_graph(NULL, 5, &graph), 0);
-    ASSERT_EQ(downsample_to_graph(values, 0, &graph), 0);
-    ASSERT_EQ(downsample_to_graph(values, -1, &graph), 0);
-    ASSERT_EQ(downsample_to_graph(values, 3, NULL), 0);
+    ASSERT_EQ(downsample_to_graph(NULL, timestamps, 3, 100, 103, 3, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, NULL, 3, 100, 103, 3, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, timestamps, 0, 100, 103, 3, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, timestamps, -1, 100, 103, 3, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, timestamps, 3, 100, 103, 3, NULL), 0);
+    /* Invalid time range */
+    ASSERT_EQ(downsample_to_graph(values, timestamps, 3, 100, 100, 3, &graph), 0);
+    ASSERT_EQ(downsample_to_graph(values, timestamps, 3, 100, 50, 3, &graph), 0);
     
     return true;
 }
 
-/* Test downsample_to_graph with large array (downsampling needed) */
+/* Test downsample_to_graph with time-based averaging */
 bool test_downsample_large_array() {
     graph_data_t graph;
     reset_graph(&graph);
     
-    /* Create array larger than MAX_GRAPH_POINTS */
-    int size = MAX_GRAPH_POINTS * 2;
+    /* Create 100 values over 100 seconds, downsample to 10 buckets */
+    int size = 100;
     double *values = new double[size];
+    long *timestamps = new long[size];
     
-    /* Fill with incrementing values 0, 1, 2, ... */
     for (int i = 0; i < size; i++) {
         values[i] = (double)i;
+        timestamps[i] = 1000 + i;
     }
     
-    int result = downsample_to_graph(values, size, &graph);
+    /* 10 buckets over 100 seconds = 10 values per bucket */
+    int result = downsample_to_graph(values, timestamps, size, 1000, 1100, 10, &graph);
     
-    /* Should downsample to MAX_GRAPH_POINTS */
-    ASSERT_EQ(result, MAX_GRAPH_POINTS);
-    ASSERT_EQ(graph.count, MAX_GRAPH_POINTS);
+    ASSERT_EQ(result, 10);
+    ASSERT_EQ(graph.count, 10);
     
-    /* First bucket should average values 0 and 1 = 0.5 */
-    ASSERT_DOUBLE_EQ(graph.values[0], 0.5);
+    /* First bucket (1000-1010): values 0-9, avg = 4.5 */
+    ASSERT_DOUBLE_EQ(graph.values[0], 4.5);
     
-    /* Last bucket should average second-to-last pair */
-    /* With 800 values in 400 buckets, last bucket averages 798 and 799 = 798.5 */
-    ASSERT_DOUBLE_EQ(graph.values[MAX_GRAPH_POINTS - 1], 798.5);
+    /* Last bucket (1090-1100): values 90-99, avg = 94.5 */
+    ASSERT_DOUBLE_EQ(graph.values[9], 94.5);
     
     delete[] values;
+    delete[] timestamps;
     return true;
 }
 
@@ -342,48 +352,43 @@ bool test_downsample_averaging() {
     graph_data_t graph;
     reset_graph(&graph);
     
-    /* Create 800 values in 4 groups of 200 */
-    int size = MAX_GRAPH_POINTS * 2;
-    double *values = new double[size];
+    /* Create values with known averages - 2 values in each bucket */
+    double values[] = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+    long timestamps[] = {100, 101, 102, 103, 104, 105};
     
-    for (int i = 0; i < size; i++) {
-        /* Each group of 2 consecutive values will be averaged */
-        /* Make pairs (10, 20), (10, 20), etc. so average is always 15 */
-        values[i] = (i % 2 == 0) ? 10.0 : 20.0;
-    }
+    /* 3 buckets over 6 seconds = 2 values per bucket */
+    int result = downsample_to_graph(values, timestamps, 6, 100, 106, 3, &graph);
     
-    int result = downsample_to_graph(values, size, &graph);
+    ASSERT_EQ(result, 3);
     
-    ASSERT_EQ(result, MAX_GRAPH_POINTS);
+    /* Bucket 0 (100-102): values 10, 20 -> avg 15 */
+    ASSERT_DOUBLE_EQ(graph.values[0], 15.0);
+    /* Bucket 1 (102-104): values 30, 40 -> avg 35 */
+    ASSERT_DOUBLE_EQ(graph.values[1], 35.0);
+    /* Bucket 2 (104-106): values 50, 60 -> avg 55 */
+    ASSERT_DOUBLE_EQ(graph.values[2], 55.0);
     
-    /* Each bucket averages 2 values: 10 and 20, result should be 15 */
-    for (int i = 0; i < MAX_GRAPH_POINTS; i++) {
-        ASSERT_DOUBLE_EQ(graph.values[i], 15.0);
-    }
-    
-    delete[] values;
     return true;
 }
 
-/* Test downsample_to_graph with exactly MAX_GRAPH_POINTS (boundary) */
-bool test_downsample_exact_max() {
+/* Test downsample_to_graph with sparse data (empty buckets) */
+bool test_downsample_sparse_data() {
     graph_data_t graph;
     reset_graph(&graph);
     
-    double *values = new double[MAX_GRAPH_POINTS];
-    for (int i = 0; i < MAX_GRAPH_POINTS; i++) {
-        values[i] = (double)i;
-    }
+    /* Only 2 data points, but 10 buckets - most will be empty */
+    double values[] = {10.0, 20.0};
+    long timestamps[] = {100, 150};  /* 50 seconds apart */
     
-    int result = downsample_to_graph(values, MAX_GRAPH_POINTS, &graph);
+    /* 10 buckets over 100 seconds */
+    int result = downsample_to_graph(values, timestamps, 2, 100, 200, 10, &graph);
     
-    /* Should NOT downsample - all points fit exactly */
-    ASSERT_EQ(result, MAX_GRAPH_POINTS);
-    ASSERT_EQ(graph.count, MAX_GRAPH_POINTS);
-    ASSERT_DOUBLE_EQ(graph.values[0], 0.0);
-    ASSERT_DOUBLE_EQ(graph.values[MAX_GRAPH_POINTS - 1], (double)(MAX_GRAPH_POINTS - 1));
+    /* Only 2 buckets have data */
+    ASSERT_EQ(result, 2);
+    ASSERT_EQ(graph.count, 2);
+    ASSERT_DOUBLE_EQ(graph.values[0], 10.0);
+    ASSERT_DOUBLE_EQ(graph.values[1], 20.0);
     
-    delete[] values;
     return true;
 }
 
@@ -398,7 +403,8 @@ bool test_downsample_resets_graph() {
     graph.max_val = 999.0;
     
     double values[] = {5.0, 10.0, 15.0};
-    int result = downsample_to_graph(values, 3, &graph);
+    long timestamps[] = {100, 101, 102};
+    int result = downsample_to_graph(values, timestamps, 3, 100, 103, 3, &graph);
     
     ASSERT_EQ(result, 3);
     ASSERT_EQ(graph.count, 3);
@@ -428,7 +434,7 @@ int main() {
     TEST(downsample_null_handling);
     TEST(downsample_large_array);
     TEST(downsample_averaging);
-    TEST(downsample_exact_max);
+    TEST(downsample_sparse_data);
     TEST(downsample_resets_graph);
     
     printf("\n=== Results: %d/%d tests passed ===\n", tests_passed, tests_run);

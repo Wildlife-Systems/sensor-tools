@@ -114,7 +114,7 @@ static const char* get_mode_name(void)
 }
 
 /* Load data for a sensor within the current time window */
-static void load_sensor_data(int sensor_idx)
+static void load_sensor_data(int sensor_idx, int screen_width)
 {
     if (sensor_idx < 0 || sensor_idx >= num_sensors) return;
     
@@ -134,19 +134,48 @@ static void load_sensor_data(int sensor_idx)
         return;
     }
     
-    /* Use downsample_to_graph which handles both small and large datasets */
-    downsample_to_graph(result->values, result->count, &s->graph);
+    /* Use time-based downsampling to graph, scaled to screen width */
+    downsample_to_graph(result->values, result->timestamps, result->count,
+                        start_time, end_time, screen_width, &s->graph);
     
     s->has_data = 1;
     sensor_data_result_free(result);
 }
 
-/* Load data for all sensors */
-static void load_all_data(void)
+/* Load data for all sensors, scaled to screen width */
+static void load_all_data(int screen_width)
 {
     for (int i = 0; i < num_sensors; i++) {
-        load_sensor_data(i);
+        load_sensor_data(i, screen_width);
     }
+}
+
+/* Check if any sensor has data */
+static int any_sensor_has_data(void)
+{
+    for (int i = 0; i < num_sensors; i++) {
+        if (sensors[i].has_data) return 1;
+    }
+    return 0;
+}
+
+/* Find the most recent timestamp across all sensors */
+static time_t find_most_recent_timestamp(void)
+{
+    time_t most_recent = 0;
+    const char *dir = data_directory ? data_directory : DEFAULT_DATA_DIR;
+    
+    for (int i = 0; i < num_sensors; i++) {
+        sensor_data_result_t *result = sensor_data_tail_by_sensor_id(
+            dir, sensors[i].sensor_id, 1, recursive_search);
+        
+        if (result && result->count > 0 && result->timestamps[0] > most_recent) {
+            most_recent = (time_t)result->timestamps[0];
+        }
+        sensor_data_result_free(result);
+    }
+    
+    return most_recent;
 }
 
 /* Format time for display */
@@ -324,8 +353,22 @@ int main(int argc, char **argv)
         init_pair(COLOR_LABEL, COLOR_WHITE, COLOR_BLACK);
     }
     
+    /* Get initial screen width */
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    (void)rows;  /* unused here */
+    
     /* Load initial data */
-    load_all_data();
+    load_all_data(cols);
+    
+    /* If no data found in current window, seek to most recent available data */
+    if (!any_sensor_has_data()) {
+        time_t most_recent = find_most_recent_timestamp();
+        if (most_recent > 0) {
+            window_end = most_recent;
+            load_all_data(cols);
+        }
+    }
     
     /* Draw initial screen */
     draw_screen();
@@ -336,6 +379,11 @@ int main(int argc, char **argv)
         if (ch == ERR) continue;
         
         int needs_redraw = 0;
+        int needs_reload = 0;
+        
+        /* Get current screen dimensions */
+        getmaxyx(stdscr, rows, cols);
+        (void)rows;
         
         switch (ch) {
             case 'q':
@@ -346,8 +394,7 @@ int main(int argc, char **argv)
             case KEY_LEFT:
                 /* Move window back */
                 window_end -= get_step_size();
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case KEY_RIGHT:
@@ -357,56 +404,54 @@ int main(int argc, char **argv)
                 if (window_end > time(NULL)) {
                     window_end = time(NULL);
                 }
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'd':
             case 'D':
                 current_mode = MODE_DAY;
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'w':
             case 'W':
                 current_mode = MODE_WEEK;
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'h':
             case 'H':
                 current_mode = MODE_HOUR;
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'm':
             case 'M':
                 current_mode = MODE_MONTH;
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'y':
             case 'Y':
                 current_mode = MODE_YEAR;
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case 'r':
             case 'R':
                 /* Reload data */
-                load_all_data();
-                needs_redraw = 1;
+                needs_reload = 1;
                 break;
                 
             case KEY_RESIZE:
-                /* Terminal resized, redraw */
-                needs_redraw = 1;
+                /* Terminal resized, reload data with new width */
+                needs_reload = 1;
                 break;
+        }
+        
+        if (needs_reload) {
+            load_all_data(cols);
+            needs_redraw = 1;
         }
         
         if (needs_redraw) {
