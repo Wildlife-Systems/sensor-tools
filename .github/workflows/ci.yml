@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential g++ libncurses-dev sensor-control
+        sudo apt-get install -y build-essential g++ libncurses-dev zlib1g-dev sensor-control
     
     - name: Build with coverage
       run: make clean all COVERAGE=1
@@ -81,7 +81,7 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: mingw-w64-x86_64-gcc make mingw-w64-x86_64-lcov mingw-w64-x86_64-pdcurses
+        install: mingw-w64-x86_64-gcc make mingw-w64-x86_64-lcov mingw-w64-x86_64-pdcurses mingw-w64-x86_64-zlib
     
     - name: Build with coverage
       shell: msys2 {0}
@@ -115,7 +115,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential g++ libncurses-dev r-base
+        sudo apt-get install -y build-essential g++ libncurses-dev zlib1g-dev r-base
     
     - name: Build sensor-data binary
       run: make clean sensor-data COVERAGE=1

@@ -1,27 +1,49 @@
 #include "rdata_writer.h"
 #include <cstring>
 #include <iostream>
+#include <fstream>
+#include <zlib.h>
 
-// ===== Constructor and file operations =====
+// ===== Constructor and buffer operations =====
 
 RDataWriter::RDataWriter() : needByteSwap(false) {
     needByteSwap = isMachineLittleEndian();
 }
 
-bool RDataWriter::open(const std::string& filename) {
-    file.open(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
+void RDataWriter::reset() {
+    buffer.str("");
+    buffer.clear();
+    refTable.clear();
+}
+
+// ===== Compression methods =====
+
+bool RDataWriter::writeGzipFile(const std::string& filename, const std::string& data) {
+    gzFile gz = gzopen(filename.c_str(), "wb9");  // wb9 = write binary, max compression
+    if (!gz) {
+        std::cerr << "Error: Cannot create gzip file: " << filename << std::endl;
         return false;
     }
-    refTable.clear();
+    
+    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
+    gzclose(gz);
+    
+    if (written != static_cast<int>(data.size())) {
+        std::cerr << "Error: Failed to write compressed data" << std::endl;
+        return false;
+    }
+    
     return true;
 }
 
-void RDataWriter::close() {
-    if (file.is_open()) {
-        file.close();
+bool RDataWriter::writeUncompressedFile(const std::string& filename, const std::string& data) {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Error: Cannot create file: " << filename << std::endl;
+        return false;
     }
+    file.write(data.data(), data.size());
+    return file.good();
 }
 
 // ===== Utility methods =====
@@ -54,7 +76,7 @@ double RDataWriter::byteSwapDouble(double val) {
 // ===== Low-level write methods =====
 
 void RDataWriter::writeBytes(const void* data, size_t len) {
-    file.write(static_cast<const char*>(data), len);
+    buffer.write(static_cast<const char*>(data), len);
 }
 
 void RDataWriter::writeInt32(int32_t val) {
@@ -224,14 +246,9 @@ bool RDataWriter::writeRData(const std::string& filename,
     }
     
     RDataWriter writer;
-    if (!writer.open(filename)) {
-        return false;
-    }
+    writer.reset();
     
-    // Write RData magic header
-    writer.writeBytes(RDATA_MAGIC, 5);
-    
-    // Write binary header
+    // Write binary header to buffer (will be compressed)
     writer.writeBytes(BINARY_HEADER, 2);
     writer.writeInt32(FORMAT_VERSION);
     writer.writeInt32(READER_VERSION);
@@ -243,7 +260,33 @@ bool RDataWriter::writeRData(const std::string& filename,
     // Final NILSXP to end the file
     writer.writeHeader(NILVALUE_SXP, 0);
     
-    writer.close();
+    // Get buffer contents
+    std::string data = writer.buffer.str();
+    
+    // Write magic header (uncompressed) then compressed data
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile) {
+        std::cerr << "Error: Cannot create RData file: " << filename << std::endl;
+        return false;
+    }
+    outFile.write(RDATA_MAGIC, 5);
+    outFile.close();
+    
+    // Append gzip compressed data
+    gzFile gz = gzopen(filename.c_str(), "ab9");  // append binary, max compression
+    if (!gz) {
+        std::cerr << "Error: Cannot open file for gzip append: " << filename << std::endl;
+        return false;
+    }
+    
+    int written = gzwrite(gz, data.data(), static_cast<unsigned>(data.size()));
+    gzclose(gz);
+    
+    if (written != static_cast<int>(data.size())) {
+        std::cerr << "Error: Failed to write compressed data" << std::endl;
+        return false;
+    }
+    
     return true;
 }
 
@@ -257,11 +300,9 @@ bool RDataWriter::writeRDS(const std::string& filename,
     }
     
     RDataWriter writer;
-    if (!writer.open(filename)) {
-        return false;
-    }
+    writer.reset();
     
-    // RDS has no magic header, just the binary header
+    // RDS: write binary header to buffer
     writer.writeBytes(BINARY_HEADER, 2);
     writer.writeInt32(FORMAT_VERSION);
     writer.writeInt32(READER_VERSION);
@@ -270,6 +311,7 @@ bool RDataWriter::writeRDS(const std::string& filename,
     // Write the data frame directly (no wrapping pairlist)
     writer.writeDataFrame("", readings, headers, label);
     
-    writer.close();
-    return true;
+    // Get buffer contents and write as gzip
+    std::string data = writer.buffer.str();
+    return writeGzipFile(filename, data);
 }

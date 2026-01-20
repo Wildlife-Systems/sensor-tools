@@ -5,7 +5,7 @@ CFLAGS ?= -Wall -Wextra -pedantic
 # Always add optimization - O3 for maximum performance
 CXXFLAGS += -O3 -std=c++11 -pthread -Iinclude
 CFLAGS += -O3 -Iinclude
-LDFLAGS += -pthread
+LDFLAGS += -pthread -lz
 CPPFLAGS ?=
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin

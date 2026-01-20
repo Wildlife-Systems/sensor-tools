@@ -11,7 +11,8 @@
  * Files produced can be loaded in R using load("file.RData")
  * 
  * Format overview:
- * - Magic header: "RDX2\n" for RData, none for RDS
+ * - Magic header: "RDX2\n" for RData (uncompressed) or "RDX3\n" (gzip)
+ * - For gzip: remaining data is gzip compressed
  * - Binary header: "X\n" + version 2 + R version info
  * - Serialized R objects using SEXP type markers
  * 
@@ -23,12 +24,13 @@
 #include <vector>
 #include <fstream>
 #include <cstdint>
+#include <sstream>
 #include "types.h"
 
 class RDataWriter {
 public:
     /**
-     * Write sensor readings to an RData file
+     * Write sensor readings to an RData file (gzip compressed)
      * 
      * @param filename Output file path (should end with .RData or .rdata)
      * @param readings Vector of sensor readings (key-value maps)
@@ -42,7 +44,7 @@ public:
                            const std::string& tableName = "sensor_data");
 
     /**
-     * Write sensor readings to an RDS file (single object, no variable name)
+     * Write sensor readings to an RDS file (gzip compressed, single object)
      * 
      * @param filename Output file path (should end with .rds)
      * @param readings Vector of sensor readings
@@ -56,8 +58,8 @@ public:
                          const std::string& label = "Sensor data");
 
 private:
-    // R serialization constants
-    static constexpr const char* RDATA_MAGIC = "RDX2\n";
+    // R serialization constants - RDX3 indicates gzip compression
+    static constexpr const char* RDATA_MAGIC = "RDX3\n";
     static constexpr const char* BINARY_HEADER = "X\n";
     static constexpr uint32_t FORMAT_VERSION = 2;
     static constexpr uint32_t READER_VERSION = 131840;  // R 2.4.0
@@ -111,20 +113,23 @@ private:
     static constexpr int HAS_ATTR = 0x200;
     static constexpr int HAS_TAG = 0x400;
 
-    // Writer state
-    std::ofstream file;
+    // Writer state - write to buffer, then compress
+    std::ostringstream buffer;
     bool needByteSwap;
     std::vector<std::string> refTable;  // For reference tracking
 
     RDataWriter();
     
-    bool open(const std::string& filename);
-    void close();
+    void reset();
     
     // Low-level write methods
     void writeBytes(const void* data, size_t len);
     void writeInt32(int32_t val);
     void writeDouble(double val);
+    
+    // Compression and file output
+    static bool writeGzipFile(const std::string& filename, const std::string& data);
+    static bool writeUncompressedFile(const std::string& filename, const std::string& data);
     
     // R serialization methods
     void writeHeader(int type, int flags = 0);
