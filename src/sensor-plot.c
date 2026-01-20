@@ -347,13 +347,27 @@ static int show_datetime_picker(void)
         return 1;
     }
     
+    /* Calculate days in this month */
+    int days_in_month;
+    if (month == 2) {
+        /* February - check for leap year */
+        int is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+        days_in_month = is_leap ? 29 : 28;
+    } else if (month == 4 || month == 6 || month == 9 || month == 11) {
+        days_in_month = 30;
+    } else {
+        days_in_month = 31;
+    }
+    
     /* Day dialog (Tab was pressed) */
-    result = show_input_dialog_ex("Enter day (1-31):", 
+    char day_prompt[32];
+    snprintf(day_prompt, sizeof(day_prompt), "Enter day (1-%d):", days_in_month);
+    result = show_input_dialog_ex(day_prompt, 
                                    "[Enter=go, Tab=hour, Esc=cancel]", buf, sizeof(buf));
     if (result == DIALOG_CANCEL) return 0;
     
     day = atoi(buf);
-    if (day < 1 || day > 31) return 0;
+    if (day < 1 || day > days_in_month) return 0;
     tm_date.tm_mday = day;
     
     if (result == DIALOG_CONFIRM) {
