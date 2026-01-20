@@ -326,172 +326,38 @@ void StatsAnalyser::printStats() {
 // ===== Follow mode for stdin =====
 
 void StatsAnalyser::analyzeStdinFollow() {
-    if (verbosity >= 1) {
-        std::cerr << "Reading from stdin with follow mode (format: " << inputFormat << ")..." << std::endl;
-    }
-    
-    std::string line;
-    std::vector<std::string> csvHeaders;
-    bool headerParsed = false;
-    
     // Print initial stats (will say "No numeric data found")
     printStats();
     std::cout << "---" << std::endl;
     
-    while (true) {
-        if (std::getline(std::cin, line)) {
-            if (line.empty()) continue;
-            
-            bool dataUpdated = false;
-            
-            if (inputFormat == "csv") {
-                if (!headerParsed) {
-                    csvHeaders = CsvParser::parseCsvLine(line);
-                    headerParsed = true;
-                    continue;
-                }
-                
-                auto fields = CsvParser::parseCsvLine(line);
-                if (fields.empty()) continue;
-                
-                Reading reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-                
-                // Check all filters (date, only-value, exclude-value, etc.)
-                if (!shouldIncludeReading(reading)) continue;
-                
-                collectDataFromReading(reading);
-                dataUpdated = true;
-            } else {
-                // JSON format
-                auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    
-                    // Check all filters (date, only-value, exclude-value, etc.)
-                    if (!shouldIncludeReading(reading)) continue;
-                    
-                    collectDataFromReading(reading);
-                    dataUpdated = true;
-                }
-            }
-            
-            if (dataUpdated) {
-                printStats();
-                std::cout << "---" << std::endl;
-            }
-        } else {
-            // No more data available, wait briefly and try again
-            std::cin.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    // Use DataReader for parsing and filtering - only filtered readings reach callback
+    auto reader = createDataReader();
+    reader.processStdinFollow([&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+        collectDataFromReading(reading);
+        printStats();
+        std::cout << "---" << std::endl;
+    });
 }
 
 void StatsAnalyser::analyzeFileFollow(const std::string& filename) {
-    if (verbosity >= 1) {
-        std::cerr << "Following file: " << filename << " (format: " << (FileUtils::isCsvFile(filename) ? "csv" : "json") << ")..." << std::endl;
-    }
+    // Use DataReader for parsing and filtering - only filtered readings reach callback
+    auto reader = createDataReader();
     
-    std::ifstream infile(filename);
-    if (!infile) {
-        std::cerr << "Error: Cannot open file: " << filename << std::endl;
-        return;
-    }
-    
-    std::string line;
-    std::vector<std::string> csvHeaders;
-    bool isCSV = FileUtils::isCsvFile(filename);
-    
-    // Read existing content first
-    if (isCSV) {
-        if (std::getline(infile, line) && !line.empty()) {
-            bool needMore = false;
-            csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
-        }
-        
-        while (std::getline(infile, line)) {
-            if (line.empty()) continue;
-            
-            bool needMore = false;
-            auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-            if (fields.empty()) continue;
-            
-            Reading reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-            
-            if (!shouldIncludeReading(reading)) continue;
-            
-            collectDataFromReading(reading);
-        }
-    } else {
-        while (std::getline(infile, line)) {
-            if (line.empty()) continue;
-            
-            auto readings = JsonParser::parseJsonLine(line);
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                
-                if (!shouldIncludeReading(reading)) continue;
-                
-                collectDataFromReading(reading);
-            }
-        }
-    }
+    // First process existing content to build initial stats
+    reader.processFile(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+        collectDataFromReading(reading);
+    });
     
     // Print initial stats
     printStats();
     std::cout << "---" << std::endl;
     
-    // Now follow the file for new content
-    infile.clear();  // Clear EOF flag
-    
-    while (true) {
-        if (std::getline(infile, line)) {
-            if (line.empty()) continue;
-            
-            bool dataUpdated = false;
-            
-            if (isCSV) {
-                bool needMore = false;
-                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-                if (fields.empty()) continue;
-                
-                Reading reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-                
-                if (!shouldIncludeReading(reading)) continue;
-                
-                collectDataFromReading(reading);
-                dataUpdated = true;
-            } else {
-                auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    
-                    if (!shouldIncludeReading(reading)) continue;
-                    
-                    collectDataFromReading(reading);
-                    dataUpdated = true;
-                }
-            }
-            
-            if (dataUpdated) {
-                printStats();
-                std::cout << "---" << std::endl;
-            }
-        } else {
-            // No more data available, wait briefly and try again
-            infile.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    // Now follow for new content
+    reader.processFileFollow(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+        collectDataFromReading(reading);
+        printStats();
+        std::cout << "---" << std::endl;
+    });
 }
 
 // Helper struct for parallel processing
@@ -522,9 +388,9 @@ void StatsAnalyser::analyze() {
     }
     
     if (inputFiles.empty()) {
-        DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+        DataReader reader = createDataReader();
         auto collectData = [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
-            if (!shouldIncludeReading(reading)) return;
+            // Filtering already done by DataReader
             collectDataFromReading(reading);
         };
         reader.processStdin(collectData);
@@ -534,10 +400,10 @@ void StatsAnalyser::analyze() {
         // Process files in parallel
         auto processFile = [this](const std::string& file) -> LocalStatsData {
             LocalStatsData local;
-            DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+            DataReader reader = createDataReader();
             
             reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
-                if (!shouldIncludeReading(reading)) return;
+                // Filtering already done by DataReader
                 
                 // Collect timestamp if present
                 auto tsIt = reading.find("timestamp");

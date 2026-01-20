@@ -18,6 +18,7 @@
 #include "json_parser.h"
 #include "error_detector.h"
 #include "file_utils.h"
+#include "data_reader.h"
 #include "file_collector.h"
 
 /**
@@ -208,6 +209,42 @@ protected:
         removeEmptyJson = parser.getRemoveEmptyJson();
         removeErrors = parser.getRemoveErrors();
         tailLines = parser.getTailLines();
+    }
+    
+    /**
+     * Create a DataReader with all filters configured from CommandBase options.
+     * This is the single point where filtering is set up for all commands.
+     * @param rejectMode If true, inverts the filter to return rejected readings
+     */
+    DataReader createDataReader(bool rejectMode = false) const {
+        DataReader reader(verbosity, inputFormat, tailLines);
+        configureFilter(reader.getFilter(), rejectMode);
+        return reader;
+    }
+    
+    /**
+     * Configure a ReadingFilter with all filter options from CommandBase.
+     * Use this when you need a filter but are doing custom parsing.
+     */
+    void configureFilter(ReadingFilter& filter, bool rejectMode = false) const {
+        filter.setDateRange(minDate, maxDate);
+        filter.setRemoveErrors(removeErrors);
+        filter.setVerbosity(verbosity);
+        filter.setNotEmptyColumns(notEmptyColumns);
+        filter.setNotNullColumns(notNullColumns);
+        filter.setOnlyValueFilters(onlyValueFilters);
+        filter.setExcludeValueFilters(excludeValueFilters);
+        filter.setAllowedValues(allowedValues);
+        filter.setInvertFilter(rejectMode);
+    }
+    
+    /**
+     * Create a configured ReadingFilter for use with custom parsing.
+     */
+    ReadingFilter createFilter(bool rejectMode = false) const {
+        ReadingFilter filter;
+        configureFilter(filter, rejectMode);
+        return filter;
     }
     
     /**

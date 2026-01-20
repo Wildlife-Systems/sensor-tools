@@ -7,32 +7,64 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <thread>
+#include <chrono>
 #include "types.h"
-#include "date_utils.h"
 #include "csv_parser.h"
 #include "json_parser.h"
 #include "file_utils.h"
+#include "reading_filter.h"
 
-// Centralized data reader that handles file/stdin, CSV/JSON, and date filtering
+/**
+ * DataReader - Centralized data reader with integrated filtering.
+ * 
+ * Handles:
+ * - File and stdin input
+ * - CSV and JSON format detection/parsing
+ * - ALL filtering via ReadingFilter
+ * - Tail mode for reading last N lines
+ * - Collecting all readings for multi-pass processing
+ * 
+ * Flow: Input → Parse → Filter → Callback (or collection)
+ * 
+ * Commands receive ONLY readings that pass all filters.
+ * For multi-pass scenarios (like collecting keys then writing),
+ * use collectFromStdin() or collectFromFile() instead of manual parsing.
+ */
 class DataReader {
 private:
-    long long minDate;
-    long long maxDate;
+    ReadingFilter filter;
     int verbosity;
-    std::string inputFormat;  // "json" or "csv"
+    std::string inputFormat;  // "json", "csv", or "auto"
     int tailLines;  // 0 = read all, >0 = read only last n lines
     
-    inline bool passesDateFilter(const Reading& reading) const {
-        if (minDate <= 0 && maxDate <= 0) return true;
-        long long timestamp = DateUtils::getTimestamp(reading);
-        return DateUtils::isInDateRange(timestamp, minDate, maxDate);
+public:
+    DataReader(int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
+        : verbosity(verbosity), inputFormat(format), tailLines(tailLines) {
+        filter.setVerbosity(verbosity);
     }
     
-public:
-    DataReader(long long minDate = 0, long long maxDate = 0, int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
-        : minDate(minDate), maxDate(maxDate), verbosity(verbosity), inputFormat(format), tailLines(tailLines) {}
+    // Get mutable reference to filter for configuration
+    ReadingFilter& getFilter() {
+        return filter;
+    }
+    
+    // Convenience setters that delegate to filter
+    void setDateRange(long long minDate, long long maxDate) {
+        filter.setDateRange(minDate, maxDate);
+    }
+    
+    void setRemoveErrors(bool remove) {
+        filter.setRemoveErrors(remove);
+    }
+    
+    void setVerbosity(int v) {
+        verbosity = v;
+        filter.setVerbosity(v);
+    }
     
     // Internal helper to process a stream (CSV or JSON format)
+    // Filtering is applied here - callbacks only receive filtered readings
     template<typename Callback>
     void processStream(std::istream& input, bool isCSV, Callback callback, const std::string& sourceName) {
         std::string line;
@@ -62,7 +94,8 @@ public:
                     reading.emplace(csvHeaders[i], std::move(fields[i]));
                 }
                 
-                if (!passesDateFilter(reading)) continue;
+                // Apply ALL filters here
+                if (!filter.shouldInclude(reading)) continue;
                 
                 callback(reading, lineNum, sourceName);
             }
@@ -76,7 +109,8 @@ public:
                 for (const auto& reading : readings) {
                     if (reading.empty()) continue;
                     
-                    if (!passesDateFilter(reading)) continue;
+                    // Apply ALL filters here
+                    if (!filter.shouldInclude(reading)) continue;
                     
                     callback(reading, lineNum, sourceName);
                 }
@@ -152,7 +186,8 @@ public:
                         reading.emplace(csvHeaders[i], std::move(fields[i]));
                     }
                     
-                    if (!passesDateFilter(reading)) continue;
+                    // Apply ALL filters here
+                    if (!filter.shouldInclude(reading)) continue;
                     
                     callback(reading, lineNum, filename);
                 }
@@ -169,7 +204,8 @@ public:
                     for (const auto& reading : readings) {
                         if (reading.empty()) continue;
                         
-                        if (!passesDateFilter(reading)) continue;
+                        // Apply ALL filters here
+                        if (!filter.shouldInclude(reading)) continue;
                         
                         callback(reading, lineNum, filename);
                     }
@@ -191,6 +227,183 @@ public:
             
             processStream(infile, isCSV, callback, filename);
             infile.close();
+        }
+    }
+    
+    // ===== Collection methods for multi-pass processing =====
+    // These return all filtered readings at once, useful when you need
+    // to iterate over the data multiple times (e.g., collect keys then write)
+    
+    /**
+     * Collect all filtered readings from stdin.
+     * Use this when you need to process stdin data in multiple passes.
+     * The DataReader handles all parsing and filtering.
+     */
+    ReadingList collectFromStdin() {
+        ReadingList results;
+        processStdin([&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+            results.push_back(reading);
+        });
+        return results;
+    }
+    
+    /**
+     * Collect all filtered readings from a file.
+     * Use this when you need to process file data in multiple passes.
+     * The DataReader handles all parsing and filtering.
+     */
+    ReadingList collectFromFile(const std::string& filename) {
+        ReadingList results;
+        processFile(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+            results.push_back(reading);
+        });
+        return results;
+    }
+    
+    /**
+     * Collect all filtered readings from multiple files.
+     * Use this when you need to process multiple files in multiple passes.
+     */
+    ReadingList collectFromFiles(const std::vector<std::string>& files) {
+        ReadingList results;
+        for (const auto& file : files) {
+            processFile(file, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+                results.push_back(reading);
+            });
+        }
+        return results;
+    }
+    
+    // ===== Follow mode methods =====
+    // These continuously read input and call the callback for each filtered reading.
+    // Uses the same filter.shouldInclude() as all other methods.
+    
+    /**
+     * Continuously read from stdin and process each filtered reading.
+     * Blocks forever, calling callback for each new reading that passes the filter.
+     */
+    template<typename Callback>
+    void processStdinFollow(Callback callback) {
+        if (verbosity >= 1) {
+            std::cerr << "Reading from stdin with follow mode..." << std::endl;
+        }
+        
+        std::string line;
+        std::vector<std::string> csvHeaders;
+        bool headerParsed = false;
+        bool isCSV = (inputFormat == "csv");
+        int lineNum = 0;
+        
+        while (true) {
+            if (std::getline(std::cin, line)) {
+                lineNum++;
+                if (line.empty()) continue;
+                
+                if (isCSV) {
+                    if (!headerParsed) {
+                        bool needMore = false;
+                        csvHeaders = CsvParser::parseCsvLine(std::cin, line, needMore);
+                        headerParsed = true;
+                        continue;
+                    }
+                    
+                    bool needMore = false;
+                    auto fields = CsvParser::parseCsvLine(std::cin, line, needMore);
+                    if (fields.empty()) continue;
+                    
+                    Reading reading;
+                    for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                        reading[csvHeaders[i]] = fields[i];
+                    }
+                    
+                    // Use the SAME filter as all other methods
+                    if (!filter.shouldInclude(reading)) continue;
+                    
+                    callback(reading, lineNum, "stdin");
+                } else {
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (const auto& reading : readings) {
+                        if (reading.empty()) continue;
+                        
+                        // Use the SAME filter as all other methods
+                        if (!filter.shouldInclude(reading)) continue;
+                        
+                        callback(reading, lineNum, "stdin");
+                    }
+                }
+            } else {
+                std::cin.clear();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+    }
+    
+    /**
+     * Follow a file and process each filtered reading (like tail -f).
+     * First processes existing content, then waits for new content.
+     * Calls callback for each reading that passes the filter.
+     */
+    template<typename Callback>
+    void processFileFollow(const std::string& filename, Callback callback) {
+        if (verbosity >= 1) {
+            std::cerr << "Following file: " << filename << std::endl;
+        }
+        
+        std::ifstream infile(filename);
+        if (!infile) {
+            std::cerr << "Error: Cannot open file: " << filename << std::endl;
+            return;
+        }
+        
+        std::string line;
+        std::vector<std::string> csvHeaders;
+        bool isCSV = FileUtils::isCsvFile(filename);
+        int lineNum = 0;
+        
+        // Read CSV header if needed
+        if (isCSV) {
+            if (std::getline(infile, line) && !line.empty()) {
+                lineNum++;
+                bool needMore = false;
+                csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
+            }
+        }
+        
+        // Process existing content and follow for new content
+        while (true) {
+            if (std::getline(infile, line)) {
+                lineNum++;
+                if (line.empty()) continue;
+                
+                if (isCSV) {
+                    bool needMore = false;
+                    auto fields = CsvParser::parseCsvLine(infile, line, needMore);
+                    if (fields.empty()) continue;
+                    
+                    Reading reading;
+                    for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
+                        reading[csvHeaders[i]] = fields[i];
+                    }
+                    
+                    // Use the SAME filter as all other methods
+                    if (!filter.shouldInclude(reading)) continue;
+                    
+                    callback(reading, lineNum, filename);
+                } else {
+                    auto readings = JsonParser::parseJsonLine(line);
+                    for (const auto& reading : readings) {
+                        if (reading.empty()) continue;
+                        
+                        // Use the SAME filter as all other methods
+                        if (!filter.shouldInclude(reading)) continue;
+                        
+                        callback(reading, lineNum, filename);
+                    }
+                }
+            } else {
+                infile.clear();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
         }
     }
 };

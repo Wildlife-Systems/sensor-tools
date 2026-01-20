@@ -61,8 +61,28 @@ ErrorLister::ErrorLister(int argc, char* argv[]) {
 
 void ErrorLister::listErrors() {
     if (inputFiles.empty()) {
-        DataReader reader(minDate, maxDate, verbosity, inputFormat);
-        reader.processStdin(printErrorLine);
+        DataReader reader = createDataReader();
+        reader.processStdin([](const Reading& reading, int lineNum, const std::string& source) {
+            // Filtering already done by DataReader - just check if it's an error reading
+            if (!ErrorDetector::isErrorReading(reading)) return;
+            
+            std::cout << source << ":" << lineNum;
+            
+            auto sensorIt = reading.find("sensor");
+            auto valueIt = reading.find("value");
+            auto tempIt = reading.find("temperature");
+            auto idIt = reading.find("sensor_id");
+            auto nameIt = reading.find("name");
+            
+            if (sensorIt != reading.end()) std::cout << " sensor=" << sensorIt->second;
+            if (idIt != reading.end()) std::cout << " sensor_id=" << idIt->second;
+            if (nameIt != reading.end()) std::cout << " name=" << nameIt->second;
+            if (valueIt != reading.end()) std::cout << " value=" << valueIt->second;
+            if (tempIt != reading.end()) std::cout << " temperature=" << tempIt->second;
+            
+            std::string errorDesc = ErrorDetector::getErrorDescription(reading);
+            std::cout << " [" << errorDesc << "]" << std::endl;
+        });
         return;
     }
     
@@ -71,10 +91,11 @@ void ErrorLister::listErrors() {
     // Process files in parallel, collecting error output strings
     auto processFile = [this](const std::string& file) -> std::vector<std::string> {
         std::vector<std::string> errorLines;
-        DataReader reader(minDate, maxDate, verbosity, inputFormat);
+        DataReader reader = createDataReader();
         
         reader.processFile(file, [&](const Reading& reading, 
                                       int lineNum, const std::string& source) {
+            // Filtering already done by DataReader - just check if it's an error reading
             if (!ErrorDetector::isErrorReading(reading)) return;
             
             std::ostringstream oss;

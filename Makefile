@@ -6,8 +6,11 @@ CPPFLAGS ?=
 PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 
-# Extract version from debian/changelog
-VERSION := $(shell dpkg-parsechangelog -S Version 2>/dev/null || echo "unknown")
+# Extract version: try dpkg-parsechangelog (Linux), then parse debian/changelog, then git tag, else "unknown"
+VERSION := $(shell dpkg-parsechangelog -S Version 2>/dev/null || \
+	head -1 debian/changelog 2>/dev/null | sed -n 's/.*(\([^)]*\)).*/\1/p' || \
+	git describe --tags --abbrev=0 2>/dev/null || \
+	echo "unknown")
 CPPFLAGS += -DVERSION='"$(VERSION)"'
 
 # Coverage flags (set COVERAGE=1 to enable)

@@ -79,13 +79,15 @@ int LatestFinder::main() {
     // Process files in parallel, each thread builds its own local map
     auto processFile = [this](const std::string& file) -> std::map<std::string, SensorLatest> {
         std::map<std::string, SensorLatest> localLatest;
-        DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+        DataReader reader = createDataReader();
         
         if (verbosity > 0) {
             std::cerr << "Processing: " << file << "\n";
         }
         
         reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
+            // Filtering already done by DataReader
+            
             // Get sensor_id
             auto sensorIt = reading.find("sensor_id");
             if (sensorIt == reading.end() || sensorIt->second.empty()) {

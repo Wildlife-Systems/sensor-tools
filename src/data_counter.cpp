@@ -20,18 +20,15 @@ long long DataCounter::countFromFile(const std::string& filename) {
 
     long long count = 0;
     std::unordered_map<std::string, long long> localValueCounts;  // Local counts for thread safety
-    DataReader reader(minDate, maxDate, verbosity, FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
+    DataReader reader = createDataReader();
     
     reader.processFile(filename, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
-        // Skip empty JSON arrays/objects if removeEmptyJson is set
-        if (reading.empty()) return;
-        if (shouldIncludeReading(reading)) {
-            count++;
-            if (!byColumn.empty()) {
-                auto it = reading.find(byColumn);
-                std::string value = (it != reading.end()) ? it->second : "(missing)";
-                localValueCounts[value]++;
-            }
+        // Filtering already done by DataReader
+        count++;
+        if (!byColumn.empty()) {
+            auto it = reading.find(byColumn);
+            std::string value = (it != reading.end()) ? it->second : "(missing)";
+            localValueCounts[value]++;
         }
     });
 
@@ -54,19 +51,15 @@ long long DataCounter::countFromStdin() {
     long long count = 0;
     std::unordered_map<std::string, long long> localValueCounts;  // Local counts for thread safety
     
-    DataReader reader(minDate, maxDate, verbosity, inputFormat, tailLines);
+    DataReader reader = createDataReader();
     
     reader.processStdin([&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
-        if (reading.empty()) return;
-        if (removeEmptyJson && reading.empty()) return;
-        
-        if (shouldIncludeReading(reading)) {
-            count++;
-            if (!byColumn.empty()) {
-                auto it = reading.find(byColumn);
-                std::string value = (it != reading.end()) ? it->second : "(missing)";
-                localValueCounts[value]++;
-            }
+        // Filtering already done by DataReader
+        count++;
+        if (!byColumn.empty()) {
+            auto it = reading.find(byColumn);
+            std::string value = (it != reading.end()) ? it->second : "(missing)";
+            localValueCounts[value]++;
         }
     });
 
@@ -82,160 +75,28 @@ long long DataCounter::countFromStdin() {
 }
 
 void DataCounter::countFromStdinFollow() {
-    if (verbosity >= 1) {
-        std::cerr << "Reading from stdin with follow mode..." << std::endl;
-    }
-
     long long count = 0;
-    std::string line;
-    std::vector<std::string> csvHeaders;
-    bool headerParsed = false;
-
+    
     // Print initial count
     std::cout << count << std::endl;
-
-    while (true) {
-        if (std::getline(std::cin, line)) {
-            if (line.empty()) continue;
-
-            if (inputFormat == "csv") {
-                if (!headerParsed) {
-                    csvHeaders = CsvParser::parseCsvLine(line);
-                    headerParsed = true;
-                    continue;
-                }
-
-                auto fields = CsvParser::parseCsvLine(line);
-                if (fields.empty()) continue;
-
-                Reading reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-
-                if (shouldIncludeReading(reading)) {
-                    count++;
-                    std::cout << count << std::endl;
-                }
-            } else {
-                // JSON format
-                auto readings = JsonParser::parseJsonLine(line);
-                
-                if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
-
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    if (shouldIncludeReading(reading)) {
-                        count++;
-                        std::cout << count << std::endl;
-                    }
-                }
-            }
-        } else {
-            // No more data available, wait briefly and try again
-            std::cin.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    
+    // Use DataReader for parsing and filtering - only filtered readings reach callback
+    auto reader = createDataReader();
+    reader.processStdinFollow([&](const Reading& /*reading*/, int /*lineNum*/, const std::string& /*source*/) {
+        count++;
+        std::cout << count << std::endl;
+    });
 }
 
 void DataCounter::countFromFileFollow(const std::string& filename) {
-    if (verbosity >= 1) {
-        std::cerr << "Following file: " << filename << std::endl;
-    }
-
-    std::ifstream infile(filename);
-    if (!infile) {
-        std::cerr << "Error: Cannot open file: " << filename << std::endl;
-        return;
-    }
-
     long long count = 0;
-    std::string line;
-    std::vector<std::string> csvHeaders;
-    bool isCSV = FileUtils::isCsvFile(filename);
-
-    // Read existing content first
-    if (isCSV) {
-        if (std::getline(infile, line) && !line.empty()) {
-            bool needMore = false;
-            csvHeaders = CsvParser::parseCsvLine(infile, line, needMore);
-        }
-    }
-
-    while (std::getline(infile, line)) {
-        if (line.empty()) continue;
-
-        if (isCSV) {
-            bool needMore = false;
-            auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-            if (fields.empty()) continue;
-
-            Reading reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-
-            if (shouldIncludeReading(reading)) {
-                count++;
-            }
-        } else {
-            auto readings = JsonParser::parseJsonLine(line);
-            
-            if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
-
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                if (shouldIncludeReading(reading)) {
-                    count++;
-                }
-            }
-        }
-    }
-
-    // Print initial count
-    std::cout << count << std::endl;
-
-    // Now follow the file for new content
-    infile.clear();  // Clear EOF flag
     
-    while (true) {
-        if (std::getline(infile, line)) {
-            if (line.empty()) continue;
-
-            if (isCSV) {
-                bool needMore = false;
-                auto fields = CsvParser::parseCsvLine(infile, line, needMore);
-                if (fields.empty()) continue;
-
-                Reading reading;
-                for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading[csvHeaders[i]] = fields[i];
-                }
-
-                if (shouldIncludeReading(reading)) {
-                    count++;
-                    std::cout << count << std::endl;
-                }
-            } else {
-                auto readings = JsonParser::parseJsonLine(line);
-                
-                if (removeEmptyJson && areAllReadingsEmpty(readings)) continue;
-
-                for (const auto& reading : readings) {
-                    if (reading.empty()) continue;
-                    if (shouldIncludeReading(reading)) {
-                        count++;
-                        std::cout << count << std::endl;
-                    }
-                }
-            }
-        } else {
-            // No more data available, wait briefly and try again
-            infile.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    // Use DataReader for parsing and filtering - only filtered readings reach callback
+    auto reader = createDataReader();
+    reader.processFileFollow(filename, [&](const Reading& /*reading*/, int /*lineNum*/, const std::string& /*source*/) {
+        count++;
+        std::cout << count << std::endl;
+    });
 }
 
 // ===== Constructor =====

@@ -44,11 +44,6 @@ private:
     bool hasActiveFilters() const;
     
     /**
-     * Check if a reading should be output (respects rejectMode)
-     */
-    bool shouldOutputReading(const Reading& reading);
-    
-    /**
      * Execute sc-prototype command and parse columns from JSON output
      */
     bool getPrototypeColumns();
@@ -71,16 +66,16 @@ private:
                                bool& firstOutput);
     
     /**
-     * Process stdin data that was cached in memory (for CSV output)
+     * Process collected readings and output as CSV
      */
-    void processStdinData(const std::vector<std::string>& lines, 
+    void processStdinData(const ReadingList& readings, 
                           const std::vector<std::string>& headers, 
                           std::ostream& outfile);
     
     /**
-     * Process stdin data and output as JSON array
+     * Process collected readings and output as JSON array
      */
-    void processStdinDataJson(const std::vector<std::string>& lines, 
+    void processStdinDataJson(const ReadingList& readings, 
                               std::ostream& outfile);
     
     /**

@@ -7,16 +7,6 @@
 
 // ===== Private helper methods =====
 
-/**
- * Check if a reading should be output based on filters and rejectMode.
- * In normal mode: output if passes filters
- * In reject mode: output if fails filters (but not for empty/whitespace-only readings)
- */
-bool SensorDataTransformer::shouldOutputReading(const Reading& reading) {
-    bool passesFilter = shouldIncludeReading(reading);
-    return rejectMode ? !passesFilter : passesFilter;
-}
-
 bool SensorDataTransformer::hasActiveFilters() const {
     return rejectMode || !notEmptyColumns.empty() || !onlyValueFilters.empty() || 
            !excludeValueFilters.empty() || !allowedValues.empty() || removeErrors || removeWhitespace || 
@@ -70,8 +60,7 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
     }
     
     std::set<std::string> localKeys;
-    DataReader reader(minDate, maxDate, verbosity > 1 ? verbosity : 0, 
-                      FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
+    DataReader reader = createDataReader(rejectMode);
     
     reader.processFile(filename, [&](const Reading& reading, 
                                       int /*lineNum*/, const std::string& /*source*/) {
@@ -98,13 +87,12 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
         std::cout << "Processing file: " << filename << std::endl;
     }
     
-    DataReader reader(minDate, maxDate, verbosity > 1 ? verbosity : 0,
-                      FileUtils::isCsvFile(filename) ? "csv" : "json", tailLines);
+    DataReader reader = createDataReader(rejectMode);
     
     reader.processFile(filename, [&](const Reading& reading,
                                       int /*lineNum*/, const std::string& /*source*/) {
+        // Filtering already done by DataReader
         if (reading.empty()) return;
-        if (!shouldOutputReading(reading)) return;
         writeRow(reading, headers, outfile);
     });
 }
@@ -117,36 +105,15 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
     }
     
     const char* sp = removeWhitespace ? "" : " ";
-    bool isCSV = FileUtils::isCsvFile(filename);
     
-    // Optimization: for JSON without filters or tail, pass through lines unchanged
-    if (!isCSV && !hasActiveFilters() && tailLines == 0) {
-        std::ifstream infile(filename);
-        if (!infile) {
-            std::cerr << "Warning: Cannot open file: " << filename << std::endl;
-            return;
-        }
-        std::string line;
-        while (std::getline(infile, line)) {
-            if (line.empty()) continue;
-            if (!firstOutput) outfile << "\n";
-            firstOutput = false;
-            outfile << line;
-        }
-        infile.close();
-        return;
-    }
+    // Use DataReader for all processing - filtering is handled there
+    DataReader reader = createDataReader(rejectMode);
     
-    // Use DataReader for filtered/tail processing
-    DataReader reader(minDate, maxDate, verbosity > 1 ? verbosity : 0,
-                      isCSV ? "csv" : "json", tailLines);
-    
-    // For JSON output, we need to group readings by line for proper formatting
-    // Since DataReader gives us individual readings, we output each as its own line
+    // For JSON output, we output each reading as its own line
     reader.processFile(filename, [&](const Reading& reading,
                                       int /*lineNum*/, const std::string& /*source*/) {
+        // Filtering already done by DataReader
         if (reading.empty()) return;
-        if (!shouldOutputReading(reading)) return;
         
         if (!firstOutput) outfile << "\n";
         firstOutput = false;
@@ -156,106 +123,30 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
     });
 }
 
-void SensorDataTransformer::processStdinData(const std::vector<std::string>& lines, 
+void SensorDataTransformer::processStdinData(const ReadingList& readings, 
                                               const std::vector<std::string>& headers, 
                                               std::ostream& outfile) {
-    if (inputFormat == "csv") {
-        std::vector<std::string> csvHeaders;
-        bool isFirstLine = true;
-        
-        for (const auto& line : lines) {
-            if (line.empty()) continue;
-            
-            if (isFirstLine) {
-                csvHeaders = CsvParser::parseCsvLine(line);
-                isFirstLine = false;
-                continue;
-            }
-            
-            auto fields = CsvParser::parseCsvLine(line);
-            if (fields.empty()) continue;
-            
-            Reading reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-            
-            if (!shouldOutputReading(reading)) continue;
-            writeRow(reading, headers, outfile);
-        }
-    } else {
-        for (const auto& line : lines) {
-            if (line.empty()) continue;
-            
-            auto readings = JsonParser::parseJsonLine(line);
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                if (!shouldOutputReading(reading)) continue;
-                writeRow(reading, headers, outfile);
-            }
-        }
+    // Readings are already filtered by DataReader
+    for (const auto& reading : readings) {
+        if (reading.empty()) continue;
+        writeRow(reading, headers, outfile);
     }
 }
 
-void SensorDataTransformer::processStdinDataJson(const std::vector<std::string>& lines, 
+void SensorDataTransformer::processStdinDataJson(const ReadingList& readings, 
                                                   std::ostream& outfile) {
     bool firstOutput = true;
     const char* sp = removeWhitespace ? "" : " ";
     
-    if (inputFormat == "csv") {
-        std::vector<std::string> csvHeaders;
-        bool isFirstLine = true;
+    // Readings are already filtered by DataReader
+    for (const auto& reading : readings) {
+        if (reading.empty()) continue;
         
-        for (const auto& line : lines) {
-            if (line.empty()) continue;
-            
-            if (isFirstLine) {
-                csvHeaders = CsvParser::parseCsvLine(line);
-                isFirstLine = false;
-                continue;
-            }
-            
-            auto fields = CsvParser::parseCsvLine(line);
-            if (fields.empty()) continue;
-            
-            Reading reading;
-            for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                reading[csvHeaders[i]] = fields[i];
-            }
-            
-            if (!shouldOutputReading(reading)) continue;
-            
-            if (!firstOutput) outfile << "\n";
-            firstOutput = false;
-            outfile << "[" << sp;
-            writeJsonObject(reading, outfile, removeWhitespace);
-            outfile << sp << "]";
-        }
-    } else {
-        // JSON input format (including "auto" which defaults to JSON for stdin)
-        for (const auto& line : lines) {
-            if (line.empty()) continue;
-            
-            auto readings = JsonParser::parseJsonLine(line);
-            ReadingList filtered;
-            
-            for (const auto& reading : readings) {
-                if (reading.empty()) continue;
-                if (!shouldOutputReading(reading)) continue;
-                filtered.push_back(reading);
-            }
-            
-            if (!filtered.empty()) {
-                if (!firstOutput) outfile << "\n";
-                firstOutput = false;
-                outfile << "[" << sp;
-                for (size_t i = 0; i < filtered.size(); ++i) {
-                    if (i > 0) outfile << "," << sp;
-                    writeJsonObject(filtered[i], outfile, removeWhitespace);
-                }
-                outfile << sp << "]";
-            }
-        }
+        if (!firstOutput) outfile << "\n";
+        firstOutput = false;
+        outfile << "[" << sp;
+        writeJsonObject(reading, outfile, removeWhitespace);
+        outfile << sp << "]";
     }
 }
 
@@ -352,125 +243,38 @@ void SensorDataTransformer::transform() {
     }
     
     if (inputFiles.empty()) {
-        // Reading from stdin
+        // Reading from stdin - use DataReader for ALL parsing and filtering
         if (verbosity >= 1) {
             std::cerr << "Reading from stdin (format: " << inputFormat << ")..." << std::endl;
         }
         printFilterInfo();
         
-        // Streaming path: JSON input -> JSON output
-        if (inputFormat == "json" && outputFormat == "json") {
-            std::ostream* outStream = &std::cout;
-            std::ofstream outFile;
-            
-            if (!outputFile.empty()) {
-                outFile.open(outputFile);
-                if (!outFile) {
-                    std::cerr << "Error: Cannot create output file: " << outputFile << std::endl;
-                    return;
-                }
-                outStream = &outFile;
-            }
-            
-            std::string line;
-            bool firstOutput = true;
-            bool hasInput = false;
-            const char* sp = removeWhitespace ? "" : " ";
-            
-            while (std::getline(std::cin, line)) {
-                if (line.empty()) continue;
-                hasInput = true;
-                
-                if (!hasActiveFilters()) {
-                    if (!firstOutput) *outStream << "\n";
-                    firstOutput = false;
-                    *outStream << line;
-                } else {
-                    auto readings = JsonParser::parseJsonLine(line);
-                    ReadingList filtered;
-                    
-                    for (const auto& reading : readings) {
-                        if (reading.empty()) continue;
-                        if (shouldOutputReading(reading)) {
-                            filtered.push_back(reading);
-                        }
-                    }
-                    
-                    if (!filtered.empty()) {
-                        if (!firstOutput) *outStream << "\n";
-                        firstOutput = false;
-                        *outStream << "[" << sp;
-                        for (size_t i = 0; i < filtered.size(); ++i) {
-                            if (i > 0) *outStream << "," << sp;
-                            writeJsonObject(filtered[i], *outStream, removeWhitespace);
-                        }
-                        *outStream << sp << "]";
-                    }
-                }
-                
-                if (outputFile.empty()) {
-                    outStream->flush();
-                }
-            }
-            
-            if (!hasInput) {
-                std::cerr << "Error: No input data" << std::endl;
-                if (!outputFile.empty()) {
-                    outFile.close();
-                }
-                return;
-            }
-            
-            *outStream << "\n";
-            if (!outputFile.empty()) {
-                outFile.close();
-                if (verbosity >= 1) {
-                    std::cerr << "Wrote json to " << outputFile << std::endl;
-                }
-            }
-            return;
-        }
+        // Create DataReader configured with all filters
+        DataReader reader = createDataReader(rejectMode);
         
-        // Buffered path: needed for CSV output
-        std::vector<std::string> stdinLines;
-        std::string line;
-        std::set<std::string> stdinKeys;
+        // Collect all filtered readings from stdin
+        // DataReader handles all parsing (CSV/JSON) and filtering
+        ReadingList stdinReadings = reader.collectFromStdin();
         
-        while (std::getline(std::cin, line)) {
-            if (line.empty()) continue;
-            stdinLines.push_back(line);
-            
-            if (inputFormat == "csv") {
-                if (stdinKeys.empty()) {
-                    auto fields = CsvParser::parseCsvLine(line);
-                    for (const auto& field : fields) {
-                        if (!field.empty()) {
-                            stdinKeys.insert(field);
-                        }
-                    }
-                }
-            } else {
-                auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
-                    for (const auto& pair : reading) {
-                        stdinKeys.insert(pair.first);
-                    }
-                }
-            }
-        }
-        
-        if (stdinLines.empty()) {
+        if (stdinReadings.empty()) {
             std::cerr << "Error: No input data" << std::endl;
             return;
         }
         
-        allKeys = stdinKeys;
+        // Collect all keys from filtered readings (for CSV headers)
+        for (const auto& reading : stdinReadings) {
+            for (const auto& pair : reading) {
+                allKeys.insert(pair.first);
+            }
+        }
+        
         std::vector<std::string> headers(allKeys.begin(), allKeys.end());
         std::sort(headers.begin(), headers.end());
         
+        // Output the data
         if (outputFile.empty()) {
             if (outputFormat == "json") {
-                processStdinDataJson(stdinLines, std::cout);
+                processStdinDataJson(stdinReadings, std::cout);
                 std::cout << "\n";
             } else {
                 for (size_t i = 0; i < headers.size(); ++i) {
@@ -478,7 +282,7 @@ void SensorDataTransformer::transform() {
                     std::cout << headers[i];
                 }
                 std::cout << "\n";
-                processStdinData(stdinLines, headers, std::cout);
+                processStdinData(stdinReadings, headers, std::cout);
             }
         } else {
             std::ofstream outfile(outputFile);
@@ -488,7 +292,7 @@ void SensorDataTransformer::transform() {
             }
             
             if (outputFormat == "json") {
-                processStdinDataJson(stdinLines, outfile);
+                processStdinDataJson(stdinReadings, outfile);
                 outfile << "\n";
             } else {
                 for (size_t i = 0; i < headers.size(); ++i) {
@@ -496,7 +300,7 @@ void SensorDataTransformer::transform() {
                     outfile << headers[i];
                 }
                 outfile << "\n";
-                processStdinData(stdinLines, headers, outfile);
+                processStdinData(stdinReadings, headers, outfile);
             }
             
             outfile.close();
