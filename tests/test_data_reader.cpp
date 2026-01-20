@@ -69,7 +69,8 @@ void test_process_json_with_date_filter() {
     );
     
     // Filter: minDate=150, maxDate=250 -> only s2 should pass
-    DataReader reader(150, 250, 0, "json");
+    DataReader reader(0, "json");
+    reader.setDateRange(150, 250);
     int count = 0;
     std::string foundId;
     
@@ -90,7 +91,8 @@ void test_process_json_with_min_date_only() {
     );
     
     // Filter: minDate=150 -> only s2 should pass
-    DataReader reader(150, 0, 0, "json");
+    DataReader reader(0, "json");
+    reader.setDateRange(150, 0);
     int count = 0;
     
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -108,7 +110,8 @@ void test_process_json_with_max_date_only() {
     );
     
     // Filter: maxDate=150 -> only s1 should pass
-    DataReader reader(0, 150, 0, "json");
+    DataReader reader(0, "json");
+    reader.setDateRange(0, 150);
     int count = 0;
     
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -128,7 +131,7 @@ void test_process_with_tail_lines() {
     );
     
     // Tail 2 lines - should only get s3 and s4
-    DataReader reader(0, 0, 0, "json", 2);
+    DataReader reader(0, "json", 2);
     std::vector<std::string> ids;
     
     reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
@@ -196,7 +199,7 @@ void test_process_csv_stdin() {
     std::istringstream iss(input);
     std::streambuf* oldBuf = std::cin.rdbuf(iss.rdbuf());
     
-    DataReader reader(0, 0, 0, "csv");
+    DataReader reader(0, "csv");
     int count = 0;
     
     reader.processStdin([&](const Reading& reading, int, const std::string&) {
