@@ -11,6 +11,9 @@ include /usr/share/dpkg/buildflags.mk
 %:
 	dh $@
 
+# Skip tests during package build - run in CI instead
+override_dh_auto_test:
+
 override_dh_auto_install:
 	dh_auto_install
 
