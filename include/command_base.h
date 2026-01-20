@@ -51,6 +51,9 @@ protected:
     std::map<std::string, std::set<std::string>> excludeValueFilters;
     std::map<std::string, std::set<std::string>> allowedValues;
     
+    // Transformation options (applied after filtering)
+    std::vector<UpdateRule> updateRules;
+    
     // Performance options
     int tailLines;  // --tail <n>: only read last n lines from each file (0 = read all)
     
@@ -209,6 +212,7 @@ protected:
         removeEmptyJson = parser.getRemoveEmptyJson();
         removeErrors = parser.getRemoveErrors();
         tailLines = parser.getTailLines();
+        updateRules = parser.getUpdateRules();
     }
     
     /**
@@ -236,6 +240,7 @@ protected:
         filter.setExcludeValueFilters(excludeValueFilters);
         filter.setAllowedValues(allowedValues);
         filter.setInvertFilter(rejectMode);
+        filter.setUpdateRules(updateRules);
     }
     
     /**

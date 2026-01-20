@@ -21,7 +21,7 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -of --output-format --tail --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json"
+    local transform_opts="-o --output -of --output-format --tail --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
     local count_opts="-f --follow --tail --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
@@ -84,7 +84,7 @@ _sensor_data() {
             # Can't easily complete column names, leave empty
             return
             ;;
-        --only-value)
+        --only-value|--update-value|--update-where-empty)
             # Format is column:value, can't easily complete
             return
             ;;

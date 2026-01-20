@@ -1083,6 +1083,131 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# ============================================
+# UPDATE VALUE TESTS
+# ============================================
+
+echo ""
+echo "================================"
+echo "Testing --update-value and --update-where-empty"
+echo "================================"
+
+# Test 30: --update-value adds new column when match succeeds
+echo ""
+echo "Test 30: --update-value adds new column when match succeeds"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]'
+result=$(echo "$input" | ./sensor-data transform --update-value sensor:ds18b20 unit:C)
+if echo "$result" | grep -q '"unit": "C"' && echo "$result" | grep -q '"sensor": "ds18b20"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected unit:C to be added"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 31: --update-value does nothing when match fails
+echo ""
+echo "Test 31: --update-value does nothing when match fails"
+input='[ { "sensor": "dht22", "value": 45 } ]'
+result=$(echo "$input" | ./sensor-data transform --update-value sensor:ds18b20 unit:C)
+if ! echo "$result" | grep -q '"unit"' && echo "$result" | grep -q '"sensor": "dht22"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected no unit column added"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 32: --update-value overwrites existing value
+echo ""
+echo "Test 32: --update-value overwrites existing value"
+input='[ { "sensor": "ds18b20", "value": 22.5, "unit": "F" } ]'
+result=$(echo "$input" | ./sensor-data transform --update-value sensor:ds18b20 unit:C)
+if echo "$result" | grep -q '"unit": "C"' && ! echo "$result" | grep -q '"unit": "F"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected unit:F to be overwritten with unit:C"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 33: --update-where-empty adds when column missing
+echo ""
+echo "Test 33: --update-where-empty adds when column missing"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]'
+result=$(echo "$input" | ./sensor-data transform --update-where-empty sensor:ds18b20 unit:C)
+if echo "$result" | grep -q '"unit": "C"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected unit:C to be added"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 34: --update-where-empty adds when column empty string
+echo ""
+echo "Test 34: --update-where-empty adds when column is empty string"
+input='[ { "sensor": "ds18b20", "value": 22.5, "unit": "" } ]'
+result=$(echo "$input" | ./sensor-data transform --update-where-empty sensor:ds18b20 unit:C)
+if echo "$result" | grep -q '"unit": "C"' && ! echo "$result" | grep -q '"unit": ""'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected empty unit to be updated to C"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 35: --update-where-empty preserves existing value
+echo ""
+echo "Test 35: --update-where-empty preserves existing value"
+input='[ { "sensor": "ds18b20", "value": 22.5, "unit": "F" } ]'
+result=$(echo "$input" | ./sensor-data transform --update-where-empty sensor:ds18b20 unit:C)
+if echo "$result" | grep -q '"unit": "F"' && ! echo "$result" | grep -q '"unit": "C"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected unit:F to be preserved"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 36: Multiple --update-value rules
+echo ""
+echo "Test 36: Multiple --update-value rules"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]'
+result=$(echo "$input" | ./sensor-data transform --update-value sensor:ds18b20 unit:C --update-value sensor:ds18b20 type:temperature)
+if echo "$result" | grep -q '"unit": "C"' && echo "$result" | grep -q '"type": "temperature"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected both unit and type to be added"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 37: --update-value with different sensors in same stream
+echo ""
+echo "Test 37: --update-value applies only to matching sensors"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]
+[ { "sensor": "dht22", "value": 45 } ]'
+result=$(echo "$input" | ./sensor-data transform --update-value sensor:ds18b20 unit:C)
+lines=$(echo "$result" | wc -l)
+has_ds18b20_unit=$(echo "$result" | grep '"sensor": "ds18b20"' | grep -c '"unit": "C"' || true)
+has_dht22_unit=$(echo "$result" | grep '"sensor": "dht22"' | grep -c '"unit"' || true)
+if [ "$has_ds18b20_unit" -eq 1 ] && [ "$has_dht22_unit" -eq 0 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected unit only on ds18b20"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

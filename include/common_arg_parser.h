@@ -4,11 +4,13 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 #include <algorithm>
 #include <map>
 #include <set>
 #include "date_utils.h"
 #include "file_collector.h"
+#include "reading_filter.h"  // For UpdateRule
 
 // Default input format: "auto" detects from file extension, "json"/"csv" override
 const std::string DEFAULT_INPUT_FORMAT = "auto";
@@ -32,6 +34,7 @@ private:
     bool removeEmptyJson;
     bool removeErrors;
     int tailLines;  // --tail <n>: only read last n lines from each file
+    std::vector<UpdateRule> updateRules;  // --update-value and --update-where-empty
     
 public:
     CommonArgParser() 
@@ -267,6 +270,39 @@ public:
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     return false;
                 }
+            } else if (arg == "--update-value" || arg == "--update-where-empty") {
+                // Format: --update-value col1:existing_value col2:new_value
+                // Sets col2 to new_value when col1 == existing_value
+                bool onlyWhenEmpty = (arg == "--update-where-empty");
+                if (i + 2 < argc) {
+                    ++i;
+                    std::string matchArg = argv[i];
+                    ++i;
+                    std::string targetArg = argv[i];
+                    
+                    // Parse matchArg as "column:value"
+                    size_t colonPos1 = matchArg.find(':');
+                    if (colonPos1 == std::string::npos || colonPos1 == 0 || colonPos1 == matchArg.length() - 1) {
+                        std::cerr << "Error: " << arg << " first argument must be 'column:value'" << std::endl;
+                        return false;
+                    }
+                    std::string matchCol = matchArg.substr(0, colonPos1);
+                    std::string matchVal = matchArg.substr(colonPos1 + 1);
+                    
+                    // Parse targetArg as "column:value"
+                    size_t colonPos2 = targetArg.find(':');
+                    if (colonPos2 == std::string::npos || colonPos2 == 0 || colonPos2 == targetArg.length() - 1) {
+                        std::cerr << "Error: " << arg << " second argument must be 'column:value'" << std::endl;
+                        return false;
+                    }
+                    std::string targetCol = targetArg.substr(0, colonPos2);
+                    std::string newVal = targetArg.substr(colonPos2 + 1);
+                    
+                    updateRules.emplace_back(matchCol, matchVal, targetCol, newVal, onlyWhenEmpty);
+                } else {
+                    std::cerr << "Error: " << arg << " requires two arguments: 'match_col:match_val' 'target_col:new_val'" << std::endl;
+                    return false;
+                }
             } else if (arg[0] != '-') {
                 // It's a file or directory path
                 if (!collectorInitialized) {
@@ -299,6 +335,7 @@ public:
     bool getRemoveEmptyJson() const noexcept { return removeEmptyJson; }
     bool getRemoveErrors() const noexcept { return removeErrors; }
     int getTailLines() const noexcept { return tailLines; }
+    const std::vector<UpdateRule>& getUpdateRules() const noexcept { return updateRules; }
     
     /**
      * Check for unknown options in command line arguments.
@@ -320,7 +357,8 @@ public:
         // Common filtering options
         static const std::set<std::string> filterOptions = {
             "--not-empty", "--not-null", "--only-value", "--exclude-value", "--allowed-values",
-            "--remove-errors", "--remove-empty-json", "--clean"
+            "--remove-errors", "--remove-empty-json", "--clean",
+            "--update-value", "--update-where-empty"
         };
         
         // Options that take arguments (need to skip the next arg)

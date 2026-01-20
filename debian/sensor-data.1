@@ -118,6 +118,15 @@ Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY).
 .TP
 .BI \-\-tail " n"
 Only read the last n lines from each file (useful for quick checks on large files).
+.TP
+.BI \-\-update\-value " match" " target"
+Update target column when match column has the specified value.
+Both arguments use the format column:value.
+Example: \-\-update\-value sensor:ds18b20 unit:C sets unit to "C" when sensor is "ds18b20".
+.TP
+.BI \-\-update\-where\-empty " match" " target"
+Same as \-\-update\-value, but only updates if the target column is empty or missing.
+Useful for adding default values without overwriting existing data.
 .SH COUNT OPTIONS
 .TP
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR

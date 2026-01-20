@@ -439,6 +439,11 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
+    std::cerr << "  --update-value <match> <target>" << std::endl;
+    std::cerr << "                            Update target column when match column has value" << std::endl;
+    std::cerr << "                            Format: col1:val1 col2:val2 (set col2 to val2 when col1==val1)" << std::endl;
+    std::cerr << "  --update-where-empty <match> <target>" << std::endl;
+    std::cerr << "                            Same as --update-value, but only when target column is empty/missing" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " transform sensor1.out" << std::endl;
@@ -458,6 +463,8 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  " << progName << " transform --not-empty unit --not-empty value -e .out -o output.csv /logs" << std::endl;
     std::cerr << "  " << progName << " transform --only-value type:temperature -r -e .out -o output.csv /logs" << std::endl;
     std::cerr << "  " << progName << " transform --only-value type:temperature --only-value unit:C -o output.csv /logs" << std::endl;
+    std::cerr << "  " << progName << " transform --update-value sensor:ds18b20 unit:C data.out" << std::endl;
+    std::cerr << "  " << progName << " transform --update-where-empty sensor:dht22 unit:% data.out" << std::endl;
 }
 
 void SensorDataTransformer::printListRejectsUsage(const char* progName) {
@@ -485,6 +492,10 @@ void SensorDataTransformer::printListRejectsUsage(const char* progName) {
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
     std::cerr << "  --min-date <date>         List readings before this date" << std::endl;
     std::cerr << "  --max-date <date>         List readings after this date" << std::endl;
+    std::cerr << "  --update-value <match> <target>" << std::endl;
+    std::cerr << "                            Update target column when match column has value" << std::endl;
+    std::cerr << "  --update-where-empty <match> <target>" << std::endl;
+    std::cerr << "                            Same as --update-value, but only when target is empty/missing" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " list-rejects --remove-errors sensor1.out    # Show error readings" << std::endl;

@@ -4,12 +4,35 @@
 #include <string>
 #include <set>
 #include <map>
+#include <vector>
 #include <cstring>
 #include <iostream>
 
 #include "types.h"
 #include "date_utils.h"
 #include "error_detector.h"
+
+/**
+ * UpdateRule - Defines a conditional value update.
+ * 
+ * When a reading has matchColumn == matchValue, 
+ * set targetColumn to newValue.
+ * If onlyWhenEmpty is true, only update if targetColumn is missing or empty.
+ */
+struct UpdateRule {
+    std::string matchColumn;
+    std::string matchValue;
+    std::string targetColumn;
+    std::string newValue;
+    bool onlyWhenEmpty;  // --update-where-empty sets this to true
+    
+    UpdateRule(const std::string& matchCol, const std::string& matchVal,
+               const std::string& targetCol, const std::string& newVal,
+               bool whenEmpty = false)
+        : matchColumn(matchCol), matchValue(matchVal)
+        , targetColumn(targetCol), newValue(newVal)
+        , onlyWhenEmpty(whenEmpty) {}
+};
 
 /**
  * ReadingFilter - Centralized filtering for sensor readings.
@@ -36,6 +59,9 @@ private:
     std::map<std::string, std::set<std::string>> onlyValueFilters;
     std::map<std::string, std::set<std::string>> excludeValueFilters;
     std::map<std::string, std::set<std::string>> allowedValues;
+    
+    // Value updates (transformations applied after filtering)
+    std::vector<UpdateRule> updateRules;
     
     // Invert mode (for list-rejects command)
     bool invertFilter;
@@ -108,6 +134,45 @@ public:
     
     void setInvertFilter(bool invert) {
         invertFilter = invert;
+    }
+    
+    // Update rule methods
+    void addUpdateRule(const UpdateRule& rule) {
+        updateRules.push_back(rule);
+    }
+    
+    void setUpdateRules(const std::vector<UpdateRule>& rules) {
+        updateRules = rules;
+    }
+    
+    /**
+     * Apply all update transformations to a reading.
+     * Called after filtering passes.
+     * Modifies the reading in-place.
+     */
+    void applyTransformations(Reading& reading) const {
+        for (const auto& rule : updateRules) {
+            auto matchIt = reading.find(rule.matchColumn);
+            if (matchIt == reading.end()) continue;
+            
+            // Check if match column has the required value
+            if (matchIt->second != rule.matchValue) continue;
+            
+            // Check if we should only update when empty
+            if (rule.onlyWhenEmpty) {
+                auto targetIt = reading.find(rule.targetColumn);
+                if (targetIt != reading.end() && !targetIt->second.empty()) {
+                    continue;  // Target exists and is not empty, skip update
+                }
+            }
+            
+            // Apply the update
+            reading[rule.targetColumn] = rule.newValue;
+            if (verbosity >= 2) {
+                std::cerr << "  Updated " << rule.targetColumn << " to '" << rule.newValue 
+                         << "' (matched " << rule.matchColumn << "='" << rule.matchValue << "')" << std::endl;
+            }
+        }
     }
     
     /**

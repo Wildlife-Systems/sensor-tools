@@ -97,6 +97,9 @@ public:
                 // Apply ALL filters here
                 if (!filter.shouldInclude(reading)) continue;
                 
+                // Apply transformations (updates) after filtering
+                filter.applyTransformations(reading);
+                
                 callback(reading, lineNum, sourceName);
             }
         } else {
@@ -106,11 +109,14 @@ public:
                 if (line.empty()) continue;
                 
                 auto readings = JsonParser::parseJsonLine(line);
-                for (const auto& reading : readings) {
+                for (auto reading : readings) {  // Copy to allow mutation
                     if (reading.empty()) continue;
                     
                     // Apply ALL filters here
                     if (!filter.shouldInclude(reading)) continue;
+                    
+                    // Apply transformations (updates) after filtering
+                    filter.applyTransformations(reading);
                     
                     callback(reading, lineNum, sourceName);
                 }
@@ -189,6 +195,9 @@ public:
                     // Apply ALL filters here
                     if (!filter.shouldInclude(reading)) continue;
                     
+                    // Apply transformations (updates) after filtering
+                    filter.applyTransformations(reading);
+                    
                     callback(reading, lineNum, filename);
                 }
             } else {
@@ -201,11 +210,14 @@ public:
                     if (line.empty()) continue;
                     
                     auto readings = JsonParser::parseJsonLine(line);
-                    for (const auto& reading : readings) {
+                    for (auto reading : readings) {  // Copy to allow mutation
                         if (reading.empty()) continue;
                         
                         // Apply ALL filters here
                         if (!filter.shouldInclude(reading)) continue;
+                        
+                        // Apply transformations (updates) after filtering
+                        filter.applyTransformations(reading);
                         
                         callback(reading, lineNum, filename);
                     }
@@ -319,14 +331,20 @@ public:
                     // Use the SAME filter as all other methods
                     if (!filter.shouldInclude(reading)) continue;
                     
+                    // Apply transformations (updates) after filtering
+                    filter.applyTransformations(reading);
+                    
                     callback(reading, lineNum, "stdin");
                 } else {
                     auto readings = JsonParser::parseJsonLine(line);
-                    for (const auto& reading : readings) {
+                    for (auto reading : readings) {  // Copy to allow mutation
                         if (reading.empty()) continue;
                         
                         // Use the SAME filter as all other methods
                         if (!filter.shouldInclude(reading)) continue;
+                        
+                        // Apply transformations (updates) after filtering
+                        filter.applyTransformations(reading);
                         
                         callback(reading, lineNum, "stdin");
                     }
@@ -388,14 +406,20 @@ public:
                     // Use the SAME filter as all other methods
                     if (!filter.shouldInclude(reading)) continue;
                     
+                    // Apply transformations (updates) after filtering
+                    filter.applyTransformations(reading);
+                    
                     callback(reading, lineNum, filename);
                 } else {
                     auto readings = JsonParser::parseJsonLine(line);
-                    for (const auto& reading : readings) {
+                    for (auto reading : readings) {  // Copy to allow mutation
                         if (reading.empty()) continue;
                         
                         // Use the SAME filter as all other methods
                         if (!filter.shouldInclude(reading)) continue;
+                        
+                        // Apply transformations (updates) after filtering
+                        filter.applyTransformations(reading);
                         
                         callback(reading, lineNum, filename);
                     }

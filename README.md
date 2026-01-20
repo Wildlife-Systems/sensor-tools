@@ -47,6 +47,12 @@ sensor-data transform input.out output.out
 
 # Filter by date range
 sensor-data transform --min-date 2026-01-01 --max-date 2026-01-31 input.out
+
+# Add unit column based on sensor type
+sensor-data transform --update-value sensor:ds18b20 unit:C input.out
+
+# Add default unit only when missing
+sensor-data transform --update-where-empty sensor:ds18b20 unit:C input.out
 ```
 
 ### list-rejects
@@ -94,6 +100,8 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
 - `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id`
 - `--tail <n>` - Only read the last n lines from each file
+- `--update-value <match> <target>` - Update target column when match column has value (e.g., `--update-value sensor:ds18b20 unit:C`)
+- `--update-where-empty <match> <target>` - Same as `--update-value`, but only when target column is empty/missing
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
