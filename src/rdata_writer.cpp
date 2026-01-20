@@ -315,6 +315,10 @@ bool RDataWriter::writeRDS(const std::string& filename,
     writer.writeInt32(READER_VERSION);
     writer.writeInt32(WRITER_VERSION);
     
+    // Format version 3 requires native encoding
+    writer.writeInt32(static_cast<int32_t>(strlen(NATIVE_ENCODING)));
+    writer.writeBytes(NATIVE_ENCODING, strlen(NATIVE_ENCODING));
+    
     // Write the data frame directly (no wrapping pairlist)
     writer.writeDataFrame("", readings, headers, label);
     
