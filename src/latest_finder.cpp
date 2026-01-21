@@ -114,10 +114,10 @@ int LatestFinder::main() {
     // Combine function: merge maps keeping latest timestamp per sensor
     auto combineLatest = [](std::map<std::string, SensorLatest>& combined, 
                             const std::map<std::string, SensorLatest>& local) {
-        for (const auto& pair : local) {
-            auto& existing = combined[pair.first];
-            if (pair.second.timestamp > existing.timestamp) {
-                existing = pair.second;
+        for (const auto& [sensorId, data] : local) {
+            auto& existing = combined[sensorId];
+            if (data.timestamp > existing.timestamp) {
+                existing = data;
             }
         }
     };
@@ -128,8 +128,8 @@ int LatestFinder::main() {
     
     // Convert to vector for sorting and limiting
     std::vector<SensorLatest> results;
-    for (const auto& pair : latestBySensor) {
-        results.push_back(pair.second);
+    for (const auto& [sensorId, data] : latestBySensor) {
+        results.push_back(data);
     }
     
     // Sort by sensor_id (natural order from map)

@@ -47,8 +47,8 @@ bool SensorDataTransformer::getPrototypeColumns() {
     }
     
     // Extract all keys from the prototype
-    for (const auto& pair : readings[0]) {
-        allKeys.insert(pair.first);
+    for (const auto& [key, value] : readings[0]) {
+        allKeys.insert(key);
     }
     
     std::cout << "Loaded " << allKeys.size() << " columns from sc-prototype" << std::endl;
@@ -65,8 +65,8 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
     
     reader.processFile(filename, [&](const Reading& reading, 
                                       int /*lineNum*/, const std::string& /*source*/) {
-        for (const auto& pair : reading) {
-            localKeys.insert(pair.first);
+        for (const auto& [key, value] : reading) {
+            localKeys.insert(key);
         }
     });
     
@@ -278,8 +278,8 @@ void SensorDataTransformer::transform() {
         
         // Collect all keys from filtered readings (for CSV headers)
         for (const auto& reading : stdinReadings) {
-            for (const auto& pair : reading) {
-                allKeys.insert(pair.first);
+            for (const auto& [key, value] : reading) {
+                allKeys.insert(key);
             }
         }
         

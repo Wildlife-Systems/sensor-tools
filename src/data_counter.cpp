@@ -52,8 +52,8 @@ long long DataCounter::countFromFile(const std::string& filename) {
     // Merge local counts into shared valueCounts with mutex
     if ((!byColumn.empty() || byMonth || byDay || byYear || byWeek) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
-        for (const auto& pair : localValueCounts) {
-            valueCounts[pair.first] += pair.second;
+        for (const auto& [key, cnt] : localValueCounts) {
+            valueCounts[key] += cnt;
         }
     }
 
@@ -97,8 +97,8 @@ long long DataCounter::countFromStdin() {
     // Merge local counts into shared valueCounts with mutex
     if ((!byColumn.empty() || byMonth || byDay || byYear || byWeek) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
-        for (const auto& pair : localValueCounts) {
-            valueCounts[pair.first] += pair.second;
+        for (const auto& [key, cnt] : localValueCounts) {
+            valueCounts[key] += cnt;
         }
     }
 
@@ -274,9 +274,11 @@ void DataCounter::count() {
         
         auto combineResults = [this](std::pair<long long, std::unordered_map<std::string, long long>>& acc, 
                                      const std::pair<long long, std::unordered_map<std::string, long long>>& result) {
-            acc.first += result.first;
-            for (const auto& pair : result.second) {
-                acc.second[pair.first] += pair.second;
+            auto& [accCount, accCounts] = acc;
+            const auto& [resCount, resCounts] = result;
+            accCount += resCount;
+            for (const auto& [key, cnt] : resCounts) {
+                accCounts[key] += cnt;
             }
         };
         
@@ -288,8 +290,9 @@ void DataCounter::count() {
             4  // numThreads
         );
         
-        totalCount = result.first;
-        valueCounts = std::move(result.second);
+        auto& [count, counts] = result;
+        totalCount = count;
+        valueCounts = std::move(counts);
     } else {
         // Use parallel processing for multiple files
         totalCount = processFilesParallel<long long>(
@@ -344,29 +347,29 @@ void DataCounter::count() {
         if (outputFormat == "json") {
             *out << "[";
             bool first = true;
-            for (const auto& pair : results) {
+            for (const auto& [value, cnt] : results) {
                 if (!first) *out << ",";
                 first = false;
-                *out << "{\"" << columnLabel << "\":\"" << pair.first 
-                     << "\",\"count\":" << pair.second << "}";
+                *out << "{\"" << columnLabel << "\":\"" << value 
+                     << "\",\"count\":" << cnt << "}";
             }
             *out << "]\n";
         } else if (outputFormat == "csv") {
             *out << columnLabel << ",count\n";
-            for (const auto& pair : results) {
-                *out << pair.first << "," << pair.second << "\n";
+            for (const auto& [value, cnt] : results) {
+                *out << value << "," << cnt << "\n";
             }
         } else {
             // Human-readable format (default) - simple two-column output for time groupings
             if (timeGrouping) {
-                for (const auto& pair : results) {
-                    *out << pair.first << "\t" << pair.second << "\n";
+                for (const auto& [value, cnt] : results) {
+                    *out << value << "\t" << cnt << "\n";
                 }
             } else {
                 // Find max value width for alignment
                 size_t maxValueWidth = columnLabel.length();
-                for (const auto& pair : results) {
-                    maxValueWidth = std::max(maxValueWidth, pair.first.length());
+                for (const auto& [value, cnt] : results) {
+                    maxValueWidth = std::max(maxValueWidth, value.length());
                 }
                 
                 *out << "Counts by " << columnLabel << ":\n\n";
@@ -376,10 +379,10 @@ void DataCounter::count() {
                 *out << "Count\n";
                 *out << std::string(maxValueWidth + 2 + 10, '-') << "\n";
                 
-                for (const auto& pair : results) {
+                for (const auto& [value, cnt] : results) {
                     out->width(maxValueWidth + 2);
-                    *out << pair.first;
-                    *out << pair.second << "\n";
+                    *out << value;
+                    *out << cnt << "\n";
                 }
                 
                 *out << "\nTotal: " << totalCount << " reading(s)\n";

@@ -36,8 +36,8 @@ void DistinctLister::collectFromFile(const std::string& filename) {
         std::lock_guard<std::mutex> lock(valuesMutex);
         distinctValues.insert(localValues.begin(), localValues.end());
         if (showCounts) {
-            for (const auto& pair : localCounts) {
-                valueCounts[pair.first] += pair.second;
+            for (const auto& [val, cnt] : localCounts) {
+                valueCounts[val] += cnt;
             }
         }
     }
@@ -70,10 +70,10 @@ void DistinctLister::outputResults() {
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
                 [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
-            for (const auto& pair : sorted) {
+            for (const auto& [value, count] : sorted) {
                 if (!first) std::cout << ",";
                 first = false;
-                std::cout << "\n  {\"value\": \"" << pair.first << "\", \"count\": " << pair.second << "}";
+                std::cout << "\n  {\"value\": \"" << value << "\", \"count\": " << count << "}";
             }
         } else {
             for (const auto& value : distinctValues) {
@@ -90,18 +90,18 @@ void DistinctLister::outputResults() {
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
                 [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
-            for (const auto& pair : sorted) {
+            for (const auto& [value, count] : sorted) {
                 // Quote value if it contains comma, newline, or quote
-                if (pair.first.find_first_of(",\"\n") != std::string::npos) {
-                    std::string escaped = pair.first;
+                if (value.find_first_of(",\"\n") != std::string::npos) {
+                    std::string escaped = value;
                     size_t pos = 0;
                     while ((pos = escaped.find('"', pos)) != std::string::npos) {
                         escaped.replace(pos, 1, "\"\"");
                         pos += 2;
                     }
-                    std::cout << "\"" << escaped << "\"," << pair.second << std::endl;
+                    std::cout << "\"" << escaped << "\"," << count << std::endl;
                 } else {
-                    std::cout << pair.first << "," << pair.second << std::endl;
+                    std::cout << value << "," << count << std::endl;
                 }
             }
         } else {
@@ -128,8 +128,8 @@ void DistinctLister::outputResults() {
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
                 [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
-            for (const auto& pair : sorted) {
-                std::cout << pair.second << "\t" << pair.first << std::endl;
+            for (const auto& [value, count] : sorted) {
+                std::cout << count << "\t" << value << std::endl;
             }
         } else {
             for (const auto& value : distinctValues) {

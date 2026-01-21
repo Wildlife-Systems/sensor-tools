@@ -65,8 +65,8 @@ void ErrorSummarizer::summariseErrors() {
         
         // Combine function: sum counts
         auto combineCounts = [](std::map<std::string, int>& combined, const std::map<std::string, int>& local) {
-            for (const auto& pair : local) {
-                combined[pair.first] += pair.second;
+            for (const auto& [errType, cnt] : local) {
+                combined[errType] += cnt;
             }
         };
         
@@ -80,9 +80,9 @@ void ErrorSummarizer::summariseErrors() {
     } else {
         std::cout << "Error Summary:" << std::endl;
         int totalErrors = 0;
-        for (const auto& pair : errorCounts) {
-            std::cout << "  " << pair.first << ": " << pair.second << " occurrence" << (pair.second > 1 ? "s" : "") << std::endl;
-            totalErrors += pair.second;
+        for (const auto& [errType, cnt] : errorCounts) {
+            std::cout << "  " << errType << ": " << cnt << " occurrence" << (cnt > 1 ? "s" : "") << std::endl;
+            totalErrors += cnt;
         }
         std::cout << "Total errors: " << totalErrors << std::endl;
     }

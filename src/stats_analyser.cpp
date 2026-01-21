@@ -68,14 +68,14 @@ void StatsAnalyser::collectDataFromReading(const Reading& reading) {
         timestamps.push_back(ts);
     }
     
-    for (const auto& pair : reading) {
+    for (const auto& [colName, colValue] : reading) {
         // Skip if we're filtering by column and this isn't it
-        if (!columnFilter.empty() && pair.first != columnFilter) continue;
+        if (!columnFilter.empty() && colName != columnFilter) continue;
         
         // Try to parse as numeric
-        if (isNumeric(pair.second)) {
-            double value = std::stod(pair.second);
-            columnData[pair.first].push_back(value);
+        if (isNumeric(colValue)) {
+            double value = std::stod(colValue);
+            columnData[colName].push_back(value);
         }
     }
 }
@@ -220,10 +220,7 @@ void StatsAnalyser::printStats() {
         std::cout << std::endl;
     }
     
-    for (const auto& pair : columnData) {
-        const std::string& colName = pair.first;
-        const std::vector<double>& values = pair.second;
-        
+    for (const auto& [colName, values] : columnData) {
         if (values.empty()) continue;
         
         // Sort values for percentile calculations
@@ -415,14 +412,14 @@ void StatsAnalyser::analyze() {
                     local.timestamps.push_back(ts);
                 }
                 
-                for (const auto& pair : reading) {
+                for (const auto& [colName, colValue] : reading) {
                     // Skip if we're filtering by column and this isn't it
-                    if (!columnFilter.empty() && pair.first != columnFilter) continue;
+                    if (!columnFilter.empty() && colName != columnFilter) continue;
                     
                     // Try to parse as numeric
-                    if (isNumeric(pair.second)) {
-                        double value = std::stod(pair.second);
-                        local.columnData[pair.first].push_back(value);
+                    if (isNumeric(colValue)) {
+                        double value = std::stod(colValue);
+                        local.columnData[colName].push_back(value);
                     }
                 }
             });
@@ -433,9 +430,9 @@ void StatsAnalyser::analyze() {
         // Combine function: merge column data and timestamps
         auto combineStats = [](LocalStatsData& combined, const LocalStatsData& local) {
             // Merge column data
-            for (const auto& pair : local.columnData) {
-                auto& target = combined.columnData[pair.first];
-                target.insert(target.end(), pair.second.begin(), pair.second.end());
+            for (const auto& [colName, colValues] : local.columnData) {
+                auto& target = combined.columnData[colName];
+                target.insert(target.end(), colValues.begin(), colValues.end());
             }
             // Merge timestamps
             combined.timestamps.insert(combined.timestamps.end(), 
@@ -465,14 +462,14 @@ void StatsAnalyser::analyze() {
                     local.timestamps.push_back(ts);
                 }
                 
-                for (const auto& pair : reading) {
+                for (const auto& [colName, colValue] : reading) {
                     // Skip if we're filtering by column and this isn't it
-                    if (!columnFilter.empty() && pair.first != columnFilter) continue;
+                    if (!columnFilter.empty() && colName != columnFilter) continue;
                     
                     // Try to parse as numeric
-                    if (isNumeric(pair.second)) {
-                        double value = std::stod(pair.second);
-                        local.columnData[pair.first].push_back(value);
+                    if (isNumeric(colValue)) {
+                        double value = std::stod(colValue);
+                        local.columnData[colName].push_back(value);
                     }
                 }
             });
@@ -483,9 +480,9 @@ void StatsAnalyser::analyze() {
         // Combine function: merge column data and timestamps
         auto combineStats = [](LocalStatsData& combined, const LocalStatsData& local) {
             // Merge column data
-            for (const auto& pair : local.columnData) {
-                auto& target = combined.columnData[pair.first];
-                target.insert(target.end(), pair.second.begin(), pair.second.end());
+            for (const auto& [colName, colValues] : local.columnData) {
+                auto& target = combined.columnData[colName];
+                target.insert(target.end(), colValues.begin(), colValues.end());
             }
             // Merge timestamps
             combined.timestamps.insert(combined.timestamps.end(), 

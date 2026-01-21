@@ -146,14 +146,14 @@ protected:
         }
         
         // Check value filters (include)
-        for (const auto& filter : onlyValueFilters) {
-            auto it = reading.find(filter.first);
-            if (it == reading.end() || filter.second.count(it->second) == 0) {
+        for (const auto& [colName, allowedVals] : onlyValueFilters) {
+            auto it = reading.find(colName);
+            if (it == reading.end() || allowedVals.count(it->second) == 0) {
                 if (verbosity >= 2) {
                     if (it == reading.end()) {
-                        std::cerr << "  Skipping row: missing column '" << filter.first << "'" << std::endl;
+                        std::cerr << "  Skipping row: missing column '" << colName << "'" << std::endl;
                     } else {
-                        std::cerr << "  Skipping row: column '" << filter.first << "' has value '" 
+                        std::cerr << "  Skipping row: column '" << colName << "' has value '" 
                                  << it->second << "' (not in allowed values)" << std::endl;
                     }
                 }
@@ -162,11 +162,11 @@ protected:
         }
         
         // Check value filters (exclude)
-        for (const auto& filter : excludeValueFilters) {
-            auto it = reading.find(filter.first);
-            if (it != reading.end() && filter.second.count(it->second) > 0) {
+        for (const auto& [colName, excludedVals] : excludeValueFilters) {
+            auto it = reading.find(colName);
+            if (it != reading.end() && excludedVals.count(it->second) > 0) {
                 if (verbosity >= 2) {
-                    std::cerr << "  Skipping row: column '" << filter.first << "' has excluded value '" 
+                    std::cerr << "  Skipping row: column '" << colName << "' has excluded value '" 
                              << it->second << "'" << std::endl;
                 }
                 return false;
@@ -174,14 +174,14 @@ protected:
         }
         
         // Check allowed values filters
-        for (const auto& filter : allowedValues) {
-            auto it = reading.find(filter.first);
-            if (it == reading.end() || filter.second.count(it->second) == 0) {
+        for (const auto& [colName, allowedVals] : allowedValues) {
+            auto it = reading.find(colName);
+            if (it == reading.end() || allowedVals.count(it->second) == 0) {
                 if (verbosity >= 2) {
                     if (it == reading.end()) {
-                        std::cerr << "  Skipping row: missing column '" << filter.first << "'" << std::endl;
+                        std::cerr << "  Skipping row: missing column '" << colName << "'" << std::endl;
                     } else {
-                        std::cerr << "  Skipping row: column '" << filter.first << "' value '" 
+                        std::cerr << "  Skipping row: column '" << colName << "' value '" 
                                  << it->second << "' not in allowed values" << std::endl;
                     }
                 }
@@ -301,10 +301,10 @@ protected:
             if (!onlyValueFilters.empty()) {
                 std::cerr << "Value filters (include): ";
                 bool first = true;
-                for (const auto& filter : onlyValueFilters) {
-                    for (const auto& val : filter.second) {
+                for (const auto& [colName, vals] : onlyValueFilters) {
+                    for (const auto& val : vals) {
                         if (!first) std::cerr << ", ";
-                        std::cerr << filter.first << "=" << val;
+                        std::cerr << colName << "=" << val;
                         first = false;
                     }
                 }
@@ -313,19 +313,19 @@ protected:
             if (!excludeValueFilters.empty()) {
                 std::cerr << "Value filters (exclude): ";
                 bool first = true;
-                for (const auto& filter : excludeValueFilters) {
-                    for (const auto& val : filter.second) {
+                for (const auto& [colName, vals] : excludeValueFilters) {
+                    for (const auto& val : vals) {
                         if (!first) std::cerr << ", ";
-                        std::cerr << filter.first << "=" << val;
+                        std::cerr << colName << "=" << val;
                         first = false;
                     }
                 }
                 std::cerr << std::endl;
             }
             if (!allowedValues.empty()) {
-                for (const auto& filter : allowedValues) {
-                    std::cerr << "Allowed values for '" << filter.first << "': " 
-                              << filter.second.size() << " value(s)" << std::endl;
+                for (const auto& [colName, vals] : allowedValues) {
+                    std::cerr << "Allowed values for '" << colName << "': " 
+                              << vals.size() << " value(s)" << std::endl;
                 }
             }
         }
@@ -426,8 +426,8 @@ protected:
         // Sort keys for consistent output order
         std::vector<std::string> keys;
         keys.reserve(reading.size());
-        for (const auto& pair : reading) {
-            keys.push_back(pair.first);
+        for (const auto& [key, value] : reading) {
+            keys.push_back(key);
         }
         std::sort(keys.begin(), keys.end());
         
