@@ -65,6 +65,78 @@ void test_json_array_single_object() {
     std::cout << "[PASS] test_json_array_single_object" << std::endl;
 }
 
+void test_json_with_array_value() {
+    // Test object with an array as a value
+    std::string line = R"({"sensor": "ds18b20", "tags": ["indoor", "floor1", "room3"], "value": 22.5})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["sensor"] == "ds18b20");
+    assert(result[0]["tags"] == R"("indoor", "floor1", "room3")");
+    assert(result[0]["value"] == "22.5");
+    std::cout << "[PASS] test_json_with_array_value" << std::endl;
+}
+
+void test_json_with_nested_array() {
+    // Test array value with nested arrays
+    std::string line = R"({"data": [[1, 2], [3, 4]], "name": "matrix"})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["data"] == "[1, 2], [3, 4]");
+    assert(result[0]["name"] == "matrix");
+    std::cout << "[PASS] test_json_with_nested_array" << std::endl;
+}
+
+void test_json_with_array_containing_strings_with_brackets() {
+    // Test array with strings containing brackets (must respect string escaping)
+    std::string line = R"({"items": ["[test]", "a]b", "c[d"], "count": 3})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["items"] == R"("[test]", "a]b", "c[d")");
+    assert(result[0]["count"] == "3");
+    std::cout << "[PASS] test_json_with_array_containing_strings_with_brackets" << std::endl;
+}
+
+void test_json_with_nested_object_value() {
+    // Test object with a nested object as a value
+    std::string line = R"({"sensor": "ds18b20", "metadata": {"location": "room1", "floor": 2}, "value": 22.5})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["sensor"] == "ds18b20");
+    assert(result[0]["metadata"] == R"({"location": "room1", "floor": 2})");
+    assert(result[0]["value"] == "22.5");
+    std::cout << "[PASS] test_json_with_nested_object_value" << std::endl;
+}
+
+void test_json_with_deeply_nested_object() {
+    // Test deeply nested object (multiple levels)
+    std::string line = R"({"outer": {"inner": {"deep": "value"}}, "name": "test"})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["outer"] == R"({"inner": {"deep": "value"}})");
+    assert(result[0]["name"] == "test");
+    std::cout << "[PASS] test_json_with_deeply_nested_object" << std::endl;
+}
+
+void test_json_with_nested_object_containing_strings_with_braces() {
+    // Test nested object with strings containing braces (must respect string escaping)
+    std::string line = R"({"info": {"desc": "a {b} c", "note": "x}y"}, "id": 1})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["info"] == R"({"desc": "a {b} c", "note": "x}y"})");
+    assert(result[0]["id"] == "1");
+    std::cout << "[PASS] test_json_with_nested_object_containing_strings_with_braces" << std::endl;
+}
+
+void test_json_with_escaped_quotes_in_nested_structures() {
+    // Test escaped quotes inside array strings
+    std::string line = R"({"labels": ["say \"hello\"", "test"], "ok": true})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["labels"] == R"("say \"hello\"", "test")");
+    assert(result[0]["ok"] == "true");
+    std::cout << "[PASS] test_json_with_escaped_quotes_in_nested_structures" << std::endl;
+}
+
 int main() {
     std::cout << "Running JSON Parser Tests..." << std::endl;
     test_simple_json();
@@ -73,6 +145,13 @@ int main() {
     test_json_array_two_objects();
     test_json_array_multiple_fields();
     test_json_array_single_object();
+    test_json_with_array_value();
+    test_json_with_nested_array();
+    test_json_with_array_containing_strings_with_brackets();
+    test_json_with_nested_object_value();
+    test_json_with_deeply_nested_object();
+    test_json_with_nested_object_containing_strings_with_braces();
+    test_json_with_escaped_quotes_in_nested_structures();
     std::cout << "All JSON Parser tests passed!" << std::endl;
     return 0;
 }
