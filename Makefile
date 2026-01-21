@@ -59,7 +59,7 @@ endif
 
 # Source files for sensor-data (C++)
 SOURCES = src/sensor-data.cpp
-LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp src/sensor_data_api.cpp src/rdata_writer.cpp
+LIB_SOURCES = src/csv_parser.cpp src/json_parser.cpp src/error_detector.cpp src/file_utils.cpp src/sensor_data_transformer.cpp src/data_counter.cpp src/error_lister.cpp src/error_summarizer.cpp src/stats_analyser.cpp src/latest_finder.cpp src/sensor_data_api.cpp src/rdata_writer.cpp src/distinct_lister.cpp
 TEST_SOURCES = tests/test_csv_parser.cpp tests/test_json_parser.cpp tests/test_error_detector.cpp tests/test_file_utils.cpp tests/test_date_utils.cpp tests/test_common_arg_parser.cpp tests/test_data_reader.cpp tests/test_file_collector.cpp tests/test_command_base.cpp tests/test_stats_analyser.cpp tests/test_rdata_writer.cpp
 
 # Source files for sensor-mon (C)

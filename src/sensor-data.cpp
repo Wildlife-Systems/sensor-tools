@@ -8,6 +8,7 @@
 #include "stats_analyser.h"
 #include "data_counter.h"
 #include "latest_finder.h"
+#include "distinct_lister.h"
 
 #ifndef VERSION
 #define VERSION "unknown"
@@ -26,6 +27,7 @@ void printUsage(const char* progName) {
     std::cerr << "  transform         Transform JSON or CSV sensor data files" << std::endl;
     std::cerr << "  list-rejects      List rejected readings (inverse of transform filters)" << std::endl;
     std::cerr << "  count             Count sensor data readings (with optional filters)" << std::endl;
+    std::cerr << "  distinct          List unique values in a column" << std::endl;
     std::cerr << "  list-errors       List error readings in sensor data files" << std::endl;
     std::cerr << "  summarise-errors  Summarise error readings with counts" << std::endl;
     std::cerr << "  stats             Calculate statistics for numeric sensor data" << std::endl;
@@ -139,6 +141,16 @@ int main(int argc, char* argv[]) {
             std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
             LatestFinder finder(static_cast<int>(newArgv.size()), newArgv.data());
             return finder.main();
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if (command == "distinct") {
+        try {
+            std::vector<char*> newArgv = buildSubcommandArgv(argc, argv);
+            DistinctLister lister(static_cast<int>(newArgv.size()), newArgv.data());
+            lister.listDistinct();
+            return 0;
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
             return 1;

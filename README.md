@@ -154,6 +154,47 @@ sensor-data count -r -e .out /path/to/logs/
 - `-v` - Verbose output
 - `-V` - Very verbose output
 
+### distinct
+
+List unique values in a specified column.
+
+```bash
+# List unique sensor names
+sensor-data distinct sensor input.out
+
+# From stdin
+cat sensors.out | sensor-data distinct sensor_id
+
+# With counts (sorted by frequency)
+sensor-data distinct sensor -c input.out
+
+# With filters
+sensor-data distinct sensor --clean --only-value internal:false input.out
+
+# Recursive directory processing
+sensor-data distinct node_id -r -e out /path/to/logs/
+
+# Output as CSV or JSON
+sensor-data distinct sensor -of csv input.out
+sensor-data distinct sensor -of json -c input.out
+```
+
+**Options:**
+- `-c, --counts` - Include count for each unique value
+- `-of, --output-format <format>` - Output format: `plain` (default), `csv`, or `json`
+- `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
+- `-r, --recursive` - Recursively process subdirectories
+- `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)
+- `-d, --depth <n>` - Maximum recursion depth
+- `--min-date <date>` - Include only readings on or after this date
+- `--max-date <date>` - Include only readings on or before this date
+- `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
+- `--not-empty <column>` - Skip rows where column is empty
+- `--only-value <col:val>` - Only include rows where column equals value
+- `--exclude-value <col:val>` - Exclude rows where column equals value
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `-v` - Verbose output
+
 ### list-errors
 
 Find error readings in sensor data.
