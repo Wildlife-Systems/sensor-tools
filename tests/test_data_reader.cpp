@@ -287,6 +287,158 @@ void test_nonexistent_file() {
     std::cout << "[PASS] test_nonexistent_file" << std::endl;
 }
 
+void test_format_auto_detection_json() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n",
+        ".json"
+    );
+    
+    DataReader reader(0, "auto");  // auto format detection
+    int count = 0;
+    
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
+        count++;
+        assert(reading.at("sensor_id") == "s1");
+    });
+    
+    assert(count == 1);
+    std::cout << "[PASS] test_format_auto_detection_json" << std::endl;
+}
+
+void test_format_auto_detection_csv() {
+    TempFile file(
+        "sensor_id,value\n"
+        "s1,22.5\n",
+        ".csv"
+    );
+    
+    DataReader reader(0, "auto");  // auto format detection
+    int count = 0;
+    
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
+        count++;
+        assert(reading.at("sensor_id") == "s1");
+    });
+    
+    assert(count == 1);
+    std::cout << "[PASS] test_format_auto_detection_csv" << std::endl;
+}
+
+void test_value_filter_include() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s2\",\"status\":\"inactive\",\"value\":\"23.0\"}\n"
+        "{\"sensor_id\":\"s3\",\"status\":\"active\",\"value\":\"24.0\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.addOnlyValueFilter("status", "active");
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 2);  // s1 and s3
+    std::cout << "[PASS] test_value_filter_include" << std::endl;
+}
+
+void test_value_filter_exclude() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s2\",\"status\":\"error\",\"value\":\"23.0\"}\n"
+        "{\"sensor_id\":\"s3\",\"status\":\"active\",\"value\":\"24.0\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.addExcludeValueFilter("status", "error");
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 2);  // s1 and s3
+    std::cout << "[PASS] test_value_filter_exclude" << std::endl;
+}
+
+void test_not_empty_filter() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s2\",\"value\":\"\"}\n"
+        "{\"sensor_id\":\"s3\"}\n"  // missing value
+    );
+    
+    DataReader reader(0, "json");
+    reader.addNotEmptyColumn("value");
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 1);  // only s1
+    std::cout << "[PASS] test_not_empty_filter" << std::endl;
+}
+
+void test_remove_errors_filter() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"temperature\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s2\",\"temperature\":\"85\"}\n"  // error
+        "{\"sensor_id\":\"s3\",\"temperature\":\"24.0\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setRemoveErrors(true);
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 2);  // s1 and s3, not s2
+    std::cout << "[PASS] test_remove_errors_filter" << std::endl;
+}
+
+void test_unique_rows_filter() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"  // duplicate
+        "{\"sensor_id\":\"s2\",\"value\":\"23.0\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setUniqueRows(true);
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 2);  // s1 and s2, duplicate skipped
+    std::cout << "[PASS] test_unique_rows_filter" << std::endl;
+}
+
+void test_combined_filters() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"timestamp\":\"500\",\"status\":\"active\",\"value\":\"22.5\"}\n"
+        "{\"sensor_id\":\"s2\",\"timestamp\":\"500\",\"status\":\"inactive\",\"value\":\"23.0\"}\n"
+        "{\"sensor_id\":\"s3\",\"timestamp\":\"100\",\"status\":\"active\",\"value\":\"24.0\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setDateRange(200, 0);  // after 200
+    reader.addOnlyValueFilter("status", "active");
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 1);  // only s1 (active and timestamp 500)
+    std::cout << "[PASS] test_combined_filters" << std::endl;
+}
+
 int main() {
     std::cout << "================================" << std::endl;
     std::cout << "DataReader Unit Tests" << std::endl;
@@ -317,6 +469,18 @@ int main() {
     
     // Error handling
     test_nonexistent_file();
+    
+    // Format detection
+    test_format_auto_detection_json();
+    test_format_auto_detection_csv();
+    
+    // Value filters
+    test_value_filter_include();
+    test_value_filter_exclude();
+    test_not_empty_filter();
+    test_remove_errors_filter();
+    test_unique_rows_filter();
+    test_combined_filters();
     
     std::cout << "================================" << std::endl;
     std::cout << "All DataReader tests passed!" << std::endl;

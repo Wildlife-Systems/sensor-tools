@@ -137,6 +137,84 @@ void test_json_with_escaped_quotes_in_nested_structures() {
     std::cout << "[PASS] test_json_with_escaped_quotes_in_nested_structures" << std::endl;
 }
 
+void test_json_boolean_values() {
+    std::string line = R"({"active": true, "disabled": false, "name": "test"})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["active"] == "true");
+    assert(result[0]["disabled"] == "false");
+    assert(result[0]["name"] == "test");
+    std::cout << "[PASS] test_json_boolean_values" << std::endl;
+}
+
+void test_json_null_value() {
+    std::string line = R"({"sensor_id": "s1", "value": null, "name": "test"})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["sensor_id"] == "s1");
+    assert(result[0]["value"] == "null");
+    std::cout << "[PASS] test_json_null_value" << std::endl;
+}
+
+void test_json_negative_numbers() {
+    std::string line = R"({"temperature": -127, "offset": -0.5})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["temperature"] == "-127");
+    assert(result[0]["offset"] == "-0.5");
+    std::cout << "[PASS] test_json_negative_numbers" << std::endl;
+}
+
+void test_json_scientific_notation() {
+    std::string line = R"({"large": 1.5e10, "small": 2.5e-5})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    // Scientific notation should be parsed
+    std::cout << "[PASS] test_json_scientific_notation" << std::endl;
+}
+
+void test_json_empty_object() {
+    std::string line = R"({})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0].empty());
+    std::cout << "[PASS] test_json_empty_object" << std::endl;
+}
+
+void test_json_empty_array() {
+    std::string line = R"([])";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 0);
+    std::cout << "[PASS] test_json_empty_array" << std::endl;
+}
+
+void test_json_whitespace_variations() {
+    std::string line = R"(  {  "key1"  :  "value1"  ,  "key2"  :  "value2"  }  )";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["key1"] == "value1");
+    assert(result[0]["key2"] == "value2");
+    std::cout << "[PASS] test_json_whitespace_variations" << std::endl;
+}
+
+void test_json_integer_values() {
+    std::string line = R"({"count": 42, "zero": 0, "big": 999999})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["count"] == "42");
+    assert(result[0]["zero"] == "0");
+    assert(result[0]["big"] == "999999");
+    std::cout << "[PASS] test_json_integer_values" << std::endl;
+}
+
+void test_json_unicode_string() {
+    std::string line = R"({"name": "Température", "city": "北京"})";
+    auto result = JsonParser::parseJsonLine(line);
+    assert(result.size() == 1);
+    assert(result[0]["name"] == "Température");
+    std::cout << "[PASS] test_json_unicode_string" << std::endl;
+}
+
 int main() {
     std::cout << "Running JSON Parser Tests..." << std::endl;
     test_simple_json();
@@ -152,6 +230,15 @@ int main() {
     test_json_with_deeply_nested_object();
     test_json_with_nested_object_containing_strings_with_braces();
     test_json_with_escaped_quotes_in_nested_structures();
+    test_json_boolean_values();
+    test_json_null_value();
+    test_json_negative_numbers();
+    test_json_scientific_notation();
+    test_json_empty_object();
+    test_json_empty_array();
+    test_json_whitespace_variations();
+    test_json_integer_values();
+    test_json_unicode_string();
     std::cout << "All JSON Parser tests passed!" << std::endl;
     return 0;
 }
