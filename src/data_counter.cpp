@@ -232,19 +232,26 @@ void DataCounter::count() {
     if (!hasInputFiles) {
         totalCount = countFromStdin();
     } else if (uniqueRows) {
-        // When --unique is enabled, use sequential processing with shared reader
-        // to properly track unique rows across all files
-        DataReader reader = createDataReader();
-        for (const auto& file : inputFiles) {
+        // When --unique is enabled, use parallel processing with a shared filter
+        // The shared filter's seenRows set is mutex-protected for thread safety
+        ReadingFilter sharedFilter = createFilter();
+        
+        auto processFileWithSharedFilter = [this, &sharedFilter](const std::string& file) -> std::pair<long long, std::unordered_map<std::string, long long>> {
+            long long count = 0;
+            std::unordered_map<std::string, long long> localValueCounts;
+            
             if (verbosity >= 1) {
+                std::lock_guard<std::mutex> lock(valueCountsMutex);
                 std::cerr << "Counting: " << file << std::endl;
             }
+            
+            DataReader reader = createDataReaderWithSharedFilter(sharedFilter);
             reader.processFile(file, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
-                totalCount++;
+                count++;
                 if (!byColumn.empty()) {
                     auto it = reading.find(byColumn);
                     std::string value = (it != reading.end()) ? it->second : "(missing)";
-                    valueCounts[value]++;
+                    localValueCounts[value]++;
                 }
                 if (byMonth || byDay || byYear || byWeek) {
                     long long ts = DateUtils::getTimestamp(reading);
@@ -258,10 +265,31 @@ void DataCounter::count() {
                     } else if (byYear) {
                         period = DateUtils::timestampToYear(ts);
                     }
-                    valueCounts[period]++;
+                    localValueCounts[period]++;
                 }
             });
-        }
+            
+            return {count, localValueCounts};
+        };
+        
+        auto combineResults = [this](std::pair<long long, std::unordered_map<std::string, long long>>& acc, 
+                                     const std::pair<long long, std::unordered_map<std::string, long long>>& result) {
+            acc.first += result.first;
+            for (const auto& pair : result.second) {
+                acc.second[pair.first] += pair.second;
+            }
+        };
+        
+        auto result = processFilesParallel(
+            inputFiles,
+            processFileWithSharedFilter,
+            combineResults,
+            std::make_pair(0LL, std::unordered_map<std::string, long long>()),
+            4  // numThreads
+        );
+        
+        totalCount = result.first;
+        valueCounts = std::move(result.second);
     } else {
         // Use parallel processing for multiple files
         totalCount = processFilesParallel<long long>(

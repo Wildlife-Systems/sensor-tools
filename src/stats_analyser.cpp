@@ -395,17 +395,58 @@ void StatsAnalyser::analyze() {
         };
         reader.processStdin(collectData);
     } else if (uniqueRows) {
-        // When --unique is enabled, use sequential processing with shared reader
-        // to properly track unique rows across all files
+        // When --unique is enabled, use parallel processing with a shared filter
+        // The shared filter's seenRows set is mutex-protected for thread safety
         printCommonVerboseInfo("Analyzing", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         
-        DataReader reader = createDataReader();
-        for (const auto& file : inputFiles) {
+        ReadingFilter sharedFilter = createFilter();
+        
+        auto processFileWithSharedFilter = [this, &sharedFilter](const std::string& file) -> LocalStatsData {
+            LocalStatsData local;
+            DataReader reader = createDataReaderWithSharedFilter(sharedFilter);
+            
             reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
                 // Filtering already done by DataReader
-                collectDataFromReading(reading);
+                
+                // Collect timestamp if present
+                auto tsIt = reading.find("timestamp");
+                if (tsIt != reading.end() && isNumeric(tsIt->second)) {
+                    long long ts = std::stoll(tsIt->second);
+                    local.timestamps.push_back(ts);
+                }
+                
+                for (const auto& pair : reading) {
+                    // Skip if we're filtering by column and this isn't it
+                    if (!columnFilter.empty() && pair.first != columnFilter) continue;
+                    
+                    // Try to parse as numeric
+                    if (isNumeric(pair.second)) {
+                        double value = std::stod(pair.second);
+                        local.columnData[pair.first].push_back(value);
+                    }
+                }
             });
-        }
+            
+            return local;
+        };
+        
+        // Combine function: merge column data and timestamps
+        auto combineStats = [](LocalStatsData& combined, const LocalStatsData& local) {
+            // Merge column data
+            for (const auto& pair : local.columnData) {
+                auto& target = combined.columnData[pair.first];
+                target.insert(target.end(), pair.second.begin(), pair.second.end());
+            }
+            // Merge timestamps
+            combined.timestamps.insert(combined.timestamps.end(), 
+                                       local.timestamps.begin(), local.timestamps.end());
+        };
+        
+        LocalStatsData result = processFilesParallel(inputFiles, processFileWithSharedFilter, combineStats, LocalStatsData());
+        
+        // Copy results to member variables
+        columnData = std::move(result.columnData);
+        timestamps = std::move(result.timestamps);
     } else {
         printCommonVerboseInfo("Analyzing", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         

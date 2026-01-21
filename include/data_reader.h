@@ -33,7 +33,8 @@
  */
 class DataReader {
 private:
-    ReadingFilter filter;
+    ReadingFilter ownedFilter;
+    ReadingFilter* sharedFilter;  // if non-null, use this instead of ownedFilter
     int verbosity;
     std::string inputFormat;  // "json", "csv", or "auto"
     int tailLines;  // 0 = read all, >0 = read only last n lines
@@ -43,10 +44,23 @@ private:
     std::string tailColumnValueValue;
     int tailColumnValueCount;
     
+    // Get the active filter (shared or owned)
+    ReadingFilter& filter() {
+        return sharedFilter ? *sharedFilter : ownedFilter;
+    }
+    const ReadingFilter& filter() const {
+        return sharedFilter ? *sharedFilter : ownedFilter;
+    }
+    
 public:
     DataReader(int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
-        : verbosity(verbosity), inputFormat(format), tailLines(tailLines), tailColumnValueCount(0) {
-        filter.setVerbosity(verbosity);
+        : sharedFilter(nullptr), verbosity(verbosity), inputFormat(format), tailLines(tailLines), tailColumnValueCount(0) {
+        ownedFilter.setVerbosity(verbosity);
+    }
+    
+    // Constructor that uses a shared filter (for thread-safe --unique across files)
+    DataReader(ReadingFilter& shared, int verbosity = 0, const std::string& format = "auto", int tailLines = 0)
+        : sharedFilter(&shared), verbosity(verbosity), inputFormat(format), tailLines(tailLines), tailColumnValueCount(0) {
     }
     
     // Set tail-column-value filter (reads file backwards for efficiency)
@@ -58,21 +72,21 @@ public:
     
     // Get mutable reference to filter for configuration
     ReadingFilter& getFilter() {
-        return filter;
+        return filter();
     }
     
     // Convenience setters that delegate to filter
     void setDateRange(long long minDate, long long maxDate) {
-        filter.setDateRange(minDate, maxDate);
+        filter().setDateRange(minDate, maxDate);
     }
     
     void setRemoveErrors(bool remove) {
-        filter.setRemoveErrors(remove);
+        filter().setRemoveErrors(remove);
     }
     
     void setVerbosity(int v) {
         verbosity = v;
-        filter.setVerbosity(v);
+        filter().setVerbosity(v);
     }
     
     // Internal helper to process a stream (CSV or JSON format)
@@ -107,10 +121,10 @@ public:
                 }
                 
                 // Apply ALL filters here
-                if (!filter.shouldInclude(reading)) continue;
+                if (!filter().shouldInclude(reading)) continue;
                 
                 // Apply transformations (updates) after filtering
-                filter.applyTransformations(reading);
+                filter().applyTransformations(reading);
                 
                 callback(reading, lineNum, sourceName);
             }
@@ -125,10 +139,10 @@ public:
                     if (reading.empty()) continue;
                     
                     // Apply ALL filters here
-                    if (!filter.shouldInclude(reading)) continue;
+                    if (!filter().shouldInclude(reading)) continue;
                     
                     // Apply transformations (updates) after filtering
-                    filter.applyTransformations(reading);
+                    filter().applyTransformations(reading);
                     
                     callback(reading, lineNum, sourceName);
                 }
@@ -212,7 +226,7 @@ public:
                     auto it = reading.find(tailColumnValueColumn);
                     if (it != reading.end() && it->second == tailColumnValueValue) {
                         // Check other filters
-                        if (filter.shouldInclude(reading)) {
+                        if (filter().shouldInclude(reading)) {
                             matchingLines.push_back(line);
                             if (static_cast<int>(matchingLines.size()) >= tailColumnValueCount) {
                                 return false;  // stop reading
@@ -227,7 +241,7 @@ public:
                         
                         auto it = reading.find(tailColumnValueColumn);
                         if (it != reading.end() && it->second == tailColumnValueValue) {
-                            if (filter.shouldInclude(reading)) {
+                            if (filter().shouldInclude(reading)) {
                                 matchingLines.push_back(line);
                                 if (static_cast<int>(matchingLines.size()) >= tailColumnValueCount) {
                                     return false;  // stop reading
@@ -250,12 +264,12 @@ public:
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
                         reading[csvHeaders[i]] = fields[i];
                     }
-                    filter.applyTransformations(reading);
+                    filter().applyTransformations(reading);
                     callback(reading, lineNum, filename);
                 } else {
                     auto readings = JsonParser::parseJsonLine(line);
                     for (auto reading : readings) {
-                        filter.applyTransformations(reading);
+                        filter().applyTransformations(reading);
                         callback(reading, lineNum, filename);
                     }
                 }
@@ -301,10 +315,10 @@ public:
                     }
                     
                     // Apply ALL filters here
-                    if (!filter.shouldInclude(reading)) continue;
+                    if (!filter().shouldInclude(reading)) continue;
                     
                     // Apply transformations (updates) after filtering
-                    filter.applyTransformations(reading);
+                    filter().applyTransformations(reading);
                     
                     callback(reading, lineNum, filename);
                 }
@@ -322,10 +336,10 @@ public:
                         if (reading.empty()) continue;
                         
                         // Apply ALL filters here
-                        if (!filter.shouldInclude(reading)) continue;
+                        if (!filter().shouldInclude(reading)) continue;
                         
                         // Apply transformations (updates) after filtering
-                        filter.applyTransformations(reading);
+                        filter().applyTransformations(reading);
                         
                         callback(reading, lineNum, filename);
                     }
@@ -437,10 +451,10 @@ public:
                     }
                     
                     // Use the SAME filter as all other methods
-                    if (!filter.shouldInclude(reading)) continue;
+                    if (!filter().shouldInclude(reading)) continue;
                     
                     // Apply transformations (updates) after filtering
-                    filter.applyTransformations(reading);
+                    filter().applyTransformations(reading);
                     
                     callback(reading, lineNum, "stdin");
                 } else {
@@ -449,10 +463,10 @@ public:
                         if (reading.empty()) continue;
                         
                         // Use the SAME filter as all other methods
-                        if (!filter.shouldInclude(reading)) continue;
+                        if (!filter().shouldInclude(reading)) continue;
                         
                         // Apply transformations (updates) after filtering
-                        filter.applyTransformations(reading);
+                        filter().applyTransformations(reading);
                         
                         callback(reading, lineNum, "stdin");
                     }
@@ -512,10 +526,10 @@ public:
                     }
                     
                     // Use the SAME filter as all other methods
-                    if (!filter.shouldInclude(reading)) continue;
+                    if (!filter().shouldInclude(reading)) continue;
                     
                     // Apply transformations (updates) after filtering
-                    filter.applyTransformations(reading);
+                    filter().applyTransformations(reading);
                     
                     callback(reading, lineNum, filename);
                 } else {
@@ -524,10 +538,10 @@ public:
                         if (reading.empty()) continue;
                         
                         // Use the SAME filter as all other methods
-                        if (!filter.shouldInclude(reading)) continue;
+                        if (!filter().shouldInclude(reading)) continue;
                         
                         // Apply transformations (updates) after filtering
-                        filter.applyTransformations(reading);
+                        filter().applyTransformations(reading);
                         
                         callback(reading, lineNum, filename);
                     }

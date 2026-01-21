@@ -222,22 +222,55 @@ DistinctLister::DistinctLister(int argc, char* argv[])
 void DistinctLister::listDistinct() {
     if (hasInputFiles) {
         if (uniqueRows) {
-            // When --unique is enabled, use sequential processing with shared reader
-            // to properly track unique rows across all files
-            DataReader reader = createDataReader();
-            for (const auto& file : inputFiles) {
-                if (verbosity >= 1) {
-                    std::cerr << "Processing: " << file << std::endl;
-                }
-                reader.processFile(file, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
-                    auto it = reading.find(columnName);
-                    if (it != reading.end() && !it->second.empty()) {
-                        distinctValues.insert(it->second);
+            // When --unique is enabled, use parallel processing with a shared filter
+            // The shared filter's seenRows set is mutex-protected for thread safety
+            ReadingFilter sharedFilter = createFilter();
+            
+            size_t numThreads = std::min(inputFiles.size(), static_cast<size_t>(8));
+            size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
+            std::vector<std::future<void>> futures;
+            futures.reserve(numThreads);
+            
+            for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
+                size_t end = std::min(i + filesPerThread, inputFiles.size());
+                
+                futures.push_back(std::async(std::launch::async, [this, i, end, &sharedFilter]() {
+                    std::set<std::string> localValues;
+                    std::map<std::string, long long> localCounts;
+                    
+                    for (size_t j = i; j < end; ++j) {
+                        if (verbosity >= 1) {
+                            std::lock_guard<std::mutex> lock(valuesMutex);
+                            std::cerr << "Processing: " << inputFiles[j] << std::endl;
+                        }
+                        
+                        DataReader reader = createDataReaderWithSharedFilter(sharedFilter);
+                        reader.processFile(inputFiles[j], [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+                            auto it = reading.find(columnName);
+                            if (it != reading.end() && !it->second.empty()) {
+                                localValues.insert(it->second);
+                                if (showCounts) {
+                                    localCounts[it->second]++;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Merge local values into shared set with mutex
+                    if (!localValues.empty()) {
+                        std::lock_guard<std::mutex> lock(valuesMutex);
+                        distinctValues.insert(localValues.begin(), localValues.end());
                         if (showCounts) {
-                            valueCounts[it->second]++;
+                            for (const auto& pair : localCounts) {
+                                valueCounts[pair.first] += pair.second;
+                            }
                         }
                     }
-                });
+                }));
+            }
+            
+            for (auto& f : futures) {
+                f.wait();
             }
         } else {
             // Multi-threaded file processing

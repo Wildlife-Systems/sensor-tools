@@ -244,6 +244,19 @@ protected:
     }
     
     /**
+     * Create a DataReader that uses a shared filter.
+     * Use this for thread-safe --unique across multiple files processed in parallel.
+     * The filter must outlive the reader and be configured before use.
+     */
+    DataReader createDataReaderWithSharedFilter(ReadingFilter& sharedFilter) const {
+        DataReader reader(sharedFilter, verbosity, inputFormat, tailLines);
+        if (tailColumnValueCount > 0) {
+            reader.setTailColumnValue(tailColumnValueColumn, tailColumnValueValue, tailColumnValueCount);
+        }
+        return reader;
+    }
+    
+    /**
      * Configure a ReadingFilter with all filter options from CommandBase.
      * Use this when you need a filter but are doing custom parsing.
      */
