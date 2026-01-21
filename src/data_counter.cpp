@@ -260,6 +260,13 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn("
         filteredArgv.push_back(argv[i]);
     }
 
+    // Check for mutually exclusive time grouping options
+    int timeGroupCount = (byMonth ? 1 : 0) + (byDay ? 1 : 0) + (byYear ? 1 : 0) + (byWeek ? 1 : 0);
+    if (timeGroupCount > 1) {
+        std::cerr << "Error: --by-day, --by-week, --by-month, and --by-year are mutually exclusive" << std::endl;
+        exit(1);
+    }
+
     // Parse common flags and collect files using filtered argv
     CommonArgParser parser;
     if (!parser.parse(static_cast<int>(filteredArgv.size()), filteredArgv.data())) {

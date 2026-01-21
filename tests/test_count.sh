@@ -987,6 +987,215 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --by-day basic functionality
+echo ""
+echo "Test: --by-day counts by day (YYYY-MM-DD)"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704067260, "value": 2}
+{"timestamp": 1704153600, "value": 3}'
+# 1704067200 = 2024-01-01 00:00:00 UTC, 1704067260 = 2024-01-01 00:01:00 UTC, 1704153600 = 2024-01-02 00:00:00 UTC
+result=$(echo "$input" | ./sensor-data count --by-day)
+if echo "$result" | grep -q "2024-01-01" && echo "$result" | grep -q "2024-01-02"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected output containing 2024-01-01 and 2024-01-02"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-day counts correctly
+echo ""
+echo "Test: --by-day counts correct number per day"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704067260, "value": 2}
+{"timestamp": 1704153600, "value": 3}'
+# 2 readings on 2024-01-01, 1 reading on 2024-01-02
+result=$(echo "$input" | ./sensor-data count --by-day -of csv | grep "2024-01-01" | cut -d',' -f2)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected 2024-01-01 count to be 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-day with CSV output
+echo ""
+echo "Test: --by-day with CSV output format"
+input='{"timestamp": 1704067200, "value": 1}'
+result=$(echo "$input" | ./sensor-data count --by-day -of csv)
+header=$(echo "$result" | head -1)
+if [ "$header" = "day,count" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected header: day,count"
+    echo "  Got: $header"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-year basic functionality
+echo ""
+echo "Test: --by-year counts by year (YYYY)"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1672531200, "value": 3}'
+# 1704067200 = 2024-01-01, 1704153600 = 2024-01-02, 1672531200 = 2023-01-01
+result=$(echo "$input" | ./sensor-data count --by-year)
+if echo "$result" | grep -q "2024" && echo "$result" | grep -q "2023"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected output containing 2023 and 2024"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-year counts correctly
+echo ""
+echo "Test: --by-year counts correct number per year"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1672531200, "value": 3}'
+# 2 readings in 2024, 1 reading in 2023
+result=$(echo "$input" | ./sensor-data count --by-year -of csv | grep "2024" | cut -d',' -f2)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected 2024 count to be 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-year with CSV output
+echo ""
+echo "Test: --by-year with CSV output format"
+input='{"timestamp": 1704067200, "value": 1}'
+result=$(echo "$input" | ./sensor-data count --by-year -of csv)
+header=$(echo "$result" | head -1)
+if [ "$header" = "year,count" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected header: year,count"
+    echo "  Got: $header"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-week basic functionality
+echo ""
+echo "Test: --by-week counts by week (YYYY-WNN)"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704672000, "value": 2}
+{"timestamp": 1705276800, "value": 3}'
+# 1704067200 = 2024-01-01 (week 1), 1704672000 = 2024-01-08 (week 2), 1705276800 = 2024-01-15 (week 3)
+result=$(echo "$input" | ./sensor-data count --by-week)
+if echo "$result" | grep -qE "2024-W0[123]"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected output containing week format like 2024-W01"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-week with CSV output
+echo ""
+echo "Test: --by-week with CSV output format"
+input='{"timestamp": 1704067200, "value": 1}'
+result=$(echo "$input" | ./sensor-data count --by-week -of csv)
+header=$(echo "$result" | head -1)
+if [ "$header" = "week,count" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected header: week,count"
+    echo "  Got: $header"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-week counts correctly
+echo ""
+echo "Test: --by-week counts correct number per week"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1704672000, "value": 3}'
+# 2 readings in week 1, 1 reading in week 2
+result=$(echo "$input" | ./sensor-data count --by-week -of csv | grep "2024-W01" | cut -d',' -f2)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected 2024-W01 count to be 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: -o/--output writes to file
+echo ""
+echo "Test: -o writes output to file"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}'
+tmpfile=$(mktemp)
+echo "$input" | ./sensor-data count --by-month -of csv -o "$tmpfile"
+if [ -f "$tmpfile" ] && grep -q "month,count" "$tmpfile" && grep -q "2024-01" "$tmpfile"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected file to contain month,count header and 2024-01 data"
+    echo "  Got: $(cat $tmpfile)"
+    FAILED=$((FAILED + 1))
+fi
+rm -f "$tmpfile"
+
+# Test: --output writes correct count to file
+echo ""
+echo "Test: --output writes correct count to file"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1704240000, "value": 3}'
+tmpfile=$(mktemp)
+echo "$input" | ./sensor-data count -o "$tmpfile"
+result=$(cat "$tmpfile")
+if [ "$result" = "3" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected file to contain: 3"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+rm -f "$tmpfile"
+
+# Test: mutual exclusivity of time grouping options
+echo ""
+echo "Test: Multiple time grouping options gives error"
+input='{"timestamp": 1704067200, "value": 1}'
+result=$(echo "$input" | ./sensor-data count --by-month --by-day 2>&1) || true
+if echo "$result" | grep -qi "error\|cannot\|mutually"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected error when using multiple time grouping options"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
