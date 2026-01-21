@@ -69,7 +69,7 @@ void DistinctLister::outputResults() {
             // Sort by count descending
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
-                [](const auto& a, const auto& b) { return a.second > b.second; });
+                [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
             for (const auto& pair : sorted) {
                 if (!first) std::cout << ",";
                 first = false;
@@ -89,7 +89,7 @@ void DistinctLister::outputResults() {
             // Sort by count descending
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
-                [](const auto& a, const auto& b) { return a.second > b.second; });
+                [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
             for (const auto& pair : sorted) {
                 // Quote value if it contains comma, newline, or quote
                 if (pair.first.find_first_of(",\"\n") != std::string::npos) {
@@ -127,7 +127,7 @@ void DistinctLister::outputResults() {
             // Sort by count descending
             std::vector<std::pair<std::string, long long>> sorted(valueCounts.begin(), valueCounts.end());
             std::sort(sorted.begin(), sorted.end(), 
-                [](const auto& a, const auto& b) { return a.second > b.second; });
+                [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) { return a.second > b.second; });
             for (const auto& pair : sorted) {
                 std::cout << pair.second << "\t" << pair.first << std::endl;
             }
