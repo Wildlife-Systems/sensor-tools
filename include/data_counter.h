@@ -26,6 +26,9 @@ private:
     bool followMode;  // --follow flag for continuous monitoring
     std::string byColumn;  // --by-column for counts per value
     bool byMonth;  // --by-month for counts per month
+    bool byDay;    // --by-day for counts per day
+    bool byYear;   // --by-year for counts per year
+    bool byWeek;   // --by-week for counts per week
     std::string outputFormat;  // --output-format: human, csv, json
     std::string outputFile;  // -o, --output file path
     std::unordered_map<std::string, long long> valueCounts;  // counts per column value

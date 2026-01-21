@@ -147,8 +147,20 @@ Output format: human (default), csv, or json. Only applies when using \-\-by\-co
 .BR \-b ", " \-\-by\-column " " \fIcolumn\fR
 Show counts per value in the specified column instead of total count.
 .TP
+.B \-\-by\-day
+Show counts per day in YYYY-MM-DD format, sorted ascending by date.
+.TP
+.B \-\-by\-week
+Show counts per week in YYYY-Www format (ISO week number), sorted ascending by date.
+.TP
 .B \-\-by\-month
 Show counts per month in YYYY-MM format, sorted ascending by date.
+.TP
+.B \-\-by\-year
+Show counts per year in YYYY format, sorted ascending by date.
+.TP
+.BR \-o ", " \-\-output " " \fIfile\fR
+Output file (default: stdout).
 .TP
 .BR \-f ", " \-\-follow
 Follow mode: continuously read input and update count (stdin or single file).

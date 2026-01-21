@@ -13,18 +13,83 @@
 #include "file_collector.h"
 #include "data_reader.h"
 
+// Thread-safe helper to get tm struct from timestamp
+static bool getTimeInfo(long long timestamp, struct tm& tm_info) {
+    if (timestamp <= 0) return false;
+    time_t t = static_cast<time_t>(timestamp);
+#ifdef _WIN32
+    if (gmtime_s(&tm_info, &t) != 0) return false;
+#else
+    if (gmtime_r(&t, &tm_info) == nullptr) return false;
+#endif
+    return true;
+}
+
 // Helper to extract YYYY-MM from a timestamp
 static std::string timestampToMonth(long long timestamp) {
-    if (timestamp <= 0) return "(no-date)";
-    time_t t = static_cast<time_t>(timestamp);
     struct tm tm_info;
-#ifdef _WIN32
-    gmtime_s(&tm_info, &t);
-#else
-    gmtime_r(&t, &tm_info);
-#endif
-    char buf[32];  // YYYY-MM + null, extra space for large years
+    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+    char buf[32];
     snprintf(buf, sizeof(buf), "%04d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1);
+    return std::string(buf);
+}
+
+// Helper to extract YYYY-MM-DD from a timestamp
+static std::string timestampToDay(long long timestamp) {
+    struct tm tm_info;
+    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1, tm_info.tm_mday);
+    return std::string(buf);
+}
+
+// Helper to extract YYYY from a timestamp
+static std::string timestampToYear(long long timestamp) {
+    struct tm tm_info;
+    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%04d", tm_info.tm_year + 1900);
+    return std::string(buf);
+}
+
+// Helper to extract YYYY-Www from a timestamp (ISO week number)
+static std::string timestampToWeek(long long timestamp) {
+    struct tm tm_info;
+    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+    char buf[32];
+    // Calculate ISO week number
+    // ISO week: week 1 is the week containing the first Thursday of the year
+    int year = tm_info.tm_year + 1900;
+    int yday = tm_info.tm_yday;  // 0-365
+    int wday = tm_info.tm_wday;  // 0=Sunday, 1=Monday, ..., 6=Saturday
+    
+    // Convert Sunday=0 to Monday=0 system (ISO uses Monday as first day)
+    int isoWday = (wday == 0) ? 6 : wday - 1;  // 0=Monday, 6=Sunday
+    
+    // Find the Thursday of this week
+    int thursdayYday = yday - isoWday + 3;  // Thursday is day 3 (0-indexed from Monday)
+    
+    // Handle year boundaries
+    if (thursdayYday < 0) {
+        // Thursday is in previous year
+        year--;
+        // Approximate: previous year has 365 or 366 days
+        bool prevLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+        thursdayYday += prevLeap ? 366 : 365;
+    } else {
+        bool thisLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+        int daysInYear = thisLeap ? 366 : 365;
+        if (thursdayYday >= daysInYear) {
+            // Thursday is in next year
+            year++;
+            thursdayYday -= daysInYear;
+        }
+    }
+    
+    // Week number is (thursdayYday / 7) + 1
+    int weekNum = (thursdayYday / 7) + 1;
+    
+    snprintf(buf, sizeof(buf), "%04d-W%02d", year, weekNum);
     return std::string(buf);
 }
 
@@ -47,15 +112,24 @@ long long DataCounter::countFromFile(const std::string& filename) {
             std::string value = (it != reading.end()) ? it->second : "(missing)";
             localValueCounts[value]++;
         }
-        if (byMonth) {
+        if (byMonth || byDay || byYear || byWeek) {
             long long ts = DateUtils::getTimestamp(reading);
-            std::string month = timestampToMonth(ts);
-            localValueCounts[month]++;
+            std::string period;
+            if (byDay) {
+                period = timestampToDay(ts);
+            } else if (byWeek) {
+                period = timestampToWeek(ts);
+            } else if (byMonth) {
+                period = timestampToMonth(ts);
+            } else if (byYear) {
+                period = timestampToYear(ts);
+            }
+            localValueCounts[period]++;
         }
     });
 
     // Merge local counts into shared valueCounts with mutex
-    if ((!byColumn.empty() || byMonth) && !localValueCounts.empty()) {
+    if ((!byColumn.empty() || byMonth || byDay || byYear || byWeek) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
         for (const auto& pair : localValueCounts) {
             valueCounts[pair.first] += pair.second;
@@ -83,15 +157,24 @@ long long DataCounter::countFromStdin() {
             std::string value = (it != reading.end()) ? it->second : "(missing)";
             localValueCounts[value]++;
         }
-        if (byMonth) {
+        if (byMonth || byDay || byYear || byWeek) {
             long long ts = DateUtils::getTimestamp(reading);
-            std::string month = timestampToMonth(ts);
-            localValueCounts[month]++;
+            std::string period;
+            if (byDay) {
+                period = timestampToDay(ts);
+            } else if (byWeek) {
+                period = timestampToWeek(ts);
+            } else if (byMonth) {
+                period = timestampToMonth(ts);
+            } else if (byYear) {
+                period = timestampToYear(ts);
+            }
+            localValueCounts[period]++;
         }
     });
 
     // Merge local counts into shared valueCounts with mutex
-    if ((!byColumn.empty() || byMonth) && !localValueCounts.empty()) {
+    if ((!byColumn.empty() || byMonth || byDay || byYear || byWeek) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
         for (const auto& pair : localValueCounts) {
             valueCounts[pair.first] += pair.second;
@@ -128,7 +211,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
 
 // ===== Constructor =====
 
-DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), byMonth(false), outputFormat("human"), outputFile("") {
+DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), byMonth(false), byDay(false), byYear(false), byWeek(false), outputFormat("human"), outputFile("") {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -147,6 +230,15 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn("
             continue;
         } else if (arg == "--by-month") {
             byMonth = true;
+            continue;
+        } else if (arg == "--by-day") {
+            byDay = true;
+            continue;
+        } else if (arg == "--by-year") {
+            byYear = true;
+            continue;
+        } else if (arg == "--by-week") {
+            byWeek = true;
             continue;
         } else if ((arg == "--by-column" || arg == "-b") && i + 1 < argc) {
             byColumn = argv[i + 1];
@@ -234,12 +326,15 @@ void DataCounter::count() {
         out = &fileStream;
     }
 
-    if (!byColumn.empty() || byMonth) {
+    // Check if any time-based grouping is active
+    bool timeGrouping = byMonth || byDay || byYear || byWeek;
+
+    if (!byColumn.empty() || timeGrouping) {
         // Convert to vector and sort
         std::vector<std::pair<std::string, long long>> results(valueCounts.begin(), valueCounts.end());
         
-        if (byMonth) {
-            // Sort by month ascending (YYYY-MM sorts correctly as string)
+        if (timeGrouping) {
+            // Sort by time period ascending (YYYY-MM, YYYY-MM-DD, YYYY-Www, YYYY all sort correctly as strings)
             std::sort(results.begin(), results.end(), 
                 [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) {
                     return a.first < b.first;
@@ -252,7 +347,12 @@ void DataCounter::count() {
                 });
         }
         
-        std::string columnLabel = byMonth ? "month" : byColumn;
+        std::string columnLabel;
+        if (byDay) columnLabel = "day";
+        else if (byWeek) columnLabel = "week";
+        else if (byMonth) columnLabel = "month";
+        else if (byYear) columnLabel = "year";
+        else columnLabel = byColumn;
         
         if (outputFormat == "json") {
             *out << "[";
@@ -270,8 +370,8 @@ void DataCounter::count() {
                 *out << pair.first << "," << pair.second << "\n";
             }
         } else {
-            // Human-readable format (default) - simple two-column output for byMonth
-            if (byMonth) {
+            // Human-readable format (default) - simple two-column output for time groupings
+            if (timeGrouping) {
                 for (const auto& pair : results) {
                     *out << pair.first << "\t" << pair.second << "\n";
                 }
@@ -322,7 +422,10 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  -of, --output-format <fmt> Output format: human (default), csv, or json" << std::endl;
     std::cerr << "  -f, --follow              Follow mode: continuously monitor file/stdin for new data" << std::endl;
     std::cerr << "  -b, --by-column <col>     Show counts per value in the specified column" << std::endl;
+    std::cerr << "  --by-day                  Show counts per day (YYYY-MM-DD format, ascending)" << std::endl;
+    std::cerr << "  --by-week                 Show counts per week (YYYY-Www ISO week format, ascending)" << std::endl;
     std::cerr << "  --by-month                Show counts per month (YYYY-MM format, ascending)" << std::endl;
+    std::cerr << "  --by-year                 Show counts per year (YYYY format, ascending)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -350,7 +453,10 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count --allowed-values sensor_id allowed_sensors.txt sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --clean sensor.out  # exclude empty values" << std::endl;
     std::cerr << "  " << progName << " count --by-column sensor sensor1.out  # count per sensor" << std::endl;
+    std::cerr << "  " << progName << " count --by-day -r -e out /path/to/logs    # count per day" << std::endl;
+    std::cerr << "  " << progName << " count --by-week -r -e out /path/to/logs   # count per week" << std::endl;
     std::cerr << "  " << progName << " count --by-month -r -e out /path/to/logs  # count per month" << std::endl;
+    std::cerr << "  " << progName << " count --by-year -r -e out /path/to/logs   # count per year" << std::endl;
     std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " count --follow" << std::endl;
 }

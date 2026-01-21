@@ -22,7 +22,7 @@ _sensor_data() {
     
     # Command-specific options
     local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
-    local count_opts="-f --follow -b --by-column --by-month --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local count_opts="-o --output -f --follow -b --by-column --by-day --by-week --by-month --by-year --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
     local distinct_opts="-c --counts -of --output-format --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --clean"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
