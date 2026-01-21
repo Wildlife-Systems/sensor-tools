@@ -57,13 +57,13 @@ private:
      * Second pass: write rows from a file directly to CSV
      */
     void writeRowsFromFile(const std::string& filename, std::ostream& outfile, 
-                           const std::vector<std::string>& headers);
+                           const std::vector<std::string>& headers, DataReader& reader);
     
     /**
      * Write rows from a file as JSON - preserves line-by-line array format of .out files
      */
     void writeRowsFromFileJson(const std::string& filename, std::ostream& outfile, 
-                               bool& firstOutput);
+                               bool& firstOutput, DataReader& reader);
     
     /**
      * Process collected readings and output as CSV

@@ -221,24 +221,44 @@ DistinctLister::DistinctLister(int argc, char* argv[])
 
 void DistinctLister::listDistinct() {
     if (hasInputFiles) {
-        // Multi-threaded file processing
-        size_t numThreads = std::min(inputFiles.size(), static_cast<size_t>(8));
-        size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
-        std::vector<std::future<void>> futures;
-        futures.reserve(numThreads);
-        
-        for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
-            size_t end = std::min(i + filesPerThread, inputFiles.size());
-            
-            futures.push_back(std::async(std::launch::async, [this, i, end]() {
-                for (size_t j = i; j < end; ++j) {
-                    collectFromFile(inputFiles[j]);
+        if (uniqueRows) {
+            // When --unique is enabled, use sequential processing with shared reader
+            // to properly track unique rows across all files
+            DataReader reader = createDataReader();
+            for (const auto& file : inputFiles) {
+                if (verbosity >= 1) {
+                    std::cerr << "Processing: " << file << std::endl;
                 }
-            }));
-        }
-        
-        for (auto& f : futures) {
-            f.wait();
+                reader.processFile(file, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+                    auto it = reading.find(columnName);
+                    if (it != reading.end() && !it->second.empty()) {
+                        distinctValues.insert(it->second);
+                        if (showCounts) {
+                            valueCounts[it->second]++;
+                        }
+                    }
+                });
+            }
+        } else {
+            // Multi-threaded file processing
+            size_t numThreads = std::min(inputFiles.size(), static_cast<size_t>(8));
+            size_t filesPerThread = std::max(size_t(1), inputFiles.size() / numThreads);
+            std::vector<std::future<void>> futures;
+            futures.reserve(numThreads);
+            
+            for (size_t i = 0; i < inputFiles.size(); i += filesPerThread) {
+                size_t end = std::min(i + filesPerThread, inputFiles.size());
+                
+                futures.push_back(std::async(std::launch::async, [this, i, end]() {
+                    for (size_t j = i; j < end; ++j) {
+                        collectFromFile(inputFiles[j]);
+                    }
+                }));
+            }
+            
+            for (auto& f : futures) {
+                f.wait();
+            }
         }
     } else {
         collectFromStdin();

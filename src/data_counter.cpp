@@ -231,6 +231,37 @@ void DataCounter::count() {
 
     if (!hasInputFiles) {
         totalCount = countFromStdin();
+    } else if (uniqueRows) {
+        // When --unique is enabled, use sequential processing with shared reader
+        // to properly track unique rows across all files
+        DataReader reader = createDataReader();
+        for (const auto& file : inputFiles) {
+            if (verbosity >= 1) {
+                std::cerr << "Counting: " << file << std::endl;
+            }
+            reader.processFile(file, [&](const Reading& reading, int /*lineNum*/, const std::string& /*source*/) {
+                totalCount++;
+                if (!byColumn.empty()) {
+                    auto it = reading.find(byColumn);
+                    std::string value = (it != reading.end()) ? it->second : "(missing)";
+                    valueCounts[value]++;
+                }
+                if (byMonth || byDay || byYear || byWeek) {
+                    long long ts = DateUtils::getTimestamp(reading);
+                    std::string period;
+                    if (byDay) {
+                        period = DateUtils::timestampToDay(ts);
+                    } else if (byWeek) {
+                        period = DateUtils::timestampToWeek(ts);
+                    } else if (byMonth) {
+                        period = DateUtils::timestampToMonth(ts);
+                    } else if (byYear) {
+                        period = DateUtils::timestampToYear(ts);
+                    }
+                    valueCounts[period]++;
+                }
+            });
+        }
     } else {
         // Use parallel processing for multiple files
         totalCount = processFilesParallel<long long>(

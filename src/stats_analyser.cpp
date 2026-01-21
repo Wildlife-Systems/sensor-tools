@@ -394,6 +394,18 @@ void StatsAnalyser::analyze() {
             collectDataFromReading(reading);
         };
         reader.processStdin(collectData);
+    } else if (uniqueRows) {
+        // When --unique is enabled, use sequential processing with shared reader
+        // to properly track unique rows across all files
+        printCommonVerboseInfo("Analyzing", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
+        
+        DataReader reader = createDataReader();
+        for (const auto& file : inputFiles) {
+            reader.processFile(file, [&](const Reading& reading, int, const std::string&) {
+                // Filtering already done by DataReader
+                collectDataFromReading(reading);
+            });
+        }
     } else {
         printCommonVerboseInfo("Analyzing", verbosity, recursive, extensionFilter, maxDepth, inputFiles.size());
         

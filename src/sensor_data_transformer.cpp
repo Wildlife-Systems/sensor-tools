@@ -82,14 +82,11 @@ void SensorDataTransformer::collectKeysFromFile(const std::string& filename) {
 }
 
 void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::ostream& outfile, 
-                                               const std::vector<std::string>& headers) {
+                                               const std::vector<std::string>& headers, DataReader& reader) {
     if (verbosity >= 1) {
         std::lock_guard<std::mutex> lock(outputMutex);
         std::cout << "Processing file: " << filename << std::endl;
     }
-    
-    DataReader reader = createDataReader(rejectMode);
-    
     reader.processFile(filename, [&](const Reading& reading,
                                       int /*lineNum*/, const std::string& /*source*/) {
         // Filtering already done by DataReader
@@ -99,16 +96,13 @@ void SensorDataTransformer::writeRowsFromFile(const std::string& filename, std::
 }
 
 void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, std::ostream& outfile, 
-                                                   bool& firstOutput) {
+                                                   bool& firstOutput, DataReader& reader) {
     if (verbosity >= 1) {
         std::lock_guard<std::mutex> lock(outputMutex);
         std::cerr << "Processing file: " << filename << std::endl;
     }
     
     const char* sp = removeWhitespace ? "" : " ";
-    
-    // Use DataReader for all processing - filtering is handled there
-    DataReader reader = createDataReader(rejectMode);
     
     // For JSON output, we output each reading as its own line
     reader.processFile(filename, [&](const Reading& reading,
@@ -453,10 +447,13 @@ void SensorDataTransformer::transform() {
             std::cerr << "Pass 2: Writing " << outputFormat << " to stdout..." << std::endl;
         }
         
+        // Create a single reader to share across all files (for --unique tracking)
+        DataReader reader = createDataReader(rejectMode);
+        
         if (outputFormat == "json") {
             bool firstOutput = true;
             for (const auto& file : inputFiles) {
-                writeRowsFromFileJson(file, std::cout, firstOutput);
+                writeRowsFromFileJson(file, std::cout, firstOutput, reader);
             }
             std::cout << "\n";
         } else {
@@ -467,7 +464,7 @@ void SensorDataTransformer::transform() {
             std::cout << "\n";
             
             for (const auto& file : inputFiles) {
-                writeRowsFromFile(file, std::cout, headers);
+                writeRowsFromFile(file, std::cout, headers, reader);
             }
         }
     } else {
@@ -481,10 +478,13 @@ void SensorDataTransformer::transform() {
             return;
         }
         
+        // Create a single reader to share across all files (for --unique tracking)
+        DataReader reader = createDataReader(rejectMode);
+        
         if (outputFormat == "json") {
             bool firstOutput = true;
             for (const auto& file : inputFiles) {
-                writeRowsFromFileJson(file, outfile, firstOutput);
+                writeRowsFromFileJson(file, outfile, firstOutput, reader);
             }
             outfile << "\n";
         } else {
@@ -495,7 +495,7 @@ void SensorDataTransformer::transform() {
             outfile << "\n";
             
             for (const auto& file : inputFiles) {
-                writeRowsFromFile(file, outfile, headers);
+                writeRowsFromFile(file, outfile, headers, reader);
             }
         }
         
