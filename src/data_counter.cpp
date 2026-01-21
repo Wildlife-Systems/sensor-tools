@@ -12,86 +12,7 @@
 #include "file_utils.h"
 #include "file_collector.h"
 #include "data_reader.h"
-
-// Thread-safe helper to get tm struct from timestamp
-static bool getTimeInfo(long long timestamp, struct tm& tm_info) {
-    if (timestamp <= 0) return false;
-    time_t t = static_cast<time_t>(timestamp);
-#ifdef _WIN32
-    if (gmtime_s(&tm_info, &t) != 0) return false;
-#else
-    if (gmtime_r(&t, &tm_info) == nullptr) return false;
-#endif
-    return true;
-}
-
-// Helper to extract YYYY-MM from a timestamp
-static std::string timestampToMonth(long long timestamp) {
-    struct tm tm_info;
-    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%04d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1);
-    return std::string(buf);
-}
-
-// Helper to extract YYYY-MM-DD from a timestamp
-static std::string timestampToDay(long long timestamp) {
-    struct tm tm_info;
-    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1, tm_info.tm_mday);
-    return std::string(buf);
-}
-
-// Helper to extract YYYY from a timestamp
-static std::string timestampToYear(long long timestamp) {
-    struct tm tm_info;
-    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%04d", tm_info.tm_year + 1900);
-    return std::string(buf);
-}
-
-// Helper to extract YYYY-Www from a timestamp (ISO week number)
-static std::string timestampToWeek(long long timestamp) {
-    struct tm tm_info;
-    if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
-    char buf[32];
-    // Calculate ISO week number
-    // ISO week: week 1 is the week containing the first Thursday of the year
-    int year = tm_info.tm_year + 1900;
-    int yday = tm_info.tm_yday;  // 0-365
-    int wday = tm_info.tm_wday;  // 0=Sunday, 1=Monday, ..., 6=Saturday
-    
-    // Convert Sunday=0 to Monday=0 system (ISO uses Monday as first day)
-    int isoWday = (wday == 0) ? 6 : wday - 1;  // 0=Monday, 6=Sunday
-    
-    // Find the Thursday of this week
-    int thursdayYday = yday - isoWday + 3;  // Thursday is day 3 (0-indexed from Monday)
-    
-    // Handle year boundaries
-    if (thursdayYday < 0) {
-        // Thursday is in previous year
-        year--;
-        // Approximate: previous year has 365 or 366 days
-        bool prevLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-        thursdayYday += prevLeap ? 366 : 365;
-    } else {
-        bool thisLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-        int daysInYear = thisLeap ? 366 : 365;
-        if (thursdayYday >= daysInYear) {
-            // Thursday is in next year
-            year++;
-            thursdayYday -= daysInYear;
-        }
-    }
-    
-    // Week number is (thursdayYday / 7) + 1
-    int weekNum = (thursdayYday / 7) + 1;
-    
-    snprintf(buf, sizeof(buf), "%04d-W%02d", year, weekNum);
-    return std::string(buf);
-}
+#include "date_utils.h"
 
 // ===== Private methods =====
 
@@ -116,13 +37,13 @@ long long DataCounter::countFromFile(const std::string& filename) {
             long long ts = DateUtils::getTimestamp(reading);
             std::string period;
             if (byDay) {
-                period = timestampToDay(ts);
+                period = DateUtils::timestampToDay(ts);
             } else if (byWeek) {
-                period = timestampToWeek(ts);
+                period = DateUtils::timestampToWeek(ts);
             } else if (byMonth) {
-                period = timestampToMonth(ts);
+                period = DateUtils::timestampToMonth(ts);
             } else if (byYear) {
-                period = timestampToYear(ts);
+                period = DateUtils::timestampToYear(ts);
             }
             localValueCounts[period]++;
         }
@@ -161,13 +82,13 @@ long long DataCounter::countFromStdin() {
             long long ts = DateUtils::getTimestamp(reading);
             std::string period;
             if (byDay) {
-                period = timestampToDay(ts);
+                period = DateUtils::timestampToDay(ts);
             } else if (byWeek) {
-                period = timestampToWeek(ts);
+                period = DateUtils::timestampToWeek(ts);
             } else if (byMonth) {
-                period = timestampToMonth(ts);
+                period = DateUtils::timestampToMonth(ts);
             } else if (byYear) {
-                period = timestampToYear(ts);
+                period = DateUtils::timestampToYear(ts);
             }
             localValueCounts[period]++;
         }

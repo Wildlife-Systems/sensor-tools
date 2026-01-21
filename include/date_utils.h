@@ -120,6 +120,85 @@ namespace DateUtils {
         if (maxDate > 0 && timestamp > maxDate) return false;
         return true;
     }
+
+    // Thread-safe helper to get tm struct from timestamp
+    inline bool getTimeInfo(long long timestamp, struct tm& tm_info) {
+        if (timestamp <= 0) return false;
+        time_t t = static_cast<time_t>(timestamp);
+#ifdef _WIN32
+        if (gmtime_s(&tm_info, &t) != 0) return false;
+#else
+        if (gmtime_r(&t, &tm_info) == nullptr) return false;
+#endif
+        return true;
+    }
+
+    // Convert timestamp to YYYY-MM format
+    inline std::string timestampToMonth(long long timestamp) {
+        struct tm tm_info;
+        if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%04d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1);
+        return std::string(buf);
+    }
+
+    // Convert timestamp to YYYY-MM-DD format
+    inline std::string timestampToDay(long long timestamp) {
+        struct tm tm_info;
+        if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1, tm_info.tm_mday);
+        return std::string(buf);
+    }
+
+    // Convert timestamp to YYYY format
+    inline std::string timestampToYear(long long timestamp) {
+        struct tm tm_info;
+        if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%04d", tm_info.tm_year + 1900);
+        return std::string(buf);
+    }
+
+    // Convert timestamp to YYYY-Www format (ISO week number)
+    // Manual calculation since %G and %V aren't portable
+    inline std::string timestampToWeek(long long timestamp) {
+        struct tm tm_info;
+        if (!getTimeInfo(timestamp, tm_info)) return "(no-date)";
+        
+        int year = tm_info.tm_year + 1900;
+        int yday = tm_info.tm_yday;  // 0-365
+        int wday = tm_info.tm_wday;  // 0=Sunday, 6=Saturday
+        
+        // Convert Sunday=0 to Monday=0 system (ISO uses Monday as first day)
+        int isoWday = (wday == 0) ? 6 : wday - 1;  // 0=Monday, 6=Sunday
+        
+        // Find the Thursday of this week
+        int thursdayYday = yday - isoWday + 3;  // Thursday is day 3 (0-indexed from Monday)
+        
+        // Handle year boundaries
+        if (thursdayYday < 0) {
+            // Thursday is in previous year
+            year--;
+            bool prevLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+            thursdayYday += prevLeap ? 366 : 365;
+        } else {
+            bool thisLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+            int daysInYear = thisLeap ? 366 : 365;
+            if (thursdayYday >= daysInYear) {
+                // Thursday is in next year
+                year++;
+                thursdayYday -= daysInYear;
+            }
+        }
+        
+        // Week number is (thursdayYday / 7) + 1
+        int weekNum = (thursdayYday / 7) + 1;
+        
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%04d-W%02d", year, weekNum);
+        return std::string(buf);
+    }
 }
 
 #endif // DATE_UTILS_H

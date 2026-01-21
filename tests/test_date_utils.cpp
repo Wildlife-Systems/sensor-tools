@@ -132,9 +132,20 @@ void test_is_in_date_range_no_timestamp() {
     long long minDate = DateUtils::parseDate("2026-01-10");
     long long maxDate = DateUtils::parseDate("2026-01-20");
     
-    // Should include by default when no timestamp
-    assert(DateUtils::isInDateRange(timestamp, minDate, maxDate) == true);
+    // Should exclude when date filter is active and no timestamp present
+    assert(DateUtils::isInDateRange(timestamp, minDate, maxDate) == false);
     std::cout << "[PASS] test_is_in_date_range_no_timestamp" << std::endl;
+}
+
+void test_is_in_date_range_no_filters() {
+    long long timestamp = 0;  // No timestamp in reading
+    long long minDate = 0;    // No min filter
+    long long maxDate = 0;    // No max filter
+    
+    // Should include when no date filters are active (timestamp 0 still returns false though)
+    // Actually, if timestamp is 0, isInDateRange now always returns false
+    assert(DateUtils::isInDateRange(timestamp, minDate, maxDate) == false);
+    std::cout << "[PASS] test_is_in_date_range_no_filters" << std::endl;
 }
 
 void test_parse_negative_unix_timestamp() {
@@ -264,6 +275,121 @@ void test_parse_invalid_time_values() {
     std::cout << "[PASS] test_parse_invalid_time_values" << std::endl;
 }
 
+// ===== Timestamp to String Conversion Tests =====
+
+void test_timestamp_to_month() {
+    // 2026-01-15 12:00:00 UTC
+    long long ts = 1768478400;  // Unix timestamp for 2026-01-15 12:00:00 UTC
+    std::string result = DateUtils::timestampToMonth(ts);
+    assert(result == "2026-01");
+    std::cout << "[PASS] test_timestamp_to_month" << std::endl;
+}
+
+void test_timestamp_to_month_december() {
+    // Test December to ensure month is 12, not 00
+    long long ts = 1765411200;  // Unix timestamp for 2025-12-11 00:00:00 UTC
+    std::string result = DateUtils::timestampToMonth(ts);
+    assert(result == "2025-12");
+    std::cout << "[PASS] test_timestamp_to_month_december" << std::endl;
+}
+
+void test_timestamp_to_month_invalid() {
+    // Zero timestamp should return "(no-date)"
+    std::string result = DateUtils::timestampToMonth(0);
+    assert(result == "(no-date)");
+    std::cout << "[PASS] test_timestamp_to_month_invalid" << std::endl;
+}
+
+void test_timestamp_to_day() {
+    // 2026-01-15 12:00:00 UTC
+    long long ts = 1768478400;
+    std::string result = DateUtils::timestampToDay(ts);
+    assert(result == "2026-01-15");
+    std::cout << "[PASS] test_timestamp_to_day" << std::endl;
+}
+
+void test_timestamp_to_day_invalid() {
+    std::string result = DateUtils::timestampToDay(0);
+    assert(result == "(no-date)");
+    std::cout << "[PASS] test_timestamp_to_day_invalid" << std::endl;
+}
+
+void test_timestamp_to_day_negative() {
+    // Negative timestamp should return "(no-date)"
+    std::string result = DateUtils::timestampToDay(-86400);
+    assert(result == "(no-date)");
+    std::cout << "[PASS] test_timestamp_to_day_negative" << std::endl;
+}
+
+void test_timestamp_to_year() {
+    // 2026-01-15 12:00:00 UTC
+    long long ts = 1768478400;
+    std::string result = DateUtils::timestampToYear(ts);
+    assert(result == "2026");
+    std::cout << "[PASS] test_timestamp_to_year" << std::endl;
+}
+
+void test_timestamp_to_year_y2k() {
+    // 2000-06-15 12:00:00 UTC
+    long long ts = 961070400;
+    std::string result = DateUtils::timestampToYear(ts);
+    assert(result == "2000");
+    std::cout << "[PASS] test_timestamp_to_year_y2k" << std::endl;
+}
+
+void test_timestamp_to_year_invalid() {
+    std::string result = DateUtils::timestampToYear(0);
+    assert(result == "(no-date)");
+    std::cout << "[PASS] test_timestamp_to_year_invalid" << std::endl;
+}
+
+void test_timestamp_to_week() {
+    // 2026-01-15 is Thursday of week 3
+    long long ts = 1768478400;  // 2026-01-15 12:00:00 UTC
+    std::string result = DateUtils::timestampToWeek(ts);
+    assert(result == "2026-W03");
+    std::cout << "[PASS] test_timestamp_to_week" << std::endl;
+}
+
+void test_timestamp_to_week_first_week() {
+    // 2026-01-01 is a Thursday, so it's still week 1 of 2026
+    long long ts = 1735689600;  // 2025-01-01 00:00:00 UTC (Wednesday, week 1 of 2025)
+    std::string result = DateUtils::timestampToWeek(ts);
+    assert(result == "2025-W01");
+    std::cout << "[PASS] test_timestamp_to_week_first_week" << std::endl;
+}
+
+void test_timestamp_to_week_invalid() {
+    std::string result = DateUtils::timestampToWeek(0);
+    assert(result == "(no-date)");
+    std::cout << "[PASS] test_timestamp_to_week_invalid" << std::endl;
+}
+
+void test_get_time_info_valid() {
+    struct tm tm_info;
+    // Test with a known timestamp: 2026-01-15 12:00:00 UTC
+    bool result = DateUtils::getTimeInfo(1768478400, tm_info);
+    assert(result == true);
+    assert(tm_info.tm_year == 126);  // years since 1900
+    assert(tm_info.tm_mon == 0);      // January is 0
+    assert(tm_info.tm_mday == 15);
+    std::cout << "[PASS] test_get_time_info_valid" << std::endl;
+}
+
+void test_get_time_info_zero() {
+    struct tm tm_info;
+    bool result = DateUtils::getTimeInfo(0, tm_info);
+    assert(result == false);
+    std::cout << "[PASS] test_get_time_info_zero" << std::endl;
+}
+
+void test_get_time_info_negative() {
+    struct tm tm_info;
+    bool result = DateUtils::getTimeInfo(-1, tm_info);
+    assert(result == false);
+    std::cout << "[PASS] test_get_time_info_negative" << std::endl;
+}
+
 int main() {
     std::cout << "Running Date Utils Tests..." << std::endl;
     
@@ -306,6 +432,28 @@ int main() {
     test_parse_invalid_month_value();
     test_parse_invalid_uk_format();
     test_parse_invalid_time_values();
+    
+    // Timestamp to string conversion tests
+    test_timestamp_to_month();
+    test_timestamp_to_month_december();
+    test_timestamp_to_month_invalid();
+    test_timestamp_to_day();
+    test_timestamp_to_day_invalid();
+    test_timestamp_to_day_negative();
+    test_timestamp_to_year();
+    test_timestamp_to_year_y2k();
+    test_timestamp_to_year_invalid();
+    test_timestamp_to_week();
+    test_timestamp_to_week_first_week();
+    test_timestamp_to_week_invalid();
+    
+    // getTimeInfo tests
+    test_get_time_info_valid();
+    test_get_time_info_zero();
+    test_get_time_info_negative();
+    
+    // No-filters test (added with timestamp=0 behavior change)
+    test_is_in_date_range_no_filters();
     
     std::cout << "All Date Utils tests passed!" << std::endl;
     return 0;
