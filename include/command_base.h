@@ -62,6 +62,9 @@ protected:
     std::string tailColumnValueValue;
     int tailColumnValueCount;
     
+    // Unique row filtering
+    bool uniqueRows;
+    
     // Constructor with default values
     CommandBase() 
         : hasInputFiles(false)
@@ -75,7 +78,8 @@ protected:
         , removeErrors(false)
         , removeEmptyJson(false)
         , tailLines(0)
-        , tailColumnValueCount(0) {}
+        , tailColumnValueCount(0)
+        , uniqueRows(false) {}
     
     virtual ~CommandBase() = default;
     
@@ -222,6 +226,7 @@ protected:
         tailColumnValueColumn = parser.getTailColumnValueColumn();
         tailColumnValueValue = parser.getTailColumnValueValue();
         tailColumnValueCount = parser.getTailColumnValueCount();
+        uniqueRows = parser.getUniqueRows();
     }
     
     /**
@@ -253,6 +258,7 @@ protected:
         filter.setAllowedValues(allowedValues);
         filter.setInvertFilter(rejectMode);
         filter.setUpdateRules(updateRules);
+        filter.setUniqueRows(uniqueRows);
     }
     
     /**

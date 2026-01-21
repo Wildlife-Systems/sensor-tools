@@ -21,13 +21,13 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
-    local count_opts="-o --output -f --follow -b --by-column --by-day --by-week --by-month --by-year --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
-    local distinct_opts="-c --counts -of --output-format --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --clean"
+    local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty --unique --clean"
+    local count_opts="-o --output -f --follow -b --by-column --by-day --by-week --by-month --by-year --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --unique --clean"
+    local distinct_opts="-c --counts -of --output-format --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --clean --unique"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
-    local stats_opts="-f --follow --tail --tail-column-value -o --output --column --group-by"
-    local latest_opts="-n -of --output-format --tail --tail-column-value"
+    local stats_opts="-f --follow --tail --tail-column-value -o --output --column --group-by --unique --clean"
+    local latest_opts="-n -of --output-format --tail --tail-column-value --unique --clean"
 
     # Determine which command we're completing for
     local cmd=""

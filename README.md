@@ -100,7 +100,8 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `--not-null <column>` - Skip rows where column contains the literal string "null" or ASCII null characters
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id --unique`
+- `--unique` - Only output unique rows (removes duplicates)
 - `--tail <n>` - Only read the last n lines from each file
 - `--tail-column-value <col:val> <n>` - Return last n rows where column equals value (reads backwards for efficiency)
 - `--update-value <match> <target>` - Update target column when match column has value (e.g., `--update-value sensor:ds18b20 unit:C`)
@@ -159,7 +160,8 @@ sensor-data count -r -e .out /path/to/logs/
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--exclude-value <col:val>` - Exclude rows where column equals value
 - `--allowed-values <column> <values|file>` - Only include rows where column is in allowed values
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --unique`
+- `--unique` - Only output unique rows (removes duplicates)
 - `--tail <n>` - Only read the last n lines from each file
 - `--tail-column-value <col:val> <n>` - Return last n rows where column equals value
 - `-v` - Verbose output
@@ -203,7 +205,8 @@ sensor-data distinct sensor -of json -c input.out
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
 - `--exclude-value <col:val>` - Exclude rows where column equals value
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --remove-errors --unique`
+- `--unique` - Only output unique rows (removes duplicates)
 - `-v` - Verbose output
 
 ### list-errors
@@ -266,7 +269,8 @@ sensor-data stats --clean input.out
 - `--not-null <column>` - Skip rows where column contains the literal string "null" or ASCII null characters
 - `--remove-empty-json` - Remove empty JSON input lines
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
-- `--clean` - Shorthand for `--remove-empty-json --not-empty value --not-null value --remove-errors`
+- `--clean` - Shorthand for `--remove-empty-json --not-empty value --not-null value --remove-errors --unique`
+- `--unique` - Only output unique rows (removes duplicates)
 - `--tail <n>` - Only read the last n lines from each file
 - `-r, --recursive` - Recursively process subdirectories
 - `-v` - Verbose output

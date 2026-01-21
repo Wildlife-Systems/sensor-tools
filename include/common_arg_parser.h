@@ -41,11 +41,14 @@ private:
     std::string tailColumnValueValue;
     int tailColumnValueCount;
     
+    // Unique row filtering
+    bool uniqueRows;
+    
 public:
     CommonArgParser() 
         : recursive(false), extensionFilter(""), maxDepth(-1), verbosity(0), 
           inputFormat(DEFAULT_INPUT_FORMAT), minDate(0), maxDate(0), removeEmptyJson(false), removeErrors(false),
-          tailLines(0), tailColumnValueCount(0) {}
+          tailLines(0), tailColumnValueCount(0), uniqueRows(false) {}
     
     // Parse common arguments and collect files
     // Returns true if parsing should continue, false if help was shown or error occurred
@@ -165,13 +168,16 @@ public:
                 removeEmptyJson = true;
             } else if (arg == "--remove-errors") {
                 removeErrors = true;
+            } else if (arg == "--unique") {
+                uniqueRows = true;
             } else if (arg == "--clean") {
-                // --clean expands to --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id
+                // --clean expands to --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id --unique
                 removeEmptyJson = true;
                 notEmptyColumns.insert("value");
                 removeErrors = true;
                 notNullColumns.insert("value");
                 notNullColumns.insert("sensor_id");
+                uniqueRows = true;
             } else if (arg == "--only-value") {
                 if (i + 1 < argc) {
                     ++i;
@@ -371,6 +377,7 @@ public:
     const std::string& getTailColumnValueColumn() const noexcept { return tailColumnValueColumn; }
     const std::string& getTailColumnValueValue() const noexcept { return tailColumnValueValue; }
     int getTailColumnValueCount() const noexcept { return tailColumnValueCount; }
+    bool getUniqueRows() const noexcept { return uniqueRows; }
     
     /**
      * Check for unknown options in command line arguments.
@@ -393,7 +400,7 @@ public:
         static const std::set<std::string> filterOptions = {
             "--not-empty", "--not-null", "--only-value", "--exclude-value", "--allowed-values",
             "--remove-errors", "--remove-empty-json", "--clean", "--use-prototype",
-            "--update-value", "--update-where-empty", "--remove-whitespace"
+            "--update-value", "--update-where-empty", "--remove-whitespace", "--unique"
         };
         
         // Options that take arguments (need to skip the next arg)

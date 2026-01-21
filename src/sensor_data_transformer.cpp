@@ -536,6 +536,7 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-whitespace       Remove extra whitespace from output (compact format)" << std::endl;
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
+    std::cerr << "  --unique                  Only output unique rows (removes duplicates)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --tail-column-value <col:val> <n>" << std::endl;

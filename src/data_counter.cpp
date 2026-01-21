@@ -366,7 +366,8 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --allowed-values <column> <values|file> Only include rows where column is in allowed values" << std::endl;
     std::cerr << "  --remove-errors           Remove error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-empty-json       Remove empty JSON input lines (e.g., [{}], [])" << std::endl;
-    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
+    std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id --unique" << std::endl;
+    std::cerr << "  --unique                  Only output unique rows (removes duplicates)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date" << std::endl;
     std::cerr << "  --tail <n>                Only read the last n lines from each file" << std::endl;

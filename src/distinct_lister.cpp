@@ -271,7 +271,8 @@ void DistinctLister::printDistinctUsage(const char* progName) {
     std::cerr << "  -v, --verbose           Increase verbosity" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Filter options:" << std::endl;
-    std::cerr << "  --clean                 Remove readings with errors" << std::endl;
+    std::cerr << "  --clean                 Remove readings with errors and enable --unique" << std::endl;
+    std::cerr << "  --unique                Only output unique rows (removes duplicates)" << std::endl;
     std::cerr << "  --after <date>          Only include readings after date" << std::endl;
     std::cerr << "  --before <date>         Only include readings before date" << std::endl;
     std::cerr << "  --only-value <col:val>  Only include readings where col=val" << std::endl;

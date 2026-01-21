@@ -3,10 +3,12 @@
 
 #include <string>
 #include <set>
+#include <unordered_set>
 #include <map>
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <functional>
 
 #include "types.h"
 #include "date_utils.h"
@@ -66,8 +68,29 @@ private:
     // Invert mode (for list-rejects command)
     bool invertFilter;
     
+    // Unique row filtering
+    bool uniqueRows;
+    mutable std::unordered_set<size_t> seenHashes;  // mutable for const shouldInclude
+    
     // Debug output
     int verbosity;
+    
+    /**
+     * Compute a hash of a reading for uniqueness checking.
+     * Uses all key-value pairs in sorted order for consistent hashing.
+     */
+    static size_t hashReading(const Reading& reading) {
+        size_t hash = 0;
+        // Sort keys for consistent ordering
+        std::vector<std::pair<std::string, std::string>> pairs(reading.begin(), reading.end());
+        std::sort(pairs.begin(), pairs.end());
+        for (const auto& [key, value] : pairs) {
+            // Combine hashes using a simple mixing function
+            hash ^= std::hash<std::string>{}(key) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= std::hash<std::string>{}(value) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        }
+        return hash;
+    }
 
 public:
     ReadingFilter()
@@ -75,6 +98,7 @@ public:
         , maxDate(0)
         , removeErrors(false)
         , invertFilter(false)
+        , uniqueRows(false)
         , verbosity(0) {}
     
     // Setters for filter configuration
@@ -134,6 +158,14 @@ public:
     
     void setInvertFilter(bool invert) {
         invertFilter = invert;
+    }
+    
+    void setUniqueRows(bool unique) {
+        uniqueRows = unique;
+    }
+    
+    void clearSeenRows() {
+        seenHashes.clear();
     }
     
     // Update rule methods
@@ -284,10 +316,25 @@ public:
      * Check if a reading should be included based on ALL active filters.
      * This is the single point where all filtering decisions are made.
      * If invertFilter is true, returns readings that FAIL the filters (for list-rejects).
+     * If uniqueRows is true, only returns the first occurrence of each unique reading.
      */
     bool shouldInclude(const Reading& reading) const {
         bool passes = passesAllFilters(reading);
-        return invertFilter ? !passes : passes;
+        bool result = invertFilter ? !passes : passes;
+        
+        // Check uniqueness if enabled and reading passes other filters
+        if (result && uniqueRows) {
+            size_t hash = hashReading(reading);
+            if (seenHashes.count(hash) > 0) {
+                if (verbosity >= 2) {
+                    std::cerr << "  Skipping row: duplicate" << std::endl;
+                }
+                return false;
+            }
+            seenHashes.insert(hash);
+        }
+        
+        return result;
     }
 };
 

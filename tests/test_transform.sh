@@ -1222,3 +1222,108 @@ if [ $FAILED -gt 0 ]; then
 fi
 
 echo "All transform tests passed!"
+
+# Test 38: --unique removes duplicate rows
+echo ""
+echo "Test 38: --unique removes duplicate rows"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]
+[ { "sensor": "ds18b20", "value": 22.5 } ]
+[ { "sensor": "ds18b20", "value": 23.0 } ]
+[ { "sensor": "ds18b20", "value": 22.5 } ]'
+result=$(echo "$input" | ./sensor-data transform --unique)
+count=$(echo "$result" | wc -l)
+if [ "$count" -eq 2 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 unique rows, got $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 39: --unique preserves first occurrence
+echo ""
+echo "Test 39: --unique preserves order (first occurrence)"
+input='[ { "sensor": "a", "value": 1 } ]
+[ { "sensor": "b", "value": 2 } ]
+[ { "sensor": "a", "value": 1 } ]
+[ { "sensor": "c", "value": 3 } ]'
+result=$(echo "$input" | ./sensor-data transform --unique)
+count=$(echo "$result" | wc -l)
+first_sensor=$(echo "$result" | head -1 | grep -o '"sensor": "[^"]*"' | head -1)
+if [ "$count" -eq 3 ] && echo "$first_sensor" | grep -q '"sensor": "a"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 3 rows with 'a' first"
+    echo "  Count: $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 40: --unique with no duplicates passes all through
+echo ""
+echo "Test 40: --unique with no duplicates passes all rows"
+input='[ { "sensor": "a", "value": 1 } ]
+[ { "sensor": "b", "value": 2 } ]
+[ { "sensor": "c", "value": 3 } ]'
+result=$(echo "$input" | ./sensor-data transform --unique)
+count=$(echo "$result" | wc -l)
+if [ "$count" -eq 3 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 3 rows, got $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 41: --clean enables --unique
+echo ""
+echo "Test 41: --clean enables --unique (removes duplicates)"
+input='[ { "sensor": "ds18b20", "value": 22.5, "sensor_id": "s1" } ]
+[ { "sensor": "ds18b20", "value": 22.5, "sensor_id": "s1" } ]
+[ { "sensor": "ds18b20", "value": 23.0, "sensor_id": "s1" } ]'
+result=$(echo "$input" | ./sensor-data transform --clean)
+count=$(echo "$result" | wc -l)
+if [ "$count" -eq 2 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 unique rows with --clean, got $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test 42: --unique combined with other filters
+echo ""
+echo "Test 42: --unique combined with --only-value filter"
+input='[ { "sensor": "ds18b20", "value": 22.5 } ]
+[ { "sensor": "dht22", "value": 45 } ]
+[ { "sensor": "ds18b20", "value": 22.5 } ]
+[ { "sensor": "ds18b20", "value": 23.0 } ]'
+result=$(echo "$input" | ./sensor-data transform --unique --only-value sensor:ds18b20)
+count=$(echo "$result" | wc -l)
+if [ "$count" -eq 2 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected 2 unique ds18b20 rows, got $count"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Final Summary
+echo ""
+echo "================================"
+echo "transform Tests Final Summary"
+echo "================================"
+echo "Passed: $PASSED"
+echo "Failed: $FAILED"
+echo ""
+
+if [ $FAILED -gt 0 ]; then
+    exit 1
+fi
+
+echo "All transform tests passed!"

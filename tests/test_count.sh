@@ -1196,6 +1196,68 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+# Test: --unique removes duplicate rows from count
+echo ""
+echo "Test: --unique removes duplicate rows from count"
+result=$(cat <<'EOF' | ./sensor-data count --unique
+[{"sensor": "ds18b20", "value": 22.5}]
+[{"sensor": "ds18b20", "value": 22.5}]
+[{"sensor": "ds18b20", "value": 23.0}]
+[{"sensor": "ds18b20", "value": 22.5}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2 (unique rows only)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --clean includes --unique
+echo ""
+echo "Test: --clean includes --unique (removes duplicates)"
+result=$(cat <<'EOF' | ./sensor-data count --clean
+[{"sensor": "ds18b20", "value": 22.5, "sensor_id": "s1"}]
+[{"sensor": "ds18b20", "value": 22.5, "sensor_id": "s1"}]
+[{"sensor": "ds18b20", "value": 23.0, "sensor_id": "s1"}]
+EOF
+)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: 2 (--clean enables --unique)"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --unique with --by-column
+echo ""
+echo "Test: --unique with --by-column counts unique rows per value"
+result=$(cat <<'EOF' | ./sensor-data count --unique --by-column sensor
+[{"sensor": "ds18b20", "value": 22.5}]
+[{"sensor": "ds18b20", "value": 22.5}]
+[{"sensor": "dht22", "value": 45}]
+[{"sensor": "ds18b20", "value": 23.0}]
+[{"sensor": "dht22", "value": 45}]
+EOF
+)
+ds18b20_count=$(echo "$result" | grep "ds18b20" | awk '{print $2}')
+dht22_count=$(echo "$result" | grep "dht22" | awk '{print $2}')
+if [ "$ds18b20_count" = "2" ] && [ "$dht22_count" = "1" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected: ds18b20=2, dht22=1"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"
