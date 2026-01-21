@@ -84,7 +84,9 @@ private:
         // Sort keys for consistent ordering
         std::vector<std::pair<std::string, std::string>> pairs(reading.begin(), reading.end());
         std::sort(pairs.begin(), pairs.end());
-        for (const auto& [key, value] : pairs) {
+        for (size_t i = 0; i < pairs.size(); ++i) {
+            const std::string& key = pairs[i].first;
+            const std::string& value = pairs[i].second;
             // Combine hashes using a simple mixing function
             hash ^= std::hash<std::string>{}(key) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
             hash ^= std::hash<std::string>{}(value) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
