@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <functional>
+#include <mutex>
 
 #include "types.h"
 #include "date_utils.h"
@@ -71,6 +72,7 @@ private:
     // Unique row filtering
     bool uniqueRows;
     mutable std::unordered_set<std::string> seenRows;  // mutable for const shouldInclude
+    mutable std::mutex seenRowsMutex;  // protects seenRows for thread safety
     
     // Debug output
     int verbosity;
@@ -326,6 +328,7 @@ public:
         // Check uniqueness if enabled and reading passes other filters
         if (result && uniqueRows) {
             std::string serialized = serializeReading(reading);
+            std::lock_guard<std::mutex> lock(seenRowsMutex);
             if (seenRows.count(serialized) > 0) {
                 if (verbosity >= 2) {
                     std::cerr << "  Skipping row: duplicate" << std::endl;
