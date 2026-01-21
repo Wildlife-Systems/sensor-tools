@@ -1,4 +1,4 @@
-CXX ?= g++
+ensor-data tCXX ?= g++
 CC = gcc
 CXXFLAGS ?= -Wall
 CFLAGS ?= -Wall -Wextra -pedantic

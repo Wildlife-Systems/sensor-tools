@@ -392,8 +392,8 @@ public:
         // Common filtering options
         static const std::set<std::string> filterOptions = {
             "--not-empty", "--not-null", "--only-value", "--exclude-value", "--allowed-values",
-            "--remove-errors", "--remove-empty-json", "--clean",
-            "--update-value", "--update-where-empty"
+            "--remove-errors", "--remove-empty-json", "--clean", "--use-prototype",
+            "--update-value", "--update-where-empty", "--remove-whitespace"
         };
         
         // Options that take arguments (need to skip the next arg)
