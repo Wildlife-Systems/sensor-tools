@@ -70,28 +70,27 @@ private:
     
     // Unique row filtering
     bool uniqueRows;
-    mutable std::unordered_set<size_t> seenHashes;  // mutable for const shouldInclude
+    mutable std::unordered_set<std::string> seenRows;  // mutable for const shouldInclude
     
     // Debug output
     int verbosity;
     
     /**
-     * Compute a hash of a reading for uniqueness checking.
-     * Uses all key-value pairs in sorted order for consistent hashing.
+     * Serialize a reading to a string for uniqueness checking.
+     * Uses all key-value pairs in sorted order for consistent comparison.
      */
-    static size_t hashReading(const Reading& reading) {
-        size_t hash = 0;
+    static std::string serializeReading(const Reading& reading) {
         // Sort keys for consistent ordering
         std::vector<std::pair<std::string, std::string>> pairs(reading.begin(), reading.end());
         std::sort(pairs.begin(), pairs.end());
+        std::string result;
         for (size_t i = 0; i < pairs.size(); ++i) {
-            const std::string& key = pairs[i].first;
-            const std::string& value = pairs[i].second;
-            // Combine hashes using a simple mixing function
-            hash ^= std::hash<std::string>{}(key) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-            hash ^= std::hash<std::string>{}(value) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            if (i > 0) result += '\x1f';  // unit separator
+            result += pairs[i].first;
+            result += '\x1e';  // record separator
+            result += pairs[i].second;
         }
-        return hash;
+        return result;
     }
 
 public:
@@ -167,7 +166,7 @@ public:
     }
     
     void clearSeenRows() {
-        seenHashes.clear();
+        seenRows.clear();
     }
     
     // Update rule methods
@@ -326,14 +325,14 @@ public:
         
         // Check uniqueness if enabled and reading passes other filters
         if (result && uniqueRows) {
-            size_t hash = hashReading(reading);
-            if (seenHashes.count(hash) > 0) {
+            std::string serialized = serializeReading(reading);
+            if (seenRows.count(serialized) > 0) {
                 if (verbosity >= 2) {
                     std::cerr << "  Skipping row: duplicate" << std::endl;
                 }
                 return false;
             }
-            seenHashes.insert(hash);
+            seenRows.insert(serialized);
         }
         
         return result;
