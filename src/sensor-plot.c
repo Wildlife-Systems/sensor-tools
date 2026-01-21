@@ -478,6 +478,7 @@ static int show_input_dialog_ex(const char *prompt, const char *hint, char *buf,
 }
 
 /* Wrapper for simple confirm/cancel dialog */
+__attribute__((unused))
 static int show_input_dialog(const char *prompt, char *buf, size_t buflen)
 {
     int result = show_input_dialog_ex(prompt, "[Enter=confirm, Esc=cancel]", buf, buflen);
@@ -577,6 +578,7 @@ static int show_datetime_picker(void)
 }
 
 /* Parse year and set window to show entire year */
+__attribute__((unused))
 static int goto_year(int year)
 {
     if (year < 1970 || year > 2100) return 0;
