@@ -115,7 +115,7 @@ namespace DateUtils {
     
     // Check if timestamp is within date range
     inline bool isInDateRange(long long timestamp, long long minDate, long long maxDate) {
-        if (timestamp == 0) return true;  // No timestamp, include by default
+        if (timestamp == 0) return false;  // No timestamp, exclude when date filter is active
         if (minDate > 0 && timestamp < minDate) return false;
         if (maxDate > 0 && timestamp > maxDate) return false;
         return true;
