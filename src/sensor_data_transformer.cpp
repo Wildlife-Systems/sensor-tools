@@ -593,8 +593,8 @@ void SensorDataTransformer::printListRejectsUsage(const char* progName) {
     std::cerr << "  --remove-errors           List error readings (DS18B20 value=85 or -127)" << std::endl;
     std::cerr << "  --remove-empty-json       List empty JSON input lines" << std::endl;
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
-    std::cerr << "  --min-date <date>         List readings before this date" << std::endl;
-    std::cerr << "  --max-date <date>         List readings after this date" << std::endl;
+    std::cerr << "  --min-date <date>         List readings after this date" << std::endl;
+    std::cerr << "  --max-date <date>         List readings before this date" << std::endl;
     std::cerr << "  --update-value <match> <target>" << std::endl;
     std::cerr << "                            Update target column when match column has value" << std::endl;
     std::cerr << "  --update-where-empty <match> <target>" << std::endl;
