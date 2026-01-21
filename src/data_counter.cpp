@@ -272,8 +272,8 @@ void DataCounter::count() {
             return {count, localValueCounts};
         };
         
-        auto combineResults = [this](std::pair<long long, std::unordered_map<std::string, long long>>& acc, 
-                                     const std::pair<long long, std::unordered_map<std::string, long long>>& result) {
+        auto combineResults = [](std::pair<long long, std::unordered_map<std::string, long long>>& acc, 
+                                 const std::pair<long long, std::unordered_map<std::string, long long>>& result) {
             auto& [accCount, accCounts] = acc;
             const auto& [resCount, resCounts] = result;
             accCount += resCount;
