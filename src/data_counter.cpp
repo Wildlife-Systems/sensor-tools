@@ -128,7 +128,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
 
 // ===== Constructor =====
 
-DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), byMonth(false), outputFormat("human") {
+DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), byMonth(false), outputFormat("human"), outputFile("") {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -158,6 +158,10 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn("
                 std::cerr << "Error: --output-format must be 'human', 'csv', or 'json'" << std::endl;
                 exit(1);
             }
+            i++; // Skip the value
+            continue;
+        } else if ((arg == "--output" || arg == "-o") && i + 1 < argc) {
+            outputFile = argv[i + 1];
             i++; // Skip the value
             continue;
         }
@@ -218,6 +222,18 @@ void DataCounter::count() {
         );
     }
 
+    // Set up output stream (file or stdout)
+    std::ofstream fileStream;
+    std::ostream* out = &std::cout;
+    if (!outputFile.empty()) {
+        fileStream.open(outputFile);
+        if (!fileStream) {
+            std::cerr << "Error: Cannot open output file '" << outputFile << "'" << std::endl;
+            return;
+        }
+        out = &fileStream;
+    }
+
     if (!byColumn.empty() || byMonth) {
         // Convert to vector and sort
         std::vector<std::pair<std::string, long long>> results(valueCounts.begin(), valueCounts.end());
@@ -239,25 +255,25 @@ void DataCounter::count() {
         std::string columnLabel = byMonth ? "month" : byColumn;
         
         if (outputFormat == "json") {
-            std::cout << "[";
+            *out << "[";
             bool first = true;
             for (const auto& pair : results) {
-                if (!first) std::cout << ",";
+                if (!first) *out << ",";
                 first = false;
-                std::cout << "{\"" << columnLabel << "\":\"" << pair.first 
-                          << "\",\"count\":" << pair.second << "}";
+                *out << "{\"" << columnLabel << "\":\"" << pair.first 
+                     << "\",\"count\":" << pair.second << "}";
             }
-            std::cout << "]\n";
+            *out << "]\n";
         } else if (outputFormat == "csv") {
-            std::cout << columnLabel << ",count\n";
+            *out << columnLabel << ",count\n";
             for (const auto& pair : results) {
-                std::cout << pair.first << "," << pair.second << "\n";
+                *out << pair.first << "," << pair.second << "\n";
             }
         } else {
             // Human-readable format (default) - simple two-column output for byMonth
             if (byMonth) {
                 for (const auto& pair : results) {
-                    std::cout << pair.first << "\t" << pair.second << "\n";
+                    *out << pair.first << "\t" << pair.second << "\n";
                 }
             } else {
                 // Find max value width for alignment
@@ -266,24 +282,29 @@ void DataCounter::count() {
                     maxValueWidth = std::max(maxValueWidth, pair.first.length());
                 }
                 
-                std::cout << "Counts by " << columnLabel << ":\n\n";
-                std::cout << std::left;
-                std::cout.width(maxValueWidth + 2);
-                std::cout << columnLabel;
-                std::cout << "Count\n";
-                std::cout << std::string(maxValueWidth + 2 + 10, '-') << "\n";
+                *out << "Counts by " << columnLabel << ":\n\n";
+                *out << std::left;
+                out->width(maxValueWidth + 2);
+                *out << columnLabel;
+                *out << "Count\n";
+                *out << std::string(maxValueWidth + 2 + 10, '-') << "\n";
                 
                 for (const auto& pair : results) {
-                    std::cout.width(maxValueWidth + 2);
-                    std::cout << pair.first;
-                    std::cout << pair.second << "\n";
+                    out->width(maxValueWidth + 2);
+                    *out << pair.first;
+                    *out << pair.second << "\n";
                 }
                 
-                std::cout << "\nTotal: " << totalCount << " reading(s)\n";
+                *out << "\nTotal: " << totalCount << " reading(s)\n";
             }
         }
     } else {
-        std::cout << totalCount << std::endl;
+        *out << totalCount << std::endl;
+    }
+
+    if (!outputFile.empty()) {
+        fileStream.close();
+        std::cerr << "Output written to: " << outputFile << std::endl;
     }
 }
 
@@ -296,6 +317,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "Accepts the same filtering options as 'transform'." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
+    std::cerr << "  -o, --output <file>       Write output to file instead of stdout" << std::endl;
     std::cerr << "  -if, --input-format <fmt> Input format for stdin: json or csv (default: json)" << std::endl;
     std::cerr << "  -of, --output-format <fmt> Output format: human (default), csv, or json" << std::endl;
     std::cerr << "  -f, --follow              Follow mode: continuously monitor file/stdin for new data" << std::endl;
