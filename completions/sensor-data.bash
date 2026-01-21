@@ -15,14 +15,15 @@ _sensor_data() {
         cword=$COMP_CWORD
     fi
 
-    local commands="transform count list-errors summarise-errors stats latest"
+    local commands="transform count distinct list-errors summarise-errors stats latest"
     
     # Common options for all commands
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
     local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty"
-    local count_opts="-f --follow --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local count_opts="-f --follow -b --by-column --by-month --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json"
+    local distinct_opts="-c --counts -of --output-format --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --clean"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
     local stats_opts="-f --follow --tail --tail-column-value -o --output --column --group-by"
@@ -33,7 +34,7 @@ _sensor_data() {
     local i
     for ((i=1; i < cword; i++)); do
         case "${words[i]}" in
-            transform|count|list-errors|summarise-errors|stats|latest)
+            transform|count|distinct|list-errors|summarise-errors|stats|latest)
                 cmd="${words[i]}"
                 break
                 ;;
@@ -107,6 +108,9 @@ _sensor_data() {
                 ;;
             count)
                 COMPREPLY=($(compgen -W "$common_opts $count_opts" -- "$cur"))
+                ;;
+            distinct)
+                COMPREPLY=($(compgen -W "$common_opts $distinct_opts" -- "$cur"))
                 ;;
             list-errors)
                 COMPREPLY=($(compgen -W "$common_opts $list_errors_opts" -- "$cur"))

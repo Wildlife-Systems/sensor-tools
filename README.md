@@ -128,14 +128,19 @@ sensor-data count --by-column sensor_id input.out
 sensor-data count -b sensor_id -of csv input.out
 sensor-data count -b sensor_id -of json input.out
 
+# Count by month (ascending order)
+sensor-data count --by-month input.out
+sensor-data count --by-month -of csv input.out
+
 # Count recursively
 sensor-data count -r -e .out /path/to/logs/
 ```
 
 **Options:**
 - `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
-- `-of, --output-format <format>` - Output format: `human`, `csv`, or `json` (for --by-column)
+- `-of, --output-format <format>` - Output format: `human`, `csv`, or `json` (for --by-column/--by-month)
 - `-b, --by-column <column>` - Show counts per value in the specified column
+- `--by-month` - Show counts per month (YYYY-MM format, ascending order)
 - `-f, --follow` - Follow mode: continuously read stdin and update count
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)

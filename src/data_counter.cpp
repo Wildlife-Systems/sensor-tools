@@ -4,12 +4,25 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <map>
+#include <ctime>
 
 #include "csv_parser.h"
 #include "json_parser.h"
 #include "file_utils.h"
 #include "file_collector.h"
 #include "data_reader.h"
+
+// Helper to extract YYYY-MM from a timestamp
+static std::string timestampToMonth(long long timestamp) {
+    if (timestamp <= 0) return "(no-date)";
+    time_t t = static_cast<time_t>(timestamp);
+    struct tm* tm_info = gmtime(&t);
+    if (!tm_info) return "(invalid)";
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%04d-%02d", tm_info->tm_year + 1900, tm_info->tm_mon + 1);
+    return std::string(buf);
+}
 
 // ===== Private methods =====
 
@@ -30,10 +43,15 @@ long long DataCounter::countFromFile(const std::string& filename) {
             std::string value = (it != reading.end()) ? it->second : "(missing)";
             localValueCounts[value]++;
         }
+        if (byMonth) {
+            long long ts = DateUtils::getTimestamp(reading);
+            std::string month = timestampToMonth(ts);
+            localValueCounts[month]++;
+        }
     });
 
     // Merge local counts into shared valueCounts with mutex
-    if (!byColumn.empty() && !localValueCounts.empty()) {
+    if ((!byColumn.empty() || byMonth) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
         for (const auto& pair : localValueCounts) {
             valueCounts[pair.first] += pair.second;
@@ -61,10 +79,15 @@ long long DataCounter::countFromStdin() {
             std::string value = (it != reading.end()) ? it->second : "(missing)";
             localValueCounts[value]++;
         }
+        if (byMonth) {
+            long long ts = DateUtils::getTimestamp(reading);
+            std::string month = timestampToMonth(ts);
+            localValueCounts[month]++;
+        }
     });
 
     // Merge local counts into shared valueCounts with mutex
-    if (!byColumn.empty() && !localValueCounts.empty()) {
+    if ((!byColumn.empty() || byMonth) && !localValueCounts.empty()) {
         std::lock_guard<std::mutex> lock(valueCountsMutex);
         for (const auto& pair : localValueCounts) {
             valueCounts[pair.first] += pair.second;
@@ -101,7 +124,7 @@ void DataCounter::countFromFileFollow(const std::string& filename) {
 
 // ===== Constructor =====
 
-DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), outputFormat("human") {
+DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn(""), byMonth(false), outputFormat("human") {
     // Check for help flag first
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -117,6 +140,9 @@ DataCounter::DataCounter(int argc, char* argv[]) : followMode(false), byColumn("
         std::string arg = argv[i];
         if (arg == "--follow" || arg == "-f") {
             followMode = true;
+            continue;
+        } else if (arg == "--by-month") {
+            byMonth = true;
             continue;
         } else if ((arg == "--by-column" || arg == "-b") && i + 1 < argc) {
             byColumn = argv[i + 1];
@@ -188,13 +214,25 @@ void DataCounter::count() {
         );
     }
 
-    if (!byColumn.empty()) {
-        // Convert to vector and sort by count descending
+    if (!byColumn.empty() || byMonth) {
+        // Convert to vector and sort
         std::vector<std::pair<std::string, long long>> results(valueCounts.begin(), valueCounts.end());
-        std::sort(results.begin(), results.end(), 
-            [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) {
-                return a.second > b.second;  // Sort by count descending
-            });
+        
+        if (byMonth) {
+            // Sort by month ascending (YYYY-MM sorts correctly as string)
+            std::sort(results.begin(), results.end(), 
+                [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) {
+                    return a.first < b.first;
+                });
+        } else {
+            // Sort by count descending
+            std::sort(results.begin(), results.end(), 
+                [](const std::pair<std::string, long long>& a, const std::pair<std::string, long long>& b) {
+                    return a.second > b.second;
+                });
+        }
+        
+        std::string columnLabel = byMonth ? "month" : byColumn;
         
         if (outputFormat == "json") {
             std::cout << "[";
@@ -202,37 +240,43 @@ void DataCounter::count() {
             for (const auto& pair : results) {
                 if (!first) std::cout << ",";
                 first = false;
-                std::cout << "{\"" << byColumn << "\":\"" << pair.first 
+                std::cout << "{\"" << columnLabel << "\":\"" << pair.first 
                           << "\",\"count\":" << pair.second << "}";
             }
             std::cout << "]\n";
         } else if (outputFormat == "csv") {
-            std::cout << byColumn << ",count\n";
+            std::cout << columnLabel << ",count\n";
             for (const auto& pair : results) {
                 std::cout << pair.first << "," << pair.second << "\n";
             }
         } else {
-            // Human-readable format (default)
-            // Find max value width for alignment
-            size_t maxValueWidth = byColumn.length();
-            for (const auto& pair : results) {
-                maxValueWidth = std::max(maxValueWidth, pair.first.length());
-            }
-            
-            std::cout << "Counts by " << byColumn << ":\n\n";
-            std::cout << std::left;
-            std::cout.width(maxValueWidth + 2);
-            std::cout << byColumn;
-            std::cout << "Count\n";
-            std::cout << std::string(maxValueWidth + 2 + 10, '-') << "\n";
-            
-            for (const auto& pair : results) {
+            // Human-readable format (default) - simple two-column output for byMonth
+            if (byMonth) {
+                for (const auto& pair : results) {
+                    std::cout << pair.first << "\t" << pair.second << "\n";
+                }
+            } else {
+                // Find max value width for alignment
+                size_t maxValueWidth = columnLabel.length();
+                for (const auto& pair : results) {
+                    maxValueWidth = std::max(maxValueWidth, pair.first.length());
+                }
+                
+                std::cout << "Counts by " << columnLabel << ":\n\n";
+                std::cout << std::left;
                 std::cout.width(maxValueWidth + 2);
-                std::cout << pair.first;
-                std::cout << pair.second << "\n";
+                std::cout << columnLabel;
+                std::cout << "Count\n";
+                std::cout << std::string(maxValueWidth + 2 + 10, '-') << "\n";
+                
+                for (const auto& pair : results) {
+                    std::cout.width(maxValueWidth + 2);
+                    std::cout << pair.first;
+                    std::cout << pair.second << "\n";
+                }
+                
+                std::cout << "\nTotal: " << totalCount << " reading(s)\n";
             }
-            
-            std::cout << "\nTotal: " << totalCount << " reading(s)\n";
         }
     } else {
         std::cout << totalCount << std::endl;
@@ -252,6 +296,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  -of, --output-format <fmt> Output format: human (default), csv, or json" << std::endl;
     std::cerr << "  -f, --follow              Follow mode: continuously monitor file/stdin for new data" << std::endl;
     std::cerr << "  -b, --by-column <col>     Show counts per value in the specified column" << std::endl;
+    std::cerr << "  --by-month                Show counts per month (YYYY-MM format, ascending)" << std::endl;
     std::cerr << "  -r, --recursive           Recursively process subdirectories" << std::endl;
     std::cerr << "  -v                        Verbose output (show progress)" << std::endl;
     std::cerr << "  -V                        Very verbose output (show detailed progress)" << std::endl;
@@ -279,6 +324,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  " << progName << " count --allowed-values sensor_id allowed_sensors.txt sensor1.out" << std::endl;
     std::cerr << "  " << progName << " count --clean sensor.out  # exclude empty values" << std::endl;
     std::cerr << "  " << progName << " count --by-column sensor sensor1.out  # count per sensor" << std::endl;
+    std::cerr << "  " << progName << " count --by-month -r -e out /path/to/logs  # count per month" << std::endl;
     std::cerr << "  " << progName << " count --follow sensor.out" << std::endl;
     std::cerr << "  tail -f sensor.out | " << progName << " count --follow" << std::endl;
 }

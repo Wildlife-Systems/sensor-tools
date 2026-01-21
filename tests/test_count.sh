@@ -900,6 +900,93 @@ else
     echo "  ⊘ SKIP (timeout command not available)"
 fi
 
+# Test: --by-month basic functionality
+echo ""
+echo "Test: --by-month counts by month"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1706745600, "value": 3}'
+# 1704067200 = 2024-01-01, 1704153600 = 2024-01-02, 1706745600 = 2024-02-01
+result=$(echo "$input" | ./sensor-data count --by-month)
+if echo "$result" | grep -q "2024-01" && echo "$result" | grep -q "2024-02"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected output containing 2024-01 and 2024-02"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-month ascending order
+echo ""
+echo "Test: --by-month output is in ascending order"
+input='{"timestamp": 1706745600, "value": 1}
+{"timestamp": 1704067200, "value": 2}
+{"timestamp": 1709424000, "value": 3}'
+# 1704067200 = 2024-01, 1706745600 = 2024-02, 1709424000 = 2024-03
+result=$(echo "$input" | ./sensor-data count --by-month)
+first_month=$(echo "$result" | head -1 | awk '{print $1}')
+if [ "$first_month" = "2024-01" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected first month to be 2024-01"
+    echo "  Got first line: $first_month"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-month with CSV output
+echo ""
+echo "Test: --by-month with CSV output format"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}'
+result=$(echo "$input" | ./sensor-data count --by-month -of csv)
+header=$(echo "$result" | head -1)
+if [ "$header" = "month,count" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected header: month,count"
+    echo "  Got: $header"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-month with JSON output
+echo ""
+echo "Test: --by-month with JSON output format"
+input='{"timestamp": 1704067200, "value": 1}'
+result=$(echo "$input" | ./sensor-data count --by-month -of json)
+if echo "$result" | grep -q '"month"' && echo "$result" | grep -q '"count"'; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected JSON with month and count keys"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --by-month counts correctly
+echo ""
+echo "Test: --by-month counts correct number per month"
+input='{"timestamp": 1704067200, "value": 1}
+{"timestamp": 1704153600, "value": 2}
+{"timestamp": 1706745600, "value": 3}'
+# 2 readings in 2024-01, 1 reading in 2024-02
+result=$(echo "$input" | ./sensor-data count --by-month -of csv | grep "2024-01" | cut -d',' -f2)
+if [ "$result" = "2" ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL"
+    echo "  Expected 2024-01 count to be 2"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
 # Summary
 echo ""
 echo "================================"

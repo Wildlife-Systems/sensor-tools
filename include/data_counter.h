@@ -25,6 +25,7 @@ class DataCounter : public CommandBase {
 private:
     bool followMode;  // --follow flag for continuous monitoring
     std::string byColumn;  // --by-column for counts per value
+    bool byMonth;  // --by-month for counts per month
     std::string outputFormat;  // --output-format: human, csv, json
     std::unordered_map<std::string, long long> valueCounts;  // counts per column value
     std::mutex valueCountsMutex;  // mutex for thread-safe access to valueCounts

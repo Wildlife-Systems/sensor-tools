@@ -29,6 +29,10 @@ Accepts the same options as transform.
 Count sensor data readings that match the specified filters.
 Outputs a single number representing the count of matching readings.
 .TP
+.B distinct
+List unique values in a specified column.
+Outputs each distinct value found, optionally with counts.
+.TP
 .B list\-errors
 List error readings in sensor data files.
 Detects DS18B20 sensors with temperature/value of 85 or \-127 (error conditions).
@@ -138,10 +142,13 @@ Useful for adding default values without overwriting existing data.
 Input format for stdin: json or csv (default: json).
 .TP
 .BR \-of ", " \-\-output\-format " " \fIfmt\fR
-Output format: human (default), csv, or json. Only applies when using \-\-by\-column.
+Output format: human (default), csv, or json. Only applies when using \-\-by\-column or \-\-by\-month.
 .TP
 .BR \-b ", " \-\-by\-column " " \fIcolumn\fR
 Show counts per value in the specified column instead of total count.
+.TP
+.B \-\-by\-month
+Show counts per month in YYYY-MM format, sorted ascending by date.
 .TP
 .BR \-f ", " \-\-follow
 Follow mode: continuously read input and update count (stdin or single file).
@@ -198,6 +205,40 @@ Only read the last n lines from each file (useful for quick checks on large file
 .TP
 .BI \-\-tail\-column\-value " col:val" " n"
 Return last n rows where the specified column equals value.
+.SH DISTINCT OPTIONS
+.TP
+.I column
+The column name to get distinct values from (required, first positional argument).
+.TP
+.BR \-c ", " \-\-counts
+Include count for each unique value, sorted by frequency descending.
+.TP
+.BR \-of ", " \-\-output\-format " " \fIfmt\fR
+Output format: plain (default), csv, or json.
+.TP
+.BR \-if ", " \-\-input\-format " " \fIfmt\fR
+Input format for stdin: json or csv (default: json).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively process subdirectories.
+.TP
+.B \-v
+Verbose output.
+.TP
+.BR \-e ", " \-\-extension " " \fIext\fR
+Filter files by extension.
+.TP
+.BR \-d ", " \-\-depth " " \fIn\fR
+Maximum recursion depth.
+.TP
+.BI \-\-only\-value " col:val"
+Only include rows where column has specific value.
+.TP
+.BI \-\-exclude\-value " col:val"
+Exclude rows where column has specific value.
+.TP
+.B \-\-clean
+Shorthand for \-\-remove\-empty\-json \-\-not\-empty value \-\-remove\-errors.
 .SH LIST\-ERRORS AND SUMMARISE\-ERRORS OPTIONS
 .TP
 .BR \-if ", " \-\-input\-format " " \fIfmt\fR
@@ -373,6 +414,24 @@ Get clean statistics (exclude empty values and errors):
 .PP
 .RS
 sensor\-data stats \-\-clean sensor1.out
+.RE
+.PP
+List distinct sensor names:
+.PP
+.RS
+sensor\-data distinct sensor sensor1.out
+.RE
+.PP
+List distinct sensor IDs with counts:
+.PP
+.RS
+sensor\-data distinct sensor_id \-c \-r \-e out /path/to/logs/
+.RE
+.PP
+Count readings per month:
+.PP
+.RS
+sensor\-data count \-\-by\-month \-r \-e out /path/to/logs/
 .RE
 .SH EXIT STATUS
 .TP
