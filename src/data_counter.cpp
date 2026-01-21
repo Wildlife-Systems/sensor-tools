@@ -17,10 +17,14 @@
 static std::string timestampToMonth(long long timestamp) {
     if (timestamp <= 0) return "(no-date)";
     time_t t = static_cast<time_t>(timestamp);
-    struct tm* tm_info = gmtime(&t);
-    if (!tm_info) return "(invalid)";
+    struct tm tm_info;
+#ifdef _WIN32
+    gmtime_s(&tm_info, &t);
+#else
+    gmtime_r(&t, &tm_info);
+#endif
     char buf[32];  // YYYY-MM + null, extra space for large years
-    snprintf(buf, sizeof(buf), "%04d-%02d", tm_info->tm_year + 1900, tm_info->tm_mon + 1);
+    snprintf(buf, sizeof(buf), "%04d-%02d", tm_info.tm_year + 1900, tm_info.tm_mon + 1);
     return std::string(buf);
 }
 
