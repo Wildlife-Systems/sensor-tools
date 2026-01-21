@@ -19,7 +19,7 @@ static std::string timestampToMonth(long long timestamp) {
     time_t t = static_cast<time_t>(timestamp);
     struct tm* tm_info = gmtime(&t);
     if (!tm_info) return "(invalid)";
-    char buf[16];  // YYYY-MM + null, with extra space for safety
+    char buf[32];  // YYYY-MM + null, extra space for large years
     snprintf(buf, sizeof(buf), "%04d-%02d", tm_info->tm_year + 1900, tm_info->tm_mon + 1);
     return std::string(buf);
 }
