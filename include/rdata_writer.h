@@ -158,8 +158,6 @@ private:
     void writeDouble(double val);
     
     // Compression and file output
-    static bool writeGzipFile(const std::string& filename, const std::string& data);
-    static bool writeUncompressedFile(const std::string& filename, const std::string& data);
     
     // R serialization methods
     void writeHeader(int type, int flags = 0);

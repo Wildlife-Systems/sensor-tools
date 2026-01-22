@@ -41,47 +41,6 @@ void RDataWriter::reset() {
     refTable.clear();
 }
 
-// ===== Compression methods =====
-
-bool RDataWriter::writeGzipFile(const std::string& filename, const std::string& data) {
-    gzFile gz = gzopen(filename.c_str(), "wb6");  // wb6 = write binary, good compression/speed balance
-    if (!gz) {
-        std::cerr << "Error: Cannot create gzip file: " << filename << std::endl;
-        return false;
-    }
-    
-    // Write in chunks to handle large data
-    const size_t CHUNK_SIZE = 1024 * 1024;  // 1MB chunks
-    size_t offset = 0;
-    
-    while (offset < data.size()) {
-        size_t toWrite = std::min(CHUNK_SIZE, data.size() - offset);
-        int written = gzwrite(gz, data.data() + offset, static_cast<unsigned>(toWrite));
-        if (written <= 0) {
-            int errnum;
-            const char* errMsg = gzerror(gz, &errnum);
-            if (errnum != Z_OK) {
-                std::cerr << "Error: gzwrite failed: " << errMsg << std::endl;
-            }
-            gzclose(gz);
-            return false;
-        }
-        offset += static_cast<size_t>(written);
-    }
-    
-    gzclose(gz);
-    return true;
-}
-
-bool RDataWriter::writeUncompressedFile(const std::string& filename, const std::string& data) {
-    std::ofstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error: Cannot create file: " << filename << std::endl;
-        return false;
-    }
-    file.write(data.data(), data.size());
-    return file.good();
-}
 
 // ===== Utility methods =====
 
