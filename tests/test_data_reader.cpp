@@ -439,6 +439,146 @@ void test_combined_filters() {
     std::cout << "[PASS] test_combined_filters" << std::endl;
 }
 
+// ===== Tail Column Value Tests =====
+
+void test_tail_column_value_json_basic() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"10\"}\n"
+        "{\"sensor_id\":\"s2\",\"value\":\"20\"}\n"
+        "{\"sensor_id\":\"s1\",\"value\":\"30\"}\n"
+        "{\"sensor_id\":\"s2\",\"value\":\"40\"}\n"
+        "{\"sensor_id\":\"s1\",\"value\":\"50\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setTailColumnValue("sensor_id", "s1", 2);  // Last 2 rows where sensor_id=s1
+    
+    std::vector<std::string> values;
+    reader.processFile(file.path, [&](const Reading& r, int, const std::string&) {
+        auto it = r.find("value");
+        if (it != r.end()) values.push_back(it->second);
+    });
+    
+    assert(values.size() == 2);
+    assert(values[0] == "30");  // Second to last s1
+    assert(values[1] == "50");  // Last s1
+    std::cout << "[PASS] test_tail_column_value_json_basic" << std::endl;
+}
+
+void test_tail_column_value_csv_basic() {
+    TempFile file(
+        "sensor_id,value\n"
+        "s1,10\n"
+        "s2,20\n"
+        "s1,30\n"
+        "s2,40\n"
+        "s1,50\n",
+        ".csv"
+    );
+    
+    DataReader reader(0, "csv");
+    reader.setTailColumnValue("sensor_id", "s1", 2);  // Last 2 rows where sensor_id=s1
+    
+    std::vector<std::string> values;
+    reader.processFile(file.path, [&](const Reading& r, int, const std::string&) {
+        auto it = r.find("value");
+        if (it != r.end()) values.push_back(it->second);
+    });
+    
+    assert(values.size() == 2);
+    assert(values[0] == "30");  // Second to last s1
+    assert(values[1] == "50");  // Last s1
+    std::cout << "[PASS] test_tail_column_value_csv_basic" << std::endl;
+}
+
+void test_tail_column_value_fewer_matches() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"10\"}\n"
+        "{\"sensor_id\":\"s2\",\"value\":\"20\"}\n"
+        "{\"sensor_id\":\"s1\",\"value\":\"30\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setTailColumnValue("sensor_id", "s1", 10);  // Request 10, but only 2 exist
+    
+    std::vector<std::string> values;
+    reader.processFile(file.path, [&](const Reading& r, int, const std::string&) {
+        auto it = r.find("value");
+        if (it != r.end()) values.push_back(it->second);
+    });
+    
+    assert(values.size() == 2);  // Only 2 s1 rows exist
+    assert(values[0] == "10");
+    assert(values[1] == "30");
+    std::cout << "[PASS] test_tail_column_value_fewer_matches" << std::endl;
+}
+
+void test_tail_column_value_no_matches() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"value\":\"10\"}\n"
+        "{\"sensor_id\":\"s2\",\"value\":\"20\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setTailColumnValue("sensor_id", "s3", 5);  // s3 doesn't exist
+    
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+    
+    assert(count == 0);  // No matches
+    std::cout << "[PASS] test_tail_column_value_no_matches" << std::endl;
+}
+
+void test_tail_column_value_with_filter() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"10\"}\n"
+        "{\"sensor_id\":\"s1\",\"status\":\"error\",\"value\":\"20\"}\n"
+        "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"30\"}\n"
+        "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"40\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setTailColumnValue("sensor_id", "s1", 2);
+    reader.getFilter().addExcludeValueFilter("status", "error");  // Exclude errors
+    
+    std::vector<std::string> values;
+    reader.processFile(file.path, [&](const Reading& r, int, const std::string&) {
+        auto it = r.find("value");
+        if (it != r.end()) values.push_back(it->second);
+    });
+    
+    assert(values.size() == 2);
+    assert(values[0] == "30");  // Last 2 active s1 rows
+    assert(values[1] == "40");
+    std::cout << "[PASS] test_tail_column_value_with_filter" << std::endl;
+}
+
+void test_tail_column_value_chronological_order() {
+    TempFile file(
+        "{\"sensor_id\":\"s1\",\"timestamp\":\"100\"}\n"
+        "{\"sensor_id\":\"s1\",\"timestamp\":\"200\"}\n"
+        "{\"sensor_id\":\"s1\",\"timestamp\":\"300\"}\n"
+    );
+    
+    DataReader reader(0, "json");
+    reader.setTailColumnValue("sensor_id", "s1", 3);
+    
+    std::vector<std::string> timestamps;
+    reader.processFile(file.path, [&](const Reading& r, int, const std::string&) {
+        auto it = r.find("timestamp");
+        if (it != r.end()) timestamps.push_back(it->second);
+    });
+    
+    assert(timestamps.size() == 3);
+    // Should be in chronological order (100, 200, 300), not reverse
+    assert(timestamps[0] == "100");
+    assert(timestamps[1] == "200");
+    assert(timestamps[2] == "300");
+    std::cout << "[PASS] test_tail_column_value_chronological_order" << std::endl;
+}
+
 int main() {
     std::cout << "================================" << std::endl;
     std::cout << "DataReader Unit Tests" << std::endl;
@@ -481,6 +621,14 @@ int main() {
     test_remove_errors_filter();
     test_unique_rows_filter();
     test_combined_filters();
+    
+    // Tail column value
+    test_tail_column_value_json_basic();
+    test_tail_column_value_csv_basic();
+    test_tail_column_value_fewer_matches();
+    test_tail_column_value_no_matches();
+    test_tail_column_value_with_filter();
+    test_tail_column_value_chronological_order();
     
     std::cout << "================================" << std::endl;
     std::cout << "All DataReader tests passed!" << std::endl;
