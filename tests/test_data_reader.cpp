@@ -332,7 +332,7 @@ void test_value_filter_include() {
     );
     
     DataReader reader(0, "json");
-    reader.addOnlyValueFilter("status", "active");
+    reader.getFilter().addOnlyValueFilter("status", "active");
     
     int count = 0;
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -351,7 +351,7 @@ void test_value_filter_exclude() {
     );
     
     DataReader reader(0, "json");
-    reader.addExcludeValueFilter("status", "error");
+    reader.getFilter().addExcludeValueFilter("status", "error");
     
     int count = 0;
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -370,7 +370,7 @@ void test_not_empty_filter() {
     );
     
     DataReader reader(0, "json");
-    reader.addNotEmptyColumn("value");
+    reader.getFilter().addNotEmptyColumn("value");
     
     int count = 0;
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -383,9 +383,9 @@ void test_not_empty_filter() {
 
 void test_remove_errors_filter() {
     TempFile file(
-        "{\"sensor_id\":\"s1\",\"temperature\":\"22.5\"}\n"
-        "{\"sensor_id\":\"s2\",\"temperature\":\"85\"}\n"  // error
-        "{\"sensor_id\":\"s3\",\"temperature\":\"24.0\"}\n"
+        "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s1\",\"temperature\":\"22.5\"}\n"
+        "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s2\",\"temperature\":\"85\"}\n"  // error
+        "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s3\",\"temperature\":\"24.0\"}\n"
     );
     
     DataReader reader(0, "json");
@@ -408,7 +408,7 @@ void test_unique_rows_filter() {
     );
     
     DataReader reader(0, "json");
-    reader.setUniqueRows(true);
+    reader.getFilter().setUniqueRows(true);
     
     int count = 0;
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
@@ -428,7 +428,7 @@ void test_combined_filters() {
     
     DataReader reader(0, "json");
     reader.setDateRange(200, 0);  // after 200
-    reader.addOnlyValueFilter("status", "active");
+    reader.getFilter().addOnlyValueFilter("status", "active");
     
     int count = 0;
     reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
