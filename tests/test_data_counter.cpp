@@ -54,8 +54,8 @@ public:
 void test_count_single_reading() {
     TempFile file("{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n");
     
-    const char* argv[] = {"sensor-data", "count", file.path.c_str()};
-    DataCounter counter(3, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", file.path.c_str()};
+    DataCounter counter(2, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -72,8 +72,8 @@ void test_count_multiple_readings() {
         "{\"sensor_id\":\"s3\",\"value\":\"24.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", file.path.c_str()};
-    DataCounter counter(3, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", file.path.c_str()};
+    DataCounter counter(2, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -86,8 +86,8 @@ void test_count_multiple_readings() {
 void test_count_empty_file() {
     TempFile file("");
     
-    const char* argv[] = {"sensor-data", "count", file.path.c_str()};
-    DataCounter counter(3, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", file.path.c_str()};
+    DataCounter counter(2, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -106,8 +106,8 @@ void test_count_with_date_filter() {
         "{\"sensor_id\":\"s3\",\"timestamp\":\"900\",\"value\":\"24.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--min-date", "400", "--max-date", "600", file.path.c_str()};
-    DataCounter counter(7, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--min-date", "400", "--max-date", "600", file.path.c_str()};
+    DataCounter counter(6, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -125,8 +125,8 @@ void test_count_with_value_filter() {
         "{\"sensor_id\":\"s3\",\"status\":\"active\",\"value\":\"24.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--only-value", "status:active", file.path.c_str()};
-    DataCounter counter(5, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--only-value", "status:active", file.path.c_str()};
+    DataCounter counter(4, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -144,8 +144,8 @@ void test_count_with_exclude_filter() {
         "{\"sensor_id\":\"s3\",\"status\":\"active\",\"value\":\"24.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--exclude-value", "status:error", file.path.c_str()};
-    DataCounter counter(5, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--exclude-value", "status:error", file.path.c_str()};
+    DataCounter counter(4, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -163,8 +163,8 @@ void test_count_with_remove_errors() {
         "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s3\",\"temperature\":\"24.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--remove-errors", file.path.c_str()};
-    DataCounter counter(4, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--remove-errors", file.path.c_str()};
+    DataCounter counter(3, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -185,8 +185,8 @@ void test_count_by_column() {
         "{\"sensor_id\":\"s4\",\"status\":\"active\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(7, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(6, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -207,8 +207,8 @@ void test_count_by_column_missing_values() {
         "{\"sensor_id\":\"s3\",\"status\":\"active\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(7, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(6, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -228,8 +228,8 @@ void test_count_by_day() {
         "{\"sensor_id\":\"s3\",\"timestamp\":\"1609545600\"}\n"  // 2021-01-02
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-day", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(6, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-day", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(5, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -247,8 +247,8 @@ void test_count_by_month() {
         "{\"sensor_id\":\"s3\",\"timestamp\":\"1612137600\"}\n"  // 2021-02
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-month", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(6, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-month", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(5, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -266,8 +266,8 @@ void test_count_by_year() {
         "{\"sensor_id\":\"s3\",\"timestamp\":\"1640995200\"}\n"  // 2022
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-year", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(6, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-year", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(5, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -284,8 +284,8 @@ void test_count_by_week() {
         "{\"sensor_id\":\"s2\",\"timestamp\":\"1609718400\"}\n"  // 2021-W01
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-week", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(6, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-week", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(5, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -304,8 +304,8 @@ void test_count_output_format_json() {
         "{\"sensor_id\":\"s2\",\"status\":\"active\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-column", "status", "--output-format", "json", file.path.c_str()};
-    DataCounter counter(7, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-column", "status", "--output-format", "json", file.path.c_str()};
+    DataCounter counter(6, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -324,8 +324,8 @@ void test_count_output_format_csv() {
         "{\"sensor_id\":\"s2\",\"status\":\"inactive\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
-    DataCounter counter(7, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--by-column", "status", "--output-format", "csv", file.path.c_str()};
+    DataCounter counter(6, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -351,8 +351,8 @@ void test_count_multiple_files() {
     f2 << "{\"sensor_id\":\"s2\",\"value\":\"23.0\"}\n{\"sensor_id\":\"s3\",\"value\":\"24.0\"}\n";
     f2.close();
     
-    const char* argv[] = {"sensor-data", "count", path1.c_str(), path2.c_str()};
-    DataCounter counter(4, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", path1.c_str(), path2.c_str()};
+    DataCounter counter(3, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -374,8 +374,8 @@ void test_count_unique() {
         "{\"sensor_id\":\"s2\",\"value\":\"23.0\"}\n"
     );
     
-    const char* argv[] = {"sensor-data", "count", "--unique", file.path.c_str()};
-    DataCounter counter(4, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--unique", file.path.c_str()};
+    DataCounter counter(3, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -396,8 +396,8 @@ void test_count_csv_input() {
         ".csv"
     );
     
-    const char* argv[] = {"sensor-data", "count", file.path.c_str()};
-    DataCounter counter(3, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", file.path.c_str()};
+    DataCounter counter(2, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
@@ -416,8 +416,8 @@ void test_count_not_empty() {
         "{\"sensor_id\":\"s3\"}\n"  // missing value
     );
     
-    const char* argv[] = {"sensor-data", "count", "--not-empty", "value", file.path.c_str()};
-    DataCounter counter(5, const_cast<char**>(argv));
+    const char* argv[] = {"sensor-data", "--not-empty", "value", file.path.c_str()};
+    DataCounter counter(4, const_cast<char**>(argv));
     
     CaptureStdout capture;
     counter.count();
