@@ -176,8 +176,8 @@ void test_json_scientific_notation() {
 void test_json_empty_object() {
     std::string line = R"({})";
     auto result = JsonParser::parseJsonLine(line);
-    assert(result.size() == 1);
-    assert(result[0].empty());
+    // Empty object produces no readings (nothing to record)
+    assert(result.size() == 0);
     std::cout << "[PASS] test_json_empty_object" << std::endl;
 }
 
