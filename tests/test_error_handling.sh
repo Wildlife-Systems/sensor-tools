@@ -409,8 +409,10 @@ fi
 # Test: identify command returns exit code 61
 echo ""
 echo "Test: identify command returns exit code 61"
+set +e
 ./sensor-data identify >/dev/null 2>&1
 exitcode=$?
+set -e
 if [ "$exitcode" -eq 61 ]; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
@@ -422,8 +424,10 @@ fi
 # Test: No arguments shows usage and returns 1
 echo ""
 echo "Test: No arguments shows usage and returns 1"
+set +e
 ./sensor-data >/dev/null 2>&1
 exitcode=$?
+set -e
 if [ "$exitcode" -eq 1 ]; then
     result=$(./sensor-data 2>&1) || true
     if echo "$result" | grep -qi "usage"; then
@@ -442,9 +446,11 @@ fi
 # Test: Unknown command shows error
 echo ""
 echo "Test: Unknown command shows error and returns 1"
+set +e
 ./sensor-data nonexistent-command >/dev/null 2>&1
 exitcode=$?
-result=$(./sensor-data nonexistent-command 2>&1) || true
+result=$(./sensor-data nonexistent-command 2>&1)
+set -e
 if [ "$exitcode" -eq 1 ] && echo "$result" | grep -qi "unknown command"; then
     echo "  ✓ PASS"
     PASSED=$((PASSED + 1))
