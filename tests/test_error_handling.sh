@@ -348,6 +348,233 @@ else
 fi
 
 # ============================================
+# VERSION AND HELP FLAGS
+# ============================================
+
+echo ""
+echo "--- Version and Help flags ---"
+
+# Test: --version shows version info
+echo ""
+echo "Test: --version shows version info"
+result=$(./sensor-data --version 2>&1) || true
+if echo "$result" | grep -q "sensor-data" && echo "$result" | grep -q "Copyright"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected version and copyright info"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: -V shows version info
+echo ""
+echo "Test: -V shows version info"
+result=$(./sensor-data -V 2>&1) || true
+if echo "$result" | grep -q "sensor-data" && echo "$result" | grep -q "Copyright"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected version and copyright info"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: --help shows usage info
+echo ""
+echo "Test: --help shows usage info"
+result=$(./sensor-data --help 2>&1) || true
+if echo "$result" | grep -qi "usage" && echo "$result" | grep -q "Commands"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected usage info"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: -h shows usage info
+echo ""
+echo "Test: -h shows usage info"
+result=$(./sensor-data -h 2>&1) || true
+if echo "$result" | grep -qi "usage" && echo "$result" | grep -q "Commands"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected usage info"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: identify command returns exit code 61
+echo ""
+echo "Test: identify command returns exit code 61"
+./sensor-data identify >/dev/null 2>&1
+exitcode=$?
+if [ "$exitcode" -eq 61 ]; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected exit code 61, got $exitcode"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: No arguments shows usage and returns 1
+echo ""
+echo "Test: No arguments shows usage and returns 1"
+./sensor-data >/dev/null 2>&1
+exitcode=$?
+if [ "$exitcode" -eq 1 ]; then
+    result=$(./sensor-data 2>&1) || true
+    if echo "$result" | grep -qi "usage"; then
+        echo "  ✓ PASS"
+        PASSED=$((PASSED + 1))
+    else
+        echo "  ✗ FAIL - Expected usage info"
+        echo "  Got: $result"
+        FAILED=$((FAILED + 1))
+    fi
+else
+    echo "  ✗ FAIL - Expected exit code 1, got $exitcode"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: Unknown command shows error
+echo ""
+echo "Test: Unknown command shows error and returns 1"
+./sensor-data nonexistent-command >/dev/null 2>&1
+exitcode=$?
+result=$(./sensor-data nonexistent-command 2>&1) || true
+if [ "$exitcode" -eq 1 ] && echo "$result" | grep -qi "unknown command"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected exit code 1 and 'unknown command' error"
+    echo "  Exit code: $exitcode"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# ============================================
+# --NOT-NULL TESTS
+# ============================================
+
+echo ""
+echo "--- --not-null argument handling ---"
+
+# Test: --not-null missing argument
+check_error "transform: --not-null missing argument" \
+    "echo '{}' | ./sensor-data transform --not-null" \
+    "requires an argument"
+
+# ============================================
+# --EXCLUDE-VALUE TESTS
+# ============================================
+
+echo ""
+echo "--- --exclude-value argument handling ---"
+
+# Test: --exclude-value missing argument
+check_error "transform: --exclude-value missing argument" \
+    "echo '{}' | ./sensor-data transform --exclude-value" \
+    "requires an argument"
+
+# Test: Invalid --exclude-value format (no colon)
+check_error "transform: Invalid --exclude-value format (no colon)" \
+    "echo '{}' | ./sensor-data transform --exclude-value sensorvalue" \
+    "format"
+
+# ============================================
+# --ALLOWED-VALUES TESTS
+# ============================================
+
+echo ""
+echo "--- --allowed-values argument handling ---"
+
+# Test: --allowed-values missing both arguments
+check_error "transform: --allowed-values missing arguments" \
+    "echo '{}' | ./sensor-data transform --allowed-values" \
+    "requires"
+
+# Test: --allowed-values missing values argument
+check_error "transform: --allowed-values missing values" \
+    "echo '{}' | ./sensor-data transform --allowed-values sensor" \
+    "requires"
+
+# ============================================
+# --TAIL TESTS
+# ============================================
+
+echo ""
+echo "--- --tail argument handling ---"
+
+# Test: --tail missing argument
+check_error "transform: --tail missing argument" \
+    "echo '{}' | ./sensor-data transform --tail" \
+    "requires"
+
+# Test: --tail with invalid value (non-numeric)
+check_error "transform: --tail with non-numeric value" \
+    "echo '{}' | ./sensor-data transform --tail abc" \
+    "invalid"
+
+# Test: --tail with non-positive value
+check_error "transform: --tail with non-positive value" \
+    "echo '{}' | ./sensor-data transform --tail 0" \
+    "positive"
+
+# Test: --tail with negative value
+check_error "transform: --tail with negative value" \
+    "echo '{}' | ./sensor-data transform --tail -5" \
+    "positive"
+
+# ============================================
+# SUBCOMMAND HELP TESTS
+# ============================================
+
+echo ""
+echo "--- Subcommand help tests ---"
+
+# Test: distinct --help shows distinct usage
+echo ""
+echo "Test: distinct --help shows distinct usage"
+result=$(./sensor-data distinct --help 2>&1) || true
+if echo "$result" | grep -q "distinct"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected distinct help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: list-errors --help shows list-errors usage
+echo ""
+echo "Test: list-errors --help shows list-errors usage"
+result=$(./sensor-data list-errors --help 2>&1) || true
+if echo "$result" | grep -q "list-errors"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected list-errors help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test: summarise-errors --help shows summarise-errors usage
+echo ""
+echo "Test: summarise-errors --help shows summarise-errors usage"
+result=$(./sensor-data summarise-errors --help 2>&1) || true
+if echo "$result" | grep -q "summarise-errors"; then
+    echo "  ✓ PASS"
+    PASSED=$((PASSED + 1))
+else
+    echo "  ✗ FAIL - Expected summarise-errors help text"
+    echo "  Got: $result"
+    FAILED=$((FAILED + 1))
+fi
+
+# ============================================
 # SUMMARY
 # ============================================
 
