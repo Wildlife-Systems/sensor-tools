@@ -40,6 +40,7 @@ else ifeq ($(UNAME_S),Darwin)
     TARGET_EXT =
 else
     # Linux and other POSIX
+    LDFLAGS += -static
     LDFLAGS_NCURSES = -lncurses
     TARGET_MON_EXT =
     TARGET_EXT =
