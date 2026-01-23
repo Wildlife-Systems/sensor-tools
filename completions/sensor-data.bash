@@ -21,13 +21,13 @@ _sensor_data() {
     local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
     
     # Command-specific options
-    local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --only-value --exclude-value --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty --unique --clean"
-    local count_opts="-o --output -f --follow -b --by-column --by-day --by-week --by-month --by-year --tail --tail-column-value --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --unique --clean"
-    local distinct_opts="-c --counts -of --output-format --not-empty --only-value --exclude-value --remove-errors --remove-empty-json --clean --unique"
+    local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --not-null --only-value --exclude-value --allowed-values --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty --unique --clean"
+    local count_opts="-o --output -of --output-format -f --follow -b --by-column --by-day --by-week --by-month --by-year --tail --tail-column-value --not-empty --not-null --only-value --exclude-value --allowed-values --remove-errors --remove-empty-json --unique --clean"
+    local distinct_opts="-c --counts -of --output-format --not-empty --not-null --only-value --exclude-value --allowed-values --after --before --remove-errors --remove-empty-json --clean --unique"
     local list_errors_opts="-o --output"
     local summarise_errors_opts="-o --output"
-    local stats_opts="-f --follow --tail --tail-column-value -o --output --column --group-by --unique --clean"
-    local latest_opts="-n -of --output-format --tail --tail-column-value --unique --clean"
+    local stats_opts="-c --column -f --follow --tail --tail-column-value -o --output --group-by --not-empty --not-null --only-value --exclude-value --allowed-values --remove-errors --remove-empty-json --unique --clean"
+    local latest_opts="-n -of --output-format --tail --tail-column-value --not-empty --not-null --only-value --exclude-value --allowed-values --remove-errors --remove-empty-json --unique --clean"
 
     # Determine which command we're completing for
     local cmd=""
@@ -78,18 +78,23 @@ _sensor_data() {
             return
             ;;
         -of|--output-format)
-            COMPREPLY=($(compgen -W "json csv" -- "$cur"))
+            COMPREPLY=($(compgen -W "json csv rdata rds human plain" -- "$cur"))
             return
             ;;
-        --not-empty|--column|--group-by)
+        --not-empty|--not-null|--column|--group-by|-c)
             # Can't easily complete column names, leave empty
             return
             ;;
-        --only-value|--update-value|--update-where-empty|--tail-column-value)
+        --only-value|--exclude-value|--update-value|--update-where-empty|--tail-column-value)
             # Format is column:value, can't easily complete
             return
             ;;
-        --min-date|--max-date)
+        --allowed-values)
+            # First arg is column name, second arg is values or file
+            # Can't easily complete column names, leave empty
+            return
+            ;;
+        --after|--before|--min-date|--max-date)
             # Can't complete dates, leave empty
             return
             ;;
