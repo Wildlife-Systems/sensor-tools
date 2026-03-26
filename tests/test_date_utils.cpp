@@ -38,6 +38,34 @@ void test_parse_iso_datetime() {
     std::cout << "[PASS] test_parse_iso_datetime" << std::endl;
 }
 
+void test_parse_iso_datetime_space_with_millis() {
+    long long result = DateUtils::parseDate("2025-02-21 21:18:48.000");
+
+    time_t t = static_cast<time_t>(result);
+    struct tm* tm = localtime(&t);
+    assert(tm->tm_year == 2025 - 1900);
+    assert(tm->tm_mon == 1);
+    assert(tm->tm_mday == 21);
+    assert(tm->tm_hour == 21);
+    assert(tm->tm_min == 18);
+    assert(tm->tm_sec == 48);
+    std::cout << "[PASS] test_parse_iso_datetime_space_with_millis" << std::endl;
+}
+
+void test_parse_iso_datetime_t_with_z() {
+    long long result = DateUtils::parseDate("2025-02-21T21:18:48Z");
+
+    time_t t = static_cast<time_t>(result);
+    struct tm* tm = localtime(&t);
+    assert(tm->tm_year == 2025 - 1900);
+    assert(tm->tm_mon == 1);
+    assert(tm->tm_mday == 21);
+    assert(tm->tm_hour == 21);
+    assert(tm->tm_min == 18);
+    assert(tm->tm_sec == 48);
+    std::cout << "[PASS] test_parse_iso_datetime_t_with_z" << std::endl;
+}
+
 void test_parse_uk_date() {
     // DD/MM/YYYY format
     long long result = DateUtils::parseDate("17/01/2026");
@@ -397,6 +425,8 @@ int main() {
     test_parse_unix_timestamp();
     test_parse_iso_date();
     test_parse_iso_datetime();
+    test_parse_iso_datetime_space_with_millis();
+    test_parse_iso_datetime_t_with_z();
     test_parse_uk_date();
     test_parse_empty_string();
     test_parse_negative_unix_timestamp();

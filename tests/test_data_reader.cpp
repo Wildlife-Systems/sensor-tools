@@ -579,6 +579,53 @@ void test_tail_column_value_chronological_order() {
     std::cout << "[PASS] test_tail_column_value_chronological_order" << std::endl;
 }
 
+void test_csv_header_aliases_external_schema() {
+    TempFile file(
+        "sample_id,sensor_id,sensor_type_model,timestamp,environmental_data_units,environmental_data_value\n"
+        "abc123,28-00000f9d2349,ds18b20,2025-02-21 21:18:48.000,Celsius,16.625\n",
+        ".csv"
+    );
+
+    DataReader reader(0, "auto");
+    int count = 0;
+
+    reader.processFile(file.path, [&](const Reading& reading, int, const std::string&) {
+        count++;
+        assert(reading.at("sensor_id") == "28-00000f9d2349");
+        assert(reading.at("sensor") == "ds18b20");
+        assert(reading.at("value") == "16.625");
+        assert(reading.at("unit") == "Celsius");
+        assert(reading.at("timestamp") == "2025-02-21 21:18:48.000");
+        assert(reading.count("sensor_type_model") == 0);
+        assert(reading.count("environmental_data_value") == 0);
+        assert(reading.count("environmental_data_units") == 0);
+    });
+
+    assert(count == 1);
+    std::cout << "[PASS] test_csv_header_aliases_external_schema" << std::endl;
+}
+
+void test_csv_timestamp_space_milliseconds_with_date_filter() {
+    TempFile file(
+        "sensor_id,timestamp,environmental_data_value\n"
+        "s1,2025-02-21 21:18:48.000,16.625\n",
+        ".csv"
+    );
+
+    DataReader reader(0, "auto");
+    const long long minDate = DateUtils::parseDate("2025-02-21T21:18:00");
+    const long long maxDate = DateUtils::parseDate("2025-02-21T21:19:00");
+    reader.setDateRange(minDate, maxDate);
+
+    int count = 0;
+    reader.processFile(file.path, [&](const Reading&, int, const std::string&) {
+        count++;
+    });
+
+    assert(count == 1);
+    std::cout << "[PASS] test_csv_timestamp_space_milliseconds_with_date_filter" << std::endl;
+}
+
 int main() {
     std::cout << "================================" << std::endl;
     std::cout << "DataReader Unit Tests" << std::endl;
@@ -629,6 +676,10 @@ int main() {
     test_tail_column_value_no_matches();
     test_tail_column_value_with_filter();
     test_tail_column_value_chronological_order();
+
+    // External CSV schema compatibility
+    test_csv_header_aliases_external_schema();
+    test_csv_timestamp_space_milliseconds_with_date_filter();
     
     std::cout << "================================" << std::endl;
     std::cout << "All DataReader tests passed!" << std::endl;

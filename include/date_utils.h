@@ -4,6 +4,7 @@
 #include <string>
 #include <ctime>
 #include <cctype>
+#include <cstdio>
 #include "types.h"
 
 // Date/Time utility functions
@@ -49,14 +50,31 @@ namespace DateUtils {
             }
         }
         
-        // Try ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+        // Try ISO-like formats:
+        // - YYYY-MM-DD
+        // - YYYY-MM-DDTHH:MM[:SS][.sss][Z|+HH:MM]
+        // - YYYY-MM-DD HH:MM[:SS][.sss][Z|+HH:MM]
         if (dateStr.length() >= 10 && dateStr[4] == '-' && dateStr[7] == '-') {
-            int year, month, day, hour = defaultHour, min = defaultMin, sec = defaultSec;
-            if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) >= 3) {
-                // Check if there's a time component - use specified time
-                size_t tPos = dateStr.find('T');
-                if (tPos != std::string::npos) {
-                    sscanf(dateStr.c_str() + tPos + 1, "%d:%d:%d", &hour, &min, &sec);
+            int year, month, day;
+            if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) == 3) {
+                int hour = defaultHour;
+                int min = defaultMin;
+                int sec = defaultSec;
+
+                // Parse optional time component after position 10.
+                if (dateStr.length() > 10) {
+                    char sep = dateStr[10];
+                    if (sep == 'T' || sep == 't' || sep == ' ') {
+                        int parsedHour = 0;
+                        int parsedMin = 0;
+                        int parsedSec = 0;
+                        int parsed = sscanf(dateStr.c_str() + 11, "%d:%d:%d", &parsedHour, &parsedMin, &parsedSec);
+                        if (parsed >= 2) {
+                            hour = parsedHour;
+                            min = parsedMin;
+                            sec = (parsed >= 3) ? parsedSec : 0;
+                        }
+                    }
                 }
                 
                 if (!isValidDateTime(year, month, day, hour, min, sec)) return 0;

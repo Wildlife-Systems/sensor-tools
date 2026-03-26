@@ -3,10 +3,16 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#if defined(__has_include)
+#if __has_include(<zlib.h>)
+#define SENSOR_TOOLS_HAVE_ZLIB 1
 #include <zlib.h>
+#endif
+#endif
 
 // ===== Helper function to write buffer to gzip in chunks =====
 
+#ifdef SENSOR_TOOLS_HAVE_ZLIB
 static bool writeBufferToGzip(gzFile gz, const std::vector<char>& buffer) {
     const size_t CHUNK_SIZE = 1024 * 1024;  // 1MB chunks
     size_t offset = 0;
@@ -28,6 +34,13 @@ static bool writeBufferToGzip(gzFile gz, const std::vector<char>& buffer) {
     }
     return true;
 }
+#else
+static bool reportZlibUnavailable(const std::string& filename) {
+    std::cerr << "Error: zlib support is not available, cannot write RData/RDS file: "
+              << filename << std::endl;
+    return false;
+}
+#endif
 
 // ===== Constructor and buffer operations =====
 
@@ -247,6 +260,12 @@ bool RDataWriter::writeRData(const std::string& filename,
                               const ReadingList& readings,
                               const std::vector<std::string>& headers,
                               const std::string& tableName) {
+#ifndef SENSOR_TOOLS_HAVE_ZLIB
+    (void)readings;
+    (void)headers;
+    (void)tableName;
+    return reportZlibUnavailable(filename);
+#else
     if (readings.empty()) {
         std::cerr << "Error: No data to write" << std::endl;
         return false;
@@ -291,12 +310,19 @@ bool RDataWriter::writeRData(const std::string& filename,
     gzclose(gz);
     
     return success;
+#endif
 }
 
 bool RDataWriter::writeRDS(const std::string& filename,
                             const ReadingList& readings,
                             const std::vector<std::string>& headers,
                             const std::string& label) {
+#ifndef SENSOR_TOOLS_HAVE_ZLIB
+    (void)readings;
+    (void)headers;
+    (void)label;
+    return reportZlibUnavailable(filename);
+#else
     if (readings.empty()) {
         std::cerr << "Error: No data to write" << std::endl;
         return false;
@@ -329,6 +355,7 @@ bool RDataWriter::writeRDS(const std::string& filename,
     gzclose(gz);
     
     return success;
+#endif
 }
 
 // ===== Column-oriented writers (memory efficient) =====
@@ -373,6 +400,13 @@ bool RDataWriter::writeRDataColumns(const std::string& filename,
                                      const std::vector<std::string>& headers,
                                      size_t rowCount,
                                      const std::string& tableName) {
+#ifndef SENSOR_TOOLS_HAVE_ZLIB
+    (void)columns;
+    (void)headers;
+    (void)rowCount;
+    (void)tableName;
+    return reportZlibUnavailable(filename);
+#else
     if (columns.empty() || rowCount == 0) {
         std::cerr << "Error: No data to write" << std::endl;
         return false;
@@ -415,6 +449,7 @@ bool RDataWriter::writeRDataColumns(const std::string& filename,
     gzclose(gz);
     
     return success;
+#endif
 }
 
 bool RDataWriter::writeRDSColumns(const std::string& filename,
@@ -422,6 +457,12 @@ bool RDataWriter::writeRDSColumns(const std::string& filename,
                                    const std::vector<std::string>& headers,
                                    size_t rowCount,
                                    const std::string& /*label*/) {
+#ifndef SENSOR_TOOLS_HAVE_ZLIB
+    (void)columns;
+    (void)headers;
+    (void)rowCount;
+    return reportZlibUnavailable(filename);
+#else
     if (columns.empty() || rowCount == 0) {
         std::cerr << "Error: No data to write" << std::endl;
         return false;
@@ -454,4 +495,5 @@ bool RDataWriter::writeRDSColumns(const std::string& filename,
     gzclose(gz);
     
     return success;
+#endif
 }

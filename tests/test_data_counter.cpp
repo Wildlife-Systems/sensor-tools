@@ -1,9 +1,28 @@
 #include "../include/data_counter.h"
-#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cstdio>
+#include <cmath>
+
+static int tests_run = 0;
+static int tests_passed = 0;
+
+#define ASSERT(condition, message) \
+    do { \
+        tests_run++; \
+        if (!(condition)) { \
+            std::cerr << "[FAIL] " << __func__ << ": " << message << std::endl; \
+            return false; \
+        } \
+        tests_passed++; \
+        return true; \
+    } while(0)
+
+#define ASSERT_TRUE(condition)  ASSERT(condition, #condition " should be true")
+#define ASSERT_FALSE(condition) ASSERT(!(condition), #condition " should be false")
+#define ASSERT_EQ(a, b)        ASSERT((a) == (b), #a " should equal " #b)
+#define ASSERT_NEAR(a, b, eps) ASSERT(std::fabs((a) - (b)) < (eps), #a " should be near " #b)
 
 // Helper to create temp file
 class TempFile {
@@ -51,7 +70,7 @@ public:
 
 // ===== Basic Count Tests =====
 
-void test_count_single_reading() {
+bool test_count_single_reading() {
     TempFile file("{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n");
     
     const char* argv[] = {"sensor-data", file.path.c_str()};
@@ -61,11 +80,10 @@ void test_count_single_reading() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("1") != std::string::npos);
-    std::cout << "[PASS] test_count_single_reading" << std::endl;
+    ASSERT_TRUE(output.find("1") != std::string::npos);
 }
 
-void test_count_multiple_readings() {
+bool test_count_multiple_readings() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s2\",\"value\":\"23.0\"}\n"
@@ -78,12 +96,11 @@ void test_count_multiple_readings() {
     CaptureStdout capture;
     counter.count();
     std::string output = capture.get();
-    
-    assert(output.find("3") != std::string::npos);
-    std::cout << "[PASS] test_count_multiple_readings" << std::endl;
+
+    ASSERT_TRUE(output.find("3") != std::string::npos);
 }
 
-void test_count_empty_file() {
+bool test_count_empty_file() {
     TempFile file("");
     
     const char* argv[] = {"sensor-data", file.path.c_str()};
@@ -93,13 +110,12 @@ void test_count_empty_file() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("0") != std::string::npos);
-    std::cout << "[PASS] test_count_empty_file" << std::endl;
+    ASSERT_TRUE(output.find("0") != std::string::npos);
 }
 
 // ===== Count with Filters =====
 
-void test_count_with_date_filter() {
+bool test_count_with_date_filter() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"timestamp\":\"100\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s2\",\"timestamp\":\"500\",\"value\":\"23.0\"}\n"
@@ -114,11 +130,10 @@ void test_count_with_date_filter() {
     std::string output = capture.get();
     
     // Only s2 should match
-    assert(output.find("1") != std::string::npos);
-    std::cout << "[PASS] test_count_with_date_filter" << std::endl;
+    ASSERT_TRUE(output.find("1") != std::string::npos);
 }
 
-void test_count_with_value_filter() {
+bool test_count_with_value_filter() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s2\",\"status\":\"inactive\",\"value\":\"23.0\"}\n"
@@ -133,11 +148,10 @@ void test_count_with_value_filter() {
     std::string output = capture.get();
     
     // Only s1 and s3 should match
-    assert(output.find("2") != std::string::npos);
-    std::cout << "[PASS] test_count_with_value_filter" << std::endl;
+    ASSERT_TRUE(output.find("2") != std::string::npos);
 }
 
-void test_count_with_exclude_filter() {
+bool test_count_with_exclude_filter() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s2\",\"status\":\"error\",\"value\":\"23.0\"}\n"
@@ -152,11 +166,10 @@ void test_count_with_exclude_filter() {
     std::string output = capture.get();
     
     // Only s1 and s3 should match
-    assert(output.find("2") != std::string::npos);
-    std::cout << "[PASS] test_count_with_exclude_filter" << std::endl;
+    ASSERT_TRUE(output.find("2") != std::string::npos);
 }
 
-void test_count_with_remove_errors() {
+bool test_count_with_remove_errors() {
     TempFile file(
         "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s1\",\"temperature\":\"22.5\"}\n"
         "{\"sensor\":\"ds18b20\",\"sensor_id\":\"s2\",\"temperature\":\"85\"}\n"
@@ -171,13 +184,12 @@ void test_count_with_remove_errors() {
     std::string output = capture.get();
     
     // Only s1 and s3 should match (s2 is error)
-    assert(output.find("2") != std::string::npos);
-    std::cout << "[PASS] test_count_with_remove_errors" << std::endl;
+    ASSERT_TRUE(output.find("2") != std::string::npos);
 }
 
 // ===== Count by Column =====
 
-void test_count_by_column() {
+bool test_count_by_column() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\"}\n"
         "{\"sensor_id\":\"s2\",\"status\":\"inactive\"}\n"
@@ -193,14 +205,13 @@ void test_count_by_column() {
     std::string output = capture.get();
     
     // Should show active: 3, inactive: 1
-    assert(output.find("active") != std::string::npos);
-    assert(output.find("3") != std::string::npos);
-    assert(output.find("inactive") != std::string::npos);
-    assert(output.find("1") != std::string::npos);
-    std::cout << "[PASS] test_count_by_column" << std::endl;
+    ASSERT_TRUE(output.find("active") != std::string::npos &&
+                output.find("3") != std::string::npos &&
+                output.find("inactive") != std::string::npos &&
+                output.find("1") != std::string::npos);
 }
 
-void test_count_by_column_missing_values() {
+bool test_count_by_column_missing_values() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\"}\n"
         "{\"sensor_id\":\"s2\"}\n"  // no status
@@ -215,13 +226,12 @@ void test_count_by_column_missing_values() {
     std::string output = capture.get();
     
     // Should show (missing): 1
-    assert(output.find("(missing)") != std::string::npos);
-    std::cout << "[PASS] test_count_by_column_missing_values" << std::endl;
+    ASSERT_TRUE(output.find("(missing)") != std::string::npos);
 }
 
 // ===== Count by Time Period =====
 
-void test_count_by_day() {
+bool test_count_by_day() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"timestamp\":\"1609459200\"}\n"  // 2021-01-01
         "{\"sensor_id\":\"s2\",\"timestamp\":\"1609459200\"}\n"  // 2021-01-01
@@ -235,12 +245,11 @@ void test_count_by_day() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("2021-01-01") != std::string::npos);
-    assert(output.find("2021-01-02") != std::string::npos);
-    std::cout << "[PASS] test_count_by_day" << std::endl;
+    ASSERT_TRUE(output.find("2021-01-01") != std::string::npos &&
+                output.find("2021-01-02") != std::string::npos);
 }
 
-void test_count_by_month() {
+bool test_count_by_month() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"timestamp\":\"1609459200\"}\n"  // 2021-01
         "{\"sensor_id\":\"s2\",\"timestamp\":\"1612137600\"}\n"  // 2021-02
@@ -254,12 +263,11 @@ void test_count_by_month() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("2021-01") != std::string::npos);
-    assert(output.find("2021-02") != std::string::npos);
-    std::cout << "[PASS] test_count_by_month" << std::endl;
+    ASSERT_TRUE(output.find("2021-01") != std::string::npos &&
+                output.find("2021-02") != std::string::npos);
 }
 
-void test_count_by_year() {
+bool test_count_by_year() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"timestamp\":\"1609459200\"}\n"  // 2021
         "{\"sensor_id\":\"s2\",\"timestamp\":\"1640995200\"}\n"  // 2022
@@ -273,12 +281,11 @@ void test_count_by_year() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("2021") != std::string::npos);
-    assert(output.find("2022") != std::string::npos);
-    std::cout << "[PASS] test_count_by_year" << std::endl;
+    ASSERT_TRUE(output.find("2021") != std::string::npos &&
+                output.find("2022") != std::string::npos);
 }
 
-void test_count_by_week() {
+bool test_count_by_week() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"timestamp\":\"1609459200\"}\n"  // 2020-W53 (Dec 28 2020 was W53)
         "{\"sensor_id\":\"s2\",\"timestamp\":\"1609718400\"}\n"  // 2021-W01
@@ -292,13 +299,12 @@ void test_count_by_week() {
     std::string output = capture.get();
     
     // Should have W format
-    assert(output.find("-W") != std::string::npos);
-    std::cout << "[PASS] test_count_by_week" << std::endl;
+    ASSERT_TRUE(output.find("-W") != std::string::npos);
 }
 
 // ===== Output Formats =====
 
-void test_count_output_format_json() {
+bool test_count_output_format_json() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\"}\n"
         "{\"sensor_id\":\"s2\",\"status\":\"active\"}\n"
@@ -311,14 +317,13 @@ void test_count_output_format_json() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("[") != std::string::npos);
-    assert(output.find("]") != std::string::npos);
-    assert(output.find("\"status\"") != std::string::npos);
-    assert(output.find("\"count\"") != std::string::npos);
-    std::cout << "[PASS] test_count_output_format_json" << std::endl;
+    ASSERT_TRUE(output.find("[") != std::string::npos &&
+                output.find("]") != std::string::npos &&
+                output.find("\"status\"") != std::string::npos &&
+                output.find("\"count\"") != std::string::npos);
 }
 
-void test_count_output_format_csv() {
+bool test_count_output_format_csv() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"status\":\"active\"}\n"
         "{\"sensor_id\":\"s2\",\"status\":\"inactive\"}\n"
@@ -332,13 +337,12 @@ void test_count_output_format_csv() {
     std::string output = capture.get();
     
     // CSV format should have header
-    assert(output.find("status,count") != std::string::npos);
-    std::cout << "[PASS] test_count_output_format_csv" << std::endl;
+    ASSERT_TRUE(output.find("status,count") != std::string::npos);
 }
 
 // ===== Multiple Files =====
 
-void test_count_multiple_files() {
+bool test_count_multiple_files() {
     // Create two temp files with different names
     std::string path1 = "test_dc_temp1.json";
     std::string path2 = "test_dc_temp2.json";
@@ -361,13 +365,12 @@ void test_count_multiple_files() {
     std::remove(path1.c_str());
     std::remove(path2.c_str());
     
-    assert(output.find("3") != std::string::npos);
-    std::cout << "[PASS] test_count_multiple_files" << std::endl;
+    ASSERT_TRUE(output.find("3") != std::string::npos);
 }
 
 // ===== Unique Count =====
 
-void test_count_unique() {
+bool test_count_unique() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"  // duplicate
@@ -382,13 +385,12 @@ void test_count_unique() {
     std::string output = capture.get();
     
     // Should count only 2 unique readings
-    assert(output.find("2") != std::string::npos);
-    std::cout << "[PASS] test_count_unique" << std::endl;
+    ASSERT_TRUE(output.find("2") != std::string::npos);
 }
 
 // ===== CSV Input =====
 
-void test_count_csv_input() {
+bool test_count_csv_input() {
     TempFile file(
         "sensor_id,value\n"
         "s1,22.5\n"
@@ -403,13 +405,12 @@ void test_count_csv_input() {
     counter.count();
     std::string output = capture.get();
     
-    assert(output.find("2") != std::string::npos);
-    std::cout << "[PASS] test_count_csv_input" << std::endl;
+    ASSERT_TRUE(output.find("2") != std::string::npos);
 }
 
 // ===== Not Empty Filter =====
 
-void test_count_not_empty() {
+bool test_count_not_empty() {
     TempFile file(
         "{\"sensor_id\":\"s1\",\"value\":\"22.5\"}\n"
         "{\"sensor_id\":\"s2\",\"value\":\"\"}\n"  // empty value
@@ -424,50 +425,49 @@ void test_count_not_empty() {
     std::string output = capture.get();
     
     // Only s1 should match
-    assert(output.find("1") != std::string::npos);
-    std::cout << "[PASS] test_count_not_empty" << std::endl;
+    ASSERT_TRUE(output.find("1") != std::string::npos);
 }
 
 int main() {
-    std::cout << "Running DataCounter Tests..." << std::endl;
+    std::cout << "Running DataCounter unit tests..." << std::endl;
     
     // Basic count tests
-    test_count_single_reading();
-    test_count_multiple_readings();
-    test_count_empty_file();
+    std::cout << (test_count_single_reading()      ? "[PASS]" : "[FAIL]") << " test_count_single_reading" << std::endl;
+    std::cout << (test_count_multiple_readings()   ? "[PASS]" : "[FAIL]") << " test_count_multiple_readings" << std::endl;
+    std::cout << (test_count_empty_file()          ? "[PASS]" : "[FAIL]") << " test_count_empty_file" << std::endl;
     
     // Count with filters
-    test_count_with_date_filter();
-    test_count_with_value_filter();
-    test_count_with_exclude_filter();
-    test_count_with_remove_errors();
+    std::cout << (test_count_with_date_filter()    ? "[PASS]" : "[FAIL]") << " test_count_with_date_filter" << std::endl;
+    std::cout << (test_count_with_value_filter()   ? "[PASS]" : "[FAIL]") << " test_count_with_value_filter" << std::endl;
+    std::cout << (test_count_with_exclude_filter() ? "[PASS]" : "[FAIL]") << " test_count_with_exclude_filter" << std::endl;
+    std::cout << (test_count_with_remove_errors()  ? "[PASS]" : "[FAIL]") << " test_count_with_remove_errors" << std::endl;
     
     // Count by column
-    test_count_by_column();
-    test_count_by_column_missing_values();
+    std::cout << (test_count_by_column()               ? "[PASS]" : "[FAIL]") << " test_count_by_column" << std::endl;
+    std::cout << (test_count_by_column_missing_values() ? "[PASS]" : "[FAIL]") << " test_count_by_column_missing_values" << std::endl;
     
     // Count by time period
-    test_count_by_day();
-    test_count_by_month();
-    test_count_by_year();
-    test_count_by_week();
+    std::cout << (test_count_by_day()   ? "[PASS]" : "[FAIL]") << " test_count_by_day" << std::endl;
+    std::cout << (test_count_by_month() ? "[PASS]" : "[FAIL]") << " test_count_by_month" << std::endl;
+    std::cout << (test_count_by_year()  ? "[PASS]" : "[FAIL]") << " test_count_by_year" << std::endl;
+    std::cout << (test_count_by_week()  ? "[PASS]" : "[FAIL]") << " test_count_by_week" << std::endl;
     
     // Output formats
-    test_count_output_format_json();
-    test_count_output_format_csv();
+    std::cout << (test_count_output_format_json() ? "[PASS]" : "[FAIL]") << " test_count_output_format_json" << std::endl;
+    std::cout << (test_count_output_format_csv()  ? "[PASS]" : "[FAIL]") << " test_count_output_format_csv" << std::endl;
     
     // Multiple files - skip for now, not working correctly
-    // test_count_multiple_files();
+    // std::cout << (test_count_multiple_files() ? "[PASS]" : "[FAIL]") << " test_count_multiple_files" << std::endl;
     
     // Unique count - skip for now, causes crash
-    // test_count_unique();
+    // std::cout << (test_count_unique() ? "[PASS]" : "[FAIL]") << " test_count_unique" << std::endl;
     
     // CSV input - skip for now, causes crash
-    // test_count_csv_input();
+    // std::cout << (test_count_csv_input() ? "[PASS]" : "[FAIL]") << " test_count_csv_input" << std::endl;
     
     // Not empty filter - skip for now
-    // test_count_not_empty();
+    // std::cout << (test_count_not_empty() ? "[PASS]" : "[FAIL]") << " test_count_not_empty" << std::endl;
     
-    std::cout << "\nAll DataCounter tests passed!" << std::endl;
-    return 0;
+    std::cout << "\n" << tests_passed << "/" << tests_run << " tests passed" << std::endl;
+    return tests_passed == tests_run ? 0 : 1;
 }

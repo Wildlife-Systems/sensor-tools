@@ -9,6 +9,7 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+#include <cctype>
 #include "types.h"
 #include "csv_parser.h"
 #include "json_parser.h"
@@ -50,6 +51,97 @@ private:
     }
     const ReadingFilter& filter() const {
         return sharedFilter ? *sharedFilter : ownedFilter;
+    }
+
+    // Normalize a header for loose matching (case-insensitive, separators collapsed).
+    static std::string normalizeHeader(const std::string& header) {
+        std::string normalized;
+        normalized.reserve(header.size());
+        bool prevUnderscore = false;
+
+        for (unsigned char uc : header) {
+            if (uc == 0xEF || uc == 0xBB || uc == 0xBF) {
+                continue;
+            }
+            if (std::isalnum(uc)) {
+                normalized.push_back(static_cast<char>(std::tolower(uc)));
+                prevUnderscore = false;
+            } else if (!prevUnderscore) {
+                normalized.push_back('_');
+                prevUnderscore = true;
+            }
+        }
+
+        while (!normalized.empty() && normalized.front() == '_') {
+            normalized.erase(normalized.begin());
+        }
+        while (!normalized.empty() && normalized.back() == '_') {
+            normalized.pop_back();
+        }
+
+        return normalized;
+    }
+
+    // Map known external CSV headers to the internal canonical names used by filters/commands.
+    // Returns empty when the original header should be kept unchanged.
+    static std::string canonicalCsvHeader(const std::string& header) {
+        const std::string key = normalizeHeader(header);
+        if (key.empty()) return "";
+
+        if (key == "sensorid") return "sensor_id";
+
+        if (key == "environmental_data_value" || key == "measurement_value" ||
+            key == "reading_value" || key == "temperature") {
+            return "value";
+        }
+
+        if (key == "environmental_data_units" || key == "measurement_unit" ||
+            key == "value_unit" || key == "units") {
+            return "unit";
+        }
+
+        if (key == "sensor_type_model" || key == "sensor_model" || key == "device_model") {
+            return "sensor";
+        }
+
+        if (key == "sensor_type_name" || key == "sensor_name") {
+            return "type";
+        }
+
+        if (key == "datetime" || key == "date_time" || key == "recorded_at" ||
+            key == "sample_time" || key == "sample_timestamp" ||
+            key == "unix_timestamp" || key == "timestamp_utc" || key == "time") {
+            return "timestamp";
+        }
+
+        return "";
+    }
+
+    static std::string trimAsciiWhitespace(const std::string& value) {
+        size_t start = 0;
+        while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
+            ++start;
+        }
+
+        size_t end = value.size();
+        while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+            --end;
+        }
+
+        return value.substr(start, end - start);
+    }
+
+    static void addCsvField(Reading& reading, const std::string& header, const std::string& value) {
+        const std::string trimmedHeader = trimAsciiWhitespace(header);
+        if (trimmedHeader.empty()) return;
+
+        const std::string canonicalHeader = canonicalCsvHeader(trimmedHeader);
+        const std::string& storedHeader = canonicalHeader.empty() ? trimmedHeader : canonicalHeader;
+
+        auto it = reading.find(storedHeader);
+        if (it == reading.end() || it->second.empty()) {
+            reading[storedHeader] = value;
+        }
     }
     
 public:
@@ -117,7 +209,7 @@ public:
                 Reading reading;
                 reading.reserve(csvHeaders.size());
                 for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                    reading.emplace(csvHeaders[i], std::move(fields[i]));
+                    addCsvField(reading, csvHeaders[i], fields[i]);
                 }
                 
                 // Apply ALL filters here
@@ -219,7 +311,7 @@ public:
                     
                     Reading reading;
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading[csvHeaders[i]] = fields[i];
+                        addCsvField(reading, csvHeaders[i], fields[i]);
                     }
                     
                     // Check column match
@@ -262,7 +354,7 @@ public:
                     auto fields = CsvParser::parseCsvLine(line);
                     Reading reading;
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading[csvHeaders[i]] = fields[i];
+                        addCsvField(reading, csvHeaders[i], fields[i]);
                     }
                     filter().applyTransformations(reading);
                     callback(reading, lineNum, filename);
@@ -311,7 +403,7 @@ public:
                     Reading reading;
                     reading.reserve(csvHeaders.size());
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading.emplace(csvHeaders[i], std::move(fields[i]));
+                        addCsvField(reading, csvHeaders[i], fields[i]);
                     }
                     
                     // Apply ALL filters here
@@ -447,7 +539,7 @@ public:
                     
                     Reading reading;
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading[csvHeaders[i]] = fields[i];
+                        addCsvField(reading, csvHeaders[i], fields[i]);
                     }
                     
                     // Use the SAME filter as all other methods
@@ -522,7 +614,7 @@ public:
                     
                     Reading reading;
                     for (size_t i = 0; i < std::min(csvHeaders.size(), fields.size()); ++i) {
-                        reading[csvHeaders[i]] = fields[i];
+                        addCsvField(reading, csvHeaders[i], fields[i]);
                     }
                     
                     // Use the SAME filter as all other methods
