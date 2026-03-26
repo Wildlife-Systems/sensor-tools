@@ -15,6 +15,7 @@
 #include "json_parser.h"
 #include "file_utils.h"
 #include "reading_filter.h"
+#include "date_utils.h"
 
 /**
  * DataReader - Centralized data reader with integrated filtering.
@@ -138,9 +139,17 @@ private:
         const std::string canonicalHeader = canonicalCsvHeader(trimmedHeader);
         const std::string& storedHeader = canonicalHeader.empty() ? trimmedHeader : canonicalHeader;
 
+        std::string storedValue = value;
+        if (storedHeader == "timestamp") {
+            long long parsedTs = DateUtils::parseDate(trimAsciiWhitespace(value));
+            if (parsedTs > 0) {
+                storedValue = std::to_string(parsedTs);
+            }
+        }
+
         auto it = reading.find(storedHeader);
         if (it == reading.end() || it->second.empty()) {
-            reading[storedHeader] = value;
+            reading[storedHeader] = storedValue;
         }
     }
     
