@@ -29,6 +29,7 @@ private:
     std::string outputFile;
     std::string outputFormat;  // "json" or "csv"
     bool removeWhitespace;
+    bool standardColumnsOnly;
     bool rejectMode;  // If true, output rejected readings instead of accepted
     
     // Column discovery
@@ -84,6 +85,11 @@ private:
     void writeRow(const Reading& reading,
                   const std::vector<std::string>& headers,
                   std::ostream& outfile);
+
+    /**
+     * Keep only canonical output columns when requested.
+     */
+    Reading filterToOutputColumns(const Reading& reading) const;
 
 public:
     /**

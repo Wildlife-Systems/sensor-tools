@@ -6,6 +6,15 @@
 #include <cstdio>
 #include <array>
 
+namespace {
+const std::vector<std::string>& standardOutputColumns() {
+    static const std::vector<std::string> cols = {
+        "sensor", "sensor_id", "timestamp", "type", "name", "unit", "value"
+    };
+    return cols;
+}
+}
+
 // ===== Private helper methods =====
 
 bool SensorDataTransformer::hasActiveFilters() const {
@@ -109,11 +118,13 @@ void SensorDataTransformer::writeRowsFromFileJson(const std::string& filename, s
                                       int /*lineNum*/, const std::string& /*source*/) {
         // Filtering already done by DataReader
         if (reading.empty()) return;
+        Reading outputReading = filterToOutputColumns(reading);
+        if (outputReading.empty()) return;
         
         if (!firstOutput) outfile << "\n";
         firstOutput = false;
         outfile << "[" << sp;
-        writeJsonObject(reading, outfile, removeWhitespace);
+        writeJsonObject(outputReading, outfile, removeWhitespace);
         outfile << sp << "]";
     });
 }
@@ -136,11 +147,13 @@ void SensorDataTransformer::processStdinDataJson(const ReadingList& readings,
     // Readings are already filtered by DataReader
     for (const auto& reading : readings) {
         if (reading.empty()) continue;
+        Reading outputReading = filterToOutputColumns(reading);
+        if (outputReading.empty()) continue;
         
         if (!firstOutput) outfile << "\n";
         firstOutput = false;
         outfile << "[" << sp;
-        writeJsonObject(reading, outfile, removeWhitespace);
+        writeJsonObject(outputReading, outfile, removeWhitespace);
         outfile << sp << "]";
     }
 }
@@ -148,12 +161,30 @@ void SensorDataTransformer::processStdinDataJson(const ReadingList& readings,
 void SensorDataTransformer::writeRow(const Reading& reading,
                                       const std::vector<std::string>& headers,
                                       std::ostream& outfile) {
+    Reading outputReading = filterToOutputColumns(reading);
+
     if (outputFormat == "json") {
-        writeJsonObject(reading, outfile, removeWhitespace);
+        writeJsonObject(outputReading, outfile, removeWhitespace);
         outfile << "\n";
     } else {
-        writeCsvRow(reading, headers, outfile);
+        writeCsvRow(outputReading, headers, outfile);
     }
+}
+
+Reading SensorDataTransformer::filterToOutputColumns(const Reading& reading) const {
+    if (!standardColumnsOnly) {
+        return reading;
+    }
+
+    Reading filtered;
+    filtered.reserve(standardOutputColumns().size());
+    for (const auto& key : standardOutputColumns()) {
+        auto it = reading.find(key);
+        if (it != reading.end()) {
+            filtered[key] = it->second;
+        }
+    }
+    return filtered;
 }
 
 // ===== Constructor =====
@@ -161,6 +192,7 @@ void SensorDataTransformer::writeRow(const Reading& reading,
 SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool rejectModeParam) 
     : outputFormat("")
     , removeWhitespace(false)
+    , standardColumnsOnly(false)
     , rejectMode(rejectModeParam)
     , numThreads(4)
     , usePrototype(false) {
@@ -186,6 +218,8 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool reject
         
         if (arg == "--use-prototype") {
             usePrototype = true;
+        } else if (arg == "--standard-columns") {
+            standardColumnsOnly = true;
         } else if (arg == "--remove-whitespace") {
             removeWhitespace = true;
         } else if (arg == "-o" || arg == "--output") {
@@ -221,7 +255,7 @@ SensorDataTransformer::SensorDataTransformer(int argc, char* argv[], bool reject
     
     // Check for unknown options (transform-specific: -o, --output, -of, --output-format, --use-prototype, --remove-whitespace)
     std::string unknownOpt = CommonArgParser::checkUnknownOptions(argc, argv, 
-        {"-o", "--output", "-of", "--output-format", "--use-prototype", "--remove-whitespace"});
+        {"-o", "--output", "-of", "--output-format", "--use-prototype", "--standard-columns", "--remove-whitespace"});
     if (!unknownOpt.empty()) {
         std::cerr << "Error: Unknown option '" << unknownOpt << "'" << std::endl;
         printTransformUsage(argv[0]);
@@ -348,7 +382,15 @@ void SensorDataTransformer::transform() {
     printFilterInfo();
     
     // PASS 1: Collect all column names
-    if (usePrototype) {
+    if (standardColumnsOnly) {
+        allKeys.clear();
+        for (const auto& key : standardOutputColumns()) {
+            allKeys.insert(key);
+        }
+        if (verbosity >= 1) {
+            std::cerr << "Using standard output columns only" << std::endl;
+        }
+    } else if (usePrototype) {
         std::cerr << "Using sc-prototype for column definitions..." << std::endl;
         if (!getPrototypeColumns()) {
             std::cerr << "Error: Failed to get prototype columns" << std::endl;
@@ -530,6 +572,7 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  -e, --extension <ext>     Filter files by extension (e.g., .out or out)" << std::endl;
     std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
     std::cerr << "  --use-prototype           Use sc-prototype command to define columns" << std::endl;
+    std::cerr << "  --standard-columns        Output only canonical columns (sensor,sensor_id,timestamp,type,name,unit,value)" << std::endl;
     std::cerr << "  --not-empty <column>      Skip rows where column is empty (can be used multiple times)" << std::endl;
     std::cerr << "  --only-value <col:val>    Only include rows where column has specific value (can be used multiple times)" << std::endl;
     std::cerr << "  --exclude-value <col:val> Exclude rows where column has specific value (can be used multiple times)" << std::endl;
