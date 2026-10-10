@@ -4,7 +4,8 @@ Priority: optional
 Maintainer: Ed Baker <ed@ebaker.me.uk>
 Build-Depends: debhelper-compat (= 13),
                g++ (>= 4:9.0),
-               libncurses-dev
+               libncurses-dev,
+               zlib1g-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/edwbaker/sensors-tools
 Vcs-Git: https://github.com/edwbaker/sensors-tools.git
