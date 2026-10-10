@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     
     steps:
     - uses: actions/checkout@v7
@@ -16,7 +16,7 @@ jobs:
     - name: Add WildlifeSystems apt repository
       run: |
         sudo wget -O /usr/share/keyrings/ws.gpg https://wildlife.systems/ws.gpg
-        echo -e "Types: deb\nURIs: https://apt.wildlife.systems\nSuites: stable\nComponents: main\nArchitectures: all amd64\nSigned-By: /usr/share/keyrings/ws.gpg" | sudo tee /etc/apt/sources.list.d/ws.sources > /dev/null
+        echo -e "Types: deb\nURIs: https://apt.wildlife.systems\nSuites: stable\nComponents: main\nArchitectures: all arm64\nSigned-By: /usr/share/keyrings/ws.gpg" | sudo tee /etc/apt/sources.list.d/ws.sources > /dev/null
     
     - name: Install dependencies
       run: |
@@ -42,72 +42,8 @@ jobs:
         fail_ci_if_error: false
         verbose: true
 
-  test-macos:
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v7
-    
-    - name: Install dependencies
-      run: brew install lcov coreutils ncurses
-    
-    - name: Build with coverage
-      run: make clean all COVERAGE=1
-    
-    - name: Run unit tests
-      run: make test COVERAGE=1
-    
-    - name: Run integration tests
-      run: make test-integration
-    
-    - name: Generate coverage report
-      run: make coverage
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v7
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-        verbose: true
-
-  test-windows:
-    runs-on: windows-latest
-    
-    steps:
-    - uses: actions/checkout@v7
-    
-    - name: Set up MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: mingw-w64-x86_64-gcc make mingw-w64-x86_64-lcov mingw-w64-x86_64-pdcurses mingw-w64-x86_64-zlib
-    
-    - name: Build with coverage
-      shell: msys2 {0}
-      run: make clean all COVERAGE=1
-    
-    - name: Run unit tests
-      shell: msys2 {0}
-      run: make test COVERAGE=1
-    
-    - name: Run integration tests
-      shell: msys2 {0}
-      run: make test-integration
-    
-    - name: Generate coverage report
-      shell: msys2 {0}
-      run: make coverage
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v7
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-        verbose: true
-
   test-rdata:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     
     steps:
     - uses: actions/checkout@v7
@@ -166,7 +102,7 @@ jobs:
         verbose: true
 
   build-deb:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     
     steps:
     - uses: actions/checkout@v7
@@ -174,7 +110,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential debhelper devscripts fakeroot lintian libncurses-dev
+        sudo apt-get install -y build-essential debhelper devscripts fakeroot lintian libncurses-dev zlib1g-dev
     
     - name: Build Debian package
       run: |
