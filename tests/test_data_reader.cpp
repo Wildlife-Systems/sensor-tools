@@ -595,7 +595,7 @@ void test_csv_header_aliases_external_schema() {
         assert(reading.at("sensor") == "ds18b20");
         assert(reading.at("value") == "16.625");
         assert(reading.at("unit") == "Celsius");
-        assert(reading.at("timestamp") == "2025-02-21 21:18:48.000");
+        assert(reading.at("timestamp") == "1740172728");  // read as UTC
         assert(reading.count("sensor_type_model") == 0);
         assert(reading.count("environmental_data_value") == 0);
         assert(reading.count("environmental_data_units") == 0);
