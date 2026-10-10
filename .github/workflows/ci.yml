@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Add WildlifeSystems apt repository
       run: |
@@ -36,7 +36,7 @@ jobs:
       run: make coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
@@ -46,7 +46,7 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Install dependencies
       run: brew install lcov coreutils ncurses
@@ -64,7 +64,7 @@ jobs:
       run: make coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
@@ -74,7 +74,7 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
@@ -100,7 +100,7 @@ jobs:
       run: make coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Install dependencies
       run: |
@@ -159,7 +159,7 @@ jobs:
       run: make coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
@@ -169,7 +169,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Install build dependencies
       run: |
@@ -187,7 +187,7 @@ jobs:
         lintian --info --display-info debian-output/*.deb || true
     
     - name: Upload .deb artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: debian-package
         path: debian-output/*.deb
