@@ -55,6 +55,14 @@ public:
     bool parse(int argc, char* argv[]) {
         FileCollector collector;
         bool collectorInitialized = false;
+
+        // --timezone applies to every date on the command line, wherever it is given
+        for (int i = 1; i + 1 < argc; ++i) {
+            if (std::string(argv[i]) == "--timezone" && !DateUtils::setInputTimeZone(argv[i + 1])) {
+                std::cerr << "Error: unknown time zone '" << argv[i + 1] << "' for --timezone" << std::endl;
+                return false;
+            }
+        }
         
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -308,6 +316,13 @@ public:
                     std::cerr << "Error: " << arg << " requires an argument" << std::endl;
                     return false;
                 }
+            } else if (arg == "--timezone") {
+                if (i + 1 < argc) {
+                    ++i;  // already applied, before the other arguments
+                } else {
+                    std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                    return false;
+                }
             } else if (arg == "--update-value" || arg == "--update-where-empty") {
                 // Format: --update-value col1:existing_value col2:new_value
                 // Sets col2 to new_value when col1 == existing_value
@@ -392,7 +407,7 @@ public:
         // Common options allowed by all commands
         static const std::set<std::string> commonOptions = {
             "-r", "--recursive", "-v", "-V", "-if", "--input-format",
-            "-e", "--extension", "-d", "--depth", "--min-date", "--max-date",
+            "-e", "--extension", "-d", "--depth", "--min-date", "--max-date", "--timezone",
             "--tail", "--tail-column-value", "-h", "--help"
         };
         
@@ -407,7 +422,7 @@ public:
         // Note: --allowed-values and --tail-column-value take TWO args but we handle that specially
         static const std::set<std::string> optionsWithArgs = {
             "-if", "--input-format", "-e", "--extension", "-d", "--depth",
-            "--min-date", "--max-date", "--not-empty", "--not-null", "--only-value", 
+            "--min-date", "--max-date", "--timezone", "--not-empty", "--not-null", "--only-value", 
             "--exclude-value", "--allowed-values", "-o", "--output", "-of", "--output-format",
             "-c", "--column", "--tail", "--tail-column-value"
         };

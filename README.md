@@ -93,6 +93,7 @@ sensor-data transform -r -e .out /path/to/logs/ output.csv
 - `-d, --depth <n>` - Maximum recursion depth
 - `--min-date <date>` - Include only readings on or after this date
 - `--max-date <date>` - Include only readings on or before this date
+- `--timezone <zone>` - Time zone of dates and times that don't give one, such as `Europe/London` (default: UTC)
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
 - `--remove-whitespace` - Remove extra whitespace from output (compact format)
 - `--remove-empty-json` - Remove empty JSON input lines (e.g., `[{}]`, `[]`)
@@ -154,6 +155,7 @@ sensor-data count -r -e .out /path/to/logs/
 - `-d, --depth <n>` - Maximum recursion depth
 - `--min-date <date>` - Include only readings on or after this date
 - `--max-date <date>` - Include only readings on or before this date
+- `--timezone <zone>` - Time zone of dates and times that don't give one, such as `Europe/London` (default: UTC)
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
 - `--remove-empty-json` - Remove empty JSON input lines
 - `--not-empty <column>` - Skip rows where column is empty
@@ -201,6 +203,7 @@ sensor-data distinct sensor -of json -c input.out
 - `-d, --depth <n>` - Maximum recursion depth
 - `--min-date <date>` - Include only readings on or after this date
 - `--max-date <date>` - Include only readings on or before this date
+- `--timezone <zone>` - Time zone of dates and times that don't give one, such as `Europe/London` (default: UTC)
 - `--remove-errors` - Remove error readings (DS18B20 value=85 or -127)
 - `--not-empty <column>` - Skip rows where column is empty
 - `--only-value <col:val>` - Only include rows where column equals value
@@ -357,6 +360,7 @@ sensor-data latest --min-date 2026-01-01 input.out
 - `-if, --input-format <format>` - Input format: `json` or `csv` (auto-detected)
 - `--min-date <date>` - Include only readings on or after this date
 - `--max-date <date>` - Include only readings on or before this date
+- `--timezone <zone>` - Time zone of dates and times that don't give one, such as `Europe/London` (default: UTC)
 - `--tail <n>` - Only read the last n lines from each file
 - `-r, --recursive` - Recursively process subdirectories
 - `-e, --extension <ext>` - Filter files by extension (e.g., `.out`)

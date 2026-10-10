@@ -432,6 +432,7 @@ void DataCounter::printCountUsage(const char* progName) {
     std::cerr << "  --unique                  Only output unique rows (removes duplicates)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date" << std::endl;
+    std::cerr << "  --timezone <zone>         Time zone of dates that don't give one, e.g. Europe/London (default UTC)" << std::endl;
     std::cerr << "  --tail <n>                Only read the last n lines from each file" << std::endl;
     std::cerr << "  --tail-column-value <col:val> <n>  Return last n rows where column=value" << std::endl;
     std::cerr << std::endl;

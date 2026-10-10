@@ -582,6 +582,7 @@ void SensorDataTransformer::printTransformUsage(const char* progName) {
     std::cerr << "  --unique                  Only output unique rows (removes duplicates)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
+    std::cerr << "  --timezone <zone>         Time zone of dates that don't give one, e.g. Europe/London (default UTC)" << std::endl;
     std::cerr << "  --tail-column-value <col:val> <n>" << std::endl;
     std::cerr << "                            Return last n rows where column equals value (reads backwards)" << std::endl;
     std::cerr << "  --update-value <match> <target>" << std::endl;
@@ -639,6 +640,7 @@ void SensorDataTransformer::printListRejectsUsage(const char* progName) {
     std::cerr << "  --clean                   Shorthand for --remove-empty-json --not-empty value --remove-errors --not-null value --not-null sensor_id" << std::endl;
     std::cerr << "  --min-date <date>         List readings after this date" << std::endl;
     std::cerr << "  --max-date <date>         List readings before this date" << std::endl;
+    std::cerr << "  --timezone <zone>         Time zone of dates that don't give one, e.g. Europe/London (default UTC)" << std::endl;
     std::cerr << "  --update-value <match> <target>" << std::endl;
     std::cerr << "                            Update target column when match column has value" << std::endl;
     std::cerr << "  --update-where-empty <match> <target>" << std::endl;

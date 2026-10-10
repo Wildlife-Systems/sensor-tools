@@ -5,6 +5,8 @@
 #include <ctime>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include "types.h"
 
 // Date/Time utility functions
@@ -29,6 +31,117 @@ namespace DateUtils {
         return true;
     }
     
+    // The zone that times giving none of their own are read in, as an IANA name
+    // such as Europe/London (set by --timezone). Empty means UTC.
+    inline std::string& inputTimeZone() {
+        static std::string zone;
+        return zone;
+    }
+
+    // Days from 1970-01-01 to a date in the Gregorian calendar
+    inline long long daysFromCivil(long long year, long long month, long long day) {
+        year -= month <= 2 ? 1 : 0;
+        const long long era = (year >= 0 ? year : year - 399) / 400;
+        const long long yearOfEra = year - era * 400;
+        const long long dayOfYear = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1;
+        const long long dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
+        return era * 146097 + dayOfEra - 719468;
+    }
+
+    // Unix time of a clock time in a zone offsetSeconds ahead of UTC
+    inline long long wallClockToUnix(int year, int month, int day, int hour, int min, int sec,
+                                     long long offsetSeconds) {
+        return daysFromCivil(year, month, day) * 86400 + hour * 3600LL + min * 60LL + sec - offsetSeconds;
+    }
+
+    // Unix time of a clock time that gives no zone: in the --timezone zone if one
+    // was set, otherwise in UTC
+    inline long long zonelessToUnix(int year, int month, int day, int hour, int min, int sec) {
+        if (inputTimeZone().empty()) {
+            return wallClockToUnix(year, month, day, hour, min, sec, 0);
+        }
+        struct tm timeinfo = {};
+        timeinfo.tm_year = year - 1900;
+        timeinfo.tm_mon = month - 1;
+        timeinfo.tm_mday = day;
+        timeinfo.tm_hour = hour;
+        timeinfo.tm_min = min;
+        timeinfo.tm_sec = sec;
+        timeinfo.tm_isdst = -1;  // the zone's rules decide whether it is summer time
+        return static_cast<long long>(mktime(&timeinfo));
+    }
+
+    // Read times that give no zone in this IANA zone from now on; an empty name
+    // goes back to UTC. This sets TZ for the whole process, so call it before any
+    // threads start. Returns false, changing nothing, if the system's zoneinfo
+    // does not have the zone.
+    inline bool setInputTimeZone(const std::string& zone) {
+#ifdef _WIN32
+        if (!zone.empty()) return false;  // no zoneinfo to look the name up in
+#else
+        if (!zone.empty()) {
+            if (zone.size() > 64 || zone[0] == '/' || zone.find("..") != std::string::npos) return false;
+            for (char c : zone) {
+                if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' && c != '_' && c != '-' && c != '+') {
+                    return false;
+                }
+            }
+            const char* tzdir = std::getenv("TZDIR");
+            std::ifstream zoneFile(std::string(tzdir ? tzdir : "/usr/share/zoneinfo") + "/" + zone,
+                                   std::ios::binary);
+            char magic[4] = {};
+            if (!zoneFile.read(magic, 4) || std::string(magic, 4) != "TZif") return false;
+        }
+
+        // Keep TZ as it was, to put it back when the zone is cleared
+        static bool saved = false;
+        static bool hadTz = false;
+        static std::string originalTz;
+        if (!saved) {
+            const char* tz = std::getenv("TZ");
+            hadTz = tz != nullptr;
+            if (hadTz) originalTz = tz;
+            saved = true;
+        }
+        if (!zone.empty()) {
+            setenv("TZ", zone.c_str(), 1);
+        } else if (hadTz) {
+            setenv("TZ", originalTz.c_str(), 1);
+        } else {
+            unsetenv("TZ");
+        }
+        tzset();
+#endif
+        inputTimeZone() = zone;
+        return true;
+    }
+
+    // Offset from UTC, in seconds, of a zone written after a time: Z, UTC, GMT,
+    // +HH, +HHMM or +HH:MM (or the same with -), optionally after a space.
+    // Returns false if the text is none of these.
+    inline bool parseZoneOffset(const std::string& text, long long& offsetSeconds) {
+        std::string zone = (!text.empty() && text[0] == ' ') ? text.substr(1) : text;
+        std::string upper;
+        for (char c : zone) upper += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        if (upper == "Z" || upper == "UTC" || upper == "GMT") {
+            offsetSeconds = 0;
+            return true;
+        }
+        if (zone.size() < 3 || (zone[0] != '+' && zone[0] != '-')) return false;
+        std::string digits;
+        for (size_t i = 1; i < zone.size(); ++i) {
+            if (zone[i] == ':' && i == 3) continue;
+            if (!std::isdigit(static_cast<unsigned char>(zone[i]))) return false;
+            digits += zone[i];
+        }
+        if (digits.size() != 2 && digits.size() != 4) return false;
+        const int hours = std::stoi(digits.substr(0, 2));
+        const int minutes = digits.size() == 4 ? std::stoi(digits.substr(2, 2)) : 0;
+        if (hours > 14 || minutes > 59) return false;
+        offsetSeconds = (hours * 3600LL + minutes * 60LL) * (zone[0] == '-' ? -1 : 1);
+        return true;
+    }
+
     // Internal helper for parsing dates with configurable default time
     // defaultHour/Min/Sec used when no time component is specified
     inline long long parseDateInternal(const std::string& dateStr, int defaultHour, int defaultMin, int defaultSec) {
@@ -39,14 +152,7 @@ namespace DateUtils {
             int day, month, year;
             if (sscanf(dateStr.c_str(), "%d/%d/%d", &day, &month, &year) == 3) {
                 if (!isValidDateTime(year, month, day)) return 0;
-                struct tm timeinfo = {};
-                timeinfo.tm_year = year - 1900;
-                timeinfo.tm_mon = month - 1;
-                timeinfo.tm_mday = day;
-                timeinfo.tm_hour = defaultHour;
-                timeinfo.tm_min = defaultMin;
-                timeinfo.tm_sec = defaultSec;
-                return static_cast<long long>(mktime(&timeinfo));
+                return zonelessToUnix(year, month, day, defaultHour, defaultMin, defaultSec);
             }
         }
         
@@ -61,32 +167,43 @@ namespace DateUtils {
                 int min = defaultMin;
                 int sec = defaultSec;
 
-                // Parse optional time component after position 10.
+                // Parse optional time component after position 10, then any zone after it
+                bool hasZone = false;
+                long long offsetSeconds = 0;
                 if (dateStr.length() > 10) {
                     char sep = dateStr[10];
                     if (sep == 'T' || sep == 't' || sep == ' ') {
                         int parsedHour = 0;
                         int parsedMin = 0;
-                        int parsedSec = 0;
-                        int parsed = sscanf(dateStr.c_str() + 11, "%d:%d:%d", &parsedHour, &parsedMin, &parsedSec);
-                        if (parsed >= 2) {
+                        int used = 0;
+                        if (sscanf(dateStr.c_str() + 11, "%d:%d%n", &parsedHour, &parsedMin, &used) == 2) {
                             hour = parsedHour;
                             min = parsedMin;
-                            sec = (parsed >= 3) ? parsedSec : 0;
+                            sec = 0;
+                            size_t pos = 11 + static_cast<size_t>(used);
+                            int parsedSec = 0;
+                            if (pos < dateStr.length() && dateStr[pos] == ':' &&
+                                sscanf(dateStr.c_str() + pos + 1, "%d%n", &parsedSec, &used) == 1) {
+                                sec = parsedSec;
+                                pos += 1 + static_cast<size_t>(used);
+                            }
+                            // Fractions of a second are dropped
+                            if (pos < dateStr.length() && (dateStr[pos] == '.' || dateStr[pos] == ',')) {
+                                do {
+                                    ++pos;
+                                } while (pos < dateStr.length() && std::isdigit(static_cast<unsigned char>(dateStr[pos])));
+                            }
+                            hasZone = parseZoneOffset(dateStr.substr(pos), offsetSeconds);
                         }
                     }
                 }
                 
                 if (!isValidDateTime(year, month, day, hour, min, sec)) return 0;
                 
-                struct tm timeinfo = {};
-                timeinfo.tm_year = year - 1900;
-                timeinfo.tm_mon = month - 1;
-                timeinfo.tm_mday = day;
-                timeinfo.tm_hour = hour;
-                timeinfo.tm_min = min;
-                timeinfo.tm_sec = sec;
-                return static_cast<long long>(mktime(&timeinfo));
+                if (hasZone) {
+                    return wallClockToUnix(year, month, day, hour, min, sec, offsetSeconds);
+                }
+                return zonelessToUnix(year, month, day, hour, min, sec);
             }
         }
         

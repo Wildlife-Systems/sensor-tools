@@ -1,6 +1,7 @@
 #include "../include/common_arg_parser.h"
 #include <cassert>
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <vector>
 
@@ -214,6 +215,72 @@ void test_max_date_unix() {
     std::cout << "[PASS] test_max_date_unix" << std::endl;
 }
 
+void test_dates_default_to_utc() {
+    CommonArgParser parser;
+    std::vector<std::string> args = {"program", "--min-date", "2025-07-01", "--max-date", "2025-07-01"};
+    auto argv = make_argv(args);
+
+    bool result = parser.parse(static_cast<int>(argv.size()), argv.data());
+    assert(result == true);
+    assert(parser.getMinDate() == 1751328000);  // 2025-07-01 00:00:00 UTC
+    assert(parser.getMaxDate() == 1751414399);  // 2025-07-01 23:59:59 UTC
+
+    std::cout << "[PASS] test_dates_default_to_utc" << std::endl;
+}
+
+void test_timezone_applies_to_every_date() {
+    std::ifstream zoneFile("/usr/share/zoneinfo/Europe/London");
+    if (!zoneFile.good()) {
+        std::cout << "[SKIP] test_timezone_applies_to_every_date (no zoneinfo)" << std::endl;
+        return;
+    }
+    CommonArgParser parser;
+    // --timezone given after one of the dates still applies to it
+    std::vector<std::string> args = {"program", "--min-date", "2025-07-01", "--timezone", "Europe/London",
+                                     "--max-date", "2025-07-01"};
+    auto argv = make_argv(args);
+
+    bool result = parser.parse(static_cast<int>(argv.size()), argv.data());
+    assert(result == true);
+    assert(parser.getMinDate() == 1751324400);  // midnight in London, 23:00 UTC the day before
+    assert(parser.getMaxDate() == 1751410799);
+    assert(parser.getInputFiles().empty());     // the zone is not taken for a file
+    DateUtils::setInputTimeZone("");
+
+    std::cout << "[PASS] test_timezone_applies_to_every_date" << std::endl;
+}
+
+void test_timezone_unknown_zone() {
+    CommonArgParser parser;
+    std::vector<std::string> args = {"program", "--timezone", "Not/A_Zone"};
+    auto argv = make_argv(args);
+
+    bool result = parser.parse(static_cast<int>(argv.size()), argv.data());
+    assert(result == false);
+
+    std::cout << "[PASS] test_timezone_unknown_zone" << std::endl;
+}
+
+void test_timezone_requires_argument() {
+    CommonArgParser parser;
+    std::vector<std::string> args = {"program", "--timezone"};
+    auto argv = make_argv(args);
+
+    bool result = parser.parse(static_cast<int>(argv.size()), argv.data());
+    assert(result == false);
+
+    std::cout << "[PASS] test_timezone_requires_argument" << std::endl;
+}
+
+void test_timezone_is_known_option() {
+    std::vector<std::string> args = {"program", "--timezone", "Europe/London", "data.out"};
+    auto argv = make_argv(args);
+
+    assert(CommonArgParser::checkUnknownOptions(static_cast<int>(argv.size()), argv.data()).empty());
+
+    std::cout << "[PASS] test_timezone_is_known_option" << std::endl;
+}
+
 void test_remove_errors_flag() {
     CommonArgParser parser;
     std::vector<std::string> args = {"program", "--remove-errors"};
@@ -390,6 +457,11 @@ int main() {
     // Date filtering
     test_min_date_unix();
     test_max_date_unix();
+    test_dates_default_to_utc();
+    test_timezone_applies_to_every_date();
+    test_timezone_unknown_zone();
+    test_timezone_requires_argument();
+    test_timezone_is_known_option();
     
     // Filtering flags
     test_remove_errors_flag();

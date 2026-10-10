@@ -106,6 +106,7 @@ void ErrorSummarizer::printSummariseErrorsUsage(const char* progName) {
     std::cerr << "  -d, --depth <n>           Maximum recursion depth (0 = current dir only)" << std::endl;
     std::cerr << "  --min-date <date>         Filter readings after this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
     std::cerr << "  --max-date <date>         Filter readings before this date (Unix timestamp, ISO date, or DD/MM/YYYY)" << std::endl;
+    std::cerr << "  --timezone <zone>         Time zone of dates that don't give one, e.g. Europe/London (default UTC)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << progName << " summarise-errors sensor1.out" << std::endl;

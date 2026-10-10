@@ -60,6 +60,7 @@ void LatestFinder::usage() {
               << "  -of, --output-format <fmt>  Output format: human (default), csv, or json\n"
               << "  --min-date <date>  Only consider readings after this date\n"
               << "  --max-date <date>  Only consider readings before this date\n"
+              << "  --timezone <zone>  Time zone of dates that don't give one, e.g. Europe/London (default UTC)\n"
               << "  -if, --input-format <fmt>  Input format: json (default) or csv\n"
               << "  --tail <n>         Only read last n lines from each file\n"
               << "  --tail-column-value <col:val> <n>  Return last n rows where column=value\n"

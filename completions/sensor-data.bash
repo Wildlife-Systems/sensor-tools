@@ -18,7 +18,7 @@ _sensor_data() {
     local commands="transform count distinct list-errors summarise-errors stats latest"
     
     # Common options for all commands
-    local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date"
+    local common_opts="-r --recursive -v -V -e --extension -d --depth -if --input-format --min-date --max-date --timezone"
     
     # Command-specific options
     local transform_opts="-o --output -of --output-format --tail --tail-column-value --use-prototype --not-empty --not-null --only-value --exclude-value --allowed-values --remove-errors --remove-whitespace --remove-empty-json --update-value --update-where-empty --unique --clean"
@@ -92,6 +92,13 @@ _sensor_data() {
         --allowed-values)
             # First arg is column name, second arg is values or file
             # Can't easily complete column names, leave empty
+            return
+            ;;
+        --timezone)
+            # Zone names from the system's zoneinfo, such as Europe/London
+            local zones
+            zones=$(cd /usr/share/zoneinfo 2>/dev/null && find . -type f -name '[A-Z]*' | sed 's|^\./||')
+            COMPREPLY=($(compgen -W "$zones" -- "$cur"))
             return
             ;;
         --after|--before|--min-date|--max-date)

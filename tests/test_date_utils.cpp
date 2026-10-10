@@ -1,6 +1,7 @@
 #include "../include/date_utils.h"
 #include <cassert>
 #include <iostream>
+#include <fstream>
 #include <ctime>
 
 void test_parse_unix_timestamp() {
@@ -11,70 +12,63 @@ void test_parse_unix_timestamp() {
 }
 
 void test_parse_iso_date() {
-    // ISO 8601 date only
+    // ISO 8601 date only, read as midnight UTC
     long long result = DateUtils::parseDate("2026-01-17");
-    
-    // Verify by converting back
-    time_t t = static_cast<time_t>(result);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2026 - 1900);
-    assert(tm->tm_mon == 0);  // January = 0
-    assert(tm->tm_mday == 17);
+    assert(result == 1768608000);
     std::cout << "[PASS] test_parse_iso_date" << std::endl;
 }
 
 void test_parse_iso_datetime() {
-    // ISO 8601 with time
+    // ISO 8601 with time, read as UTC
     long long result = DateUtils::parseDate("2026-01-17T14:30:00");
-    
-    time_t t = static_cast<time_t>(result);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2026 - 1900);
-    assert(tm->tm_mon == 0);
-    assert(tm->tm_mday == 17);
-    assert(tm->tm_hour == 14);
-    assert(tm->tm_min == 30);
-    assert(tm->tm_sec == 0);
+    assert(result == 1768660200);
     std::cout << "[PASS] test_parse_iso_datetime" << std::endl;
 }
 
 void test_parse_iso_datetime_space_with_millis() {
     long long result = DateUtils::parseDate("2025-02-21 21:18:48.000");
-
-    time_t t = static_cast<time_t>(result);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2025 - 1900);
-    assert(tm->tm_mon == 1);
-    assert(tm->tm_mday == 21);
-    assert(tm->tm_hour == 21);
-    assert(tm->tm_min == 18);
-    assert(tm->tm_sec == 48);
+    assert(result == 1740172728);
     std::cout << "[PASS] test_parse_iso_datetime_space_with_millis" << std::endl;
 }
 
 void test_parse_iso_datetime_t_with_z() {
     long long result = DateUtils::parseDate("2025-02-21T21:18:48Z");
-
-    time_t t = static_cast<time_t>(result);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2025 - 1900);
-    assert(tm->tm_mon == 1);
-    assert(tm->tm_mday == 21);
-    assert(tm->tm_hour == 21);
-    assert(tm->tm_min == 18);
-    assert(tm->tm_sec == 48);
+    assert(result == 1740172728);
     std::cout << "[PASS] test_parse_iso_datetime_t_with_z" << std::endl;
 }
 
+void test_parse_offset_with_colon() {
+    // 22:18:48 an hour ahead of UTC is 21:18:48 UTC
+    assert(DateUtils::parseDate("2025-02-21T22:18:48+01:00") == 1740172728);
+    std::cout << "[PASS] test_parse_offset_with_colon" << std::endl;
+}
+
+void test_parse_offset_without_colon() {
+    assert(DateUtils::parseDate("2025-02-21 16:18:48-0500") == 1740172728);
+    std::cout << "[PASS] test_parse_offset_without_colon" << std::endl;
+}
+
+void test_parse_offset_hours_only() {
+    assert(DateUtils::parseDate("2025-02-21T23:18:48.250+02") == 1740172728);
+    std::cout << "[PASS] test_parse_offset_hours_only" << std::endl;
+}
+
+void test_parse_utc_written_out() {
+    assert(DateUtils::parseDate("2025-02-21 21:18:48 UTC") == 1740172728);
+    assert(DateUtils::parseDate("2025-02-21 21:18:48 +0000") == 1740172728);
+    std::cout << "[PASS] test_parse_utc_written_out" << std::endl;
+}
+
+void test_parse_other_text_after_time_ignored() {
+    // Text after the time that is not a zone is ignored, as before
+    assert(DateUtils::parseDate("2025-02-21 21:18:48 local") == 1740172728);
+    std::cout << "[PASS] test_parse_other_text_after_time_ignored" << std::endl;
+}
+
 void test_parse_uk_date() {
-    // DD/MM/YYYY format
+    // DD/MM/YYYY format, read as midnight UTC
     long long result = DateUtils::parseDate("17/01/2026");
-    
-    time_t t = static_cast<time_t>(result);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2026 - 1900);
-    assert(tm->tm_mon == 0);  // January = 0
-    assert(tm->tm_mday == 17);
+    assert(result == 1768608000);
     std::cout << "[PASS] test_parse_uk_date" << std::endl;
 }
 
@@ -91,12 +85,7 @@ void test_get_timestamp_from_reading() {
     reading["value"] = "22.5";
     
     long long ts = DateUtils::getTimestamp(reading);
-    assert(ts > 0);
-    
-    time_t t = static_cast<time_t>(ts);
-    struct tm* tm = localtime(&t);
-    assert(tm->tm_year == 2026 - 1900);
-    assert(tm->tm_hour == 10);
+    assert(ts == 1768644000);  // 2026-01-17 10:00:00 UTC
     std::cout << "[PASS] test_get_timestamp_from_reading" << std::endl;
 }
 
@@ -418,6 +407,43 @@ void test_get_time_info_negative() {
     std::cout << "[PASS] test_get_time_info_negative" << std::endl;
 }
 
+// The --timezone tests need the system's zoneinfo
+bool have_zoneinfo() {
+    std::ifstream zoneFile("/usr/share/zoneinfo/Europe/London");
+    return zoneFile.good();
+}
+
+void test_input_time_zone_rejects_unknown() {
+    assert(!DateUtils::setInputTimeZone("Not/A_Zone"));
+    assert(!DateUtils::setInputTimeZone("../../etc/passwd"));
+    assert(!DateUtils::setInputTimeZone("Europe"));  // a directory, not a zone
+    assert(DateUtils::inputTimeZone().empty());
+    assert(DateUtils::parseDate("2025-07-01 12:00:00") == 1751371200);
+    std::cout << "[PASS] test_input_time_zone_rejects_unknown" << std::endl;
+}
+
+void test_input_time_zone() {
+    if (!have_zoneinfo()) {
+        std::cout << "[SKIP] test_input_time_zone (no zoneinfo)" << std::endl;
+        return;
+    }
+    assert(DateUtils::setInputTimeZone("Europe/London"));
+    // In summer London is an hour ahead of UTC
+    assert(DateUtils::parseDate("2025-07-01 12:00:00") == 1751367600);
+    assert(DateUtils::parseDate("2025-07-01") == 1751324400);
+    assert(DateUtils::parseDate("01/07/2025") == 1751324400);
+    assert(DateUtils::parseDateEndOfDay("2025-07-01") == 1751410799);
+    // In winter it is on UTC
+    assert(DateUtils::parseDate("2025-02-21 21:18:48") == 1740172728);
+    // A time that gives its own zone keeps it, and Unix times are unchanged
+    assert(DateUtils::parseDate("2025-07-01T12:00:00Z") == 1751371200);
+    assert(DateUtils::parseDate("1700000000") == 1700000000);
+    // An empty zone goes back to UTC
+    assert(DateUtils::setInputTimeZone(""));
+    assert(DateUtils::parseDate("2025-07-01 12:00:00") == 1751371200);
+    std::cout << "[PASS] test_input_time_zone" << std::endl;
+}
+
 int main() {
     std::cout << "Running Date Utils Tests..." << std::endl;
     
@@ -427,6 +453,11 @@ int main() {
     test_parse_iso_datetime();
     test_parse_iso_datetime_space_with_millis();
     test_parse_iso_datetime_t_with_z();
+    test_parse_offset_with_colon();
+    test_parse_offset_without_colon();
+    test_parse_offset_hours_only();
+    test_parse_utc_written_out();
+    test_parse_other_text_after_time_ignored();
     test_parse_uk_date();
     test_parse_empty_string();
     test_parse_negative_unix_timestamp();
@@ -485,6 +516,10 @@ int main() {
     // No-filters test (added with timestamp=0 behavior change)
     test_is_in_date_range_no_filters();
     
+    // --timezone tests last, as they set TZ for the whole process
+    test_input_time_zone_rejects_unknown();
+    test_input_time_zone();
+
     std::cout << "All Date Utils tests passed!" << std::endl;
     return 0;
 }
