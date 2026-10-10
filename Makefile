@@ -156,7 +156,7 @@ rebuild: clean all
 
 # Release build with maximum optimizations
 release: clean
-	$(CXX) $(CPPFLAGS) -std=c++17 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) -pthread
+	$(CXX) $(CPPFLAGS) -std=c++17 -pthread -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET) $(SOURCES) $(LIB_SOURCES) $(LDFLAGS)
 	$(CXX) $(CPPFLAGS) -std=c++17 -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_MON) $(MON_SOURCES) src/sensor_data_api.cpp src/csv_parser.cpp src/json_parser.cpp src/file_utils.cpp src/error_detector.cpp $(LDFLAGS_NCURSES)
 	$(CXX) $(CPPFLAGS) -std=c++17 -Iinclude -O3 -march=native -flto -DNDEBUG -o $(TARGET_PLOT) $(PLOT_SOURCES) src/sensor_data_api.cpp src/csv_parser.cpp src/json_parser.cpp src/file_utils.cpp src/error_detector.cpp $(LDFLAGS_NCURSES)
 
