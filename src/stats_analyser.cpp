@@ -176,10 +176,11 @@ void StatsAnalyser::printStats() {
         if (duration > 0) {
             double readingsPerHour = (double)timestamps.size() / ((double)duration / 3600.0);
             double readingsPerDay = (double)timestamps.size() / ((double)duration / 86400.0);
+            const std::streamsize savedPrecision = std::cout.precision();  // std::defaultfloat does not restore it
             std::cout << "  Rate:      " << std::fixed << std::setprecision(2) 
                       << readingsPerHour << " readings/hour, "
                       << readingsPerDay << " readings/day" << std::endl;
-            std::cout << std::defaultfloat;
+            std::cout << std::defaultfloat << std::setprecision(savedPrecision);
         }
         
         // Gap detection
@@ -299,8 +300,9 @@ void StatsAnalyser::printStats() {
         std::cout << std::endl;
         std::cout << "  Outliers (1.5*IQR):" << std::endl;
         std::cout << "    Count:     " << outlierCount << std::endl;
+        const std::streamsize savedPrecision = std::cout.precision();  // std::defaultfloat does not restore it
         std::cout << "    Percent:   " << std::fixed << std::setprecision(1) << outlierPercent << "%" << std::endl;
-        std::cout << std::defaultfloat;
+        std::cout << std::defaultfloat << std::setprecision(savedPrecision);
         
         if (values.size() > 1) {
             std::cout << std::endl;
@@ -313,7 +315,7 @@ void StatsAnalyser::printStats() {
             std::cout << "  Max Jump:" << std::endl;
             std::cout << "    Size:      " << deltaMax << std::endl;
             std::cout << "    From:      " << values[maxJumpIndex - 1] << " -> " << values[maxJumpIndex] << std::endl;
-            std::cout << std::defaultfloat;
+            std::cout << std::defaultfloat << std::setprecision(savedPrecision);
         }
         
         std::cout << std::endl;
